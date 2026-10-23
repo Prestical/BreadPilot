@@ -1,0 +1,6 @@
+{
+  "cases": [
+    { "name": "read the button", "file": "code/read.py", "layout": [{ "kind": "button" }], "errors": [], "warnings": [] },
+    { "name": "the button pin driven as an output", "file": "code/output.py", "layout": [{ "kind": "button" }], "errors": ["C005"] }
+  ]
+}

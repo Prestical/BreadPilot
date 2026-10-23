@@ -1,0 +1,47 @@
+{
+  "id": "reading-lines",
+  "title": "Reading a connection line",
+  "summary": "What #33(GND) -> #31j(LED1.cathode) means.",
+  "parts": [
+    { "ref": "R1", "type": "resistor", "legs": { "a": "26h", "b": "30h" } },
+    { "ref": "LED1", "type": "led-5mm", "legs": { "anode": "30g", "cathode": "31g" } }
+  ],
+  "wires": ["#33(GND) -> #31j(LED1.cathode)"],
+  "steps": [
+    {
+      "text": "Build steps show each wire as a line like: #33(GND) -> #31j(LED1.cathode). Read it as: from Pico pin 33 (which is GND) to breadboard hole 31j, in the row of the LED's short leg.",
+      "focus": ["8a", "31j"],
+      "highlight": ["pin:33", "31j"],
+      "labels": true,
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "The Pico covers its own pins, so you plug the wire into a free hole in the same row as the pin. Pin 33 is in row 8 on the right side: use hole 8j or 8i. Click one of them.",
+      "focus": ["4a", "12j"],
+      "highlight": ["pin:33"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["8j", "8i"],
+        "hint": "Find pin 33 (GND / AGND), then go right to the free holes in the same row.",
+        "success": "Yes. Hole 8j is connected to pin 33 through the breadboard strip."
+      }
+    },
+    {
+      "text": "Now the other end: \"#31j\" means row 31, column j. Click hole 31j.",
+      "focus": ["26a", "34j"],
+      "expect": {
+        "type": "click",
+        "accept": ["31j"],
+        "hint": "Rows are numbered along the board, columns a-j across it. Row 31, column j is on the right edge.",
+        "success": "That's it. 31j shares a strip with the LED's short leg in 31g."
+      }
+    },
+    {
+      "text": "Here is that wire in 3D. Every build step gives you the line, a sentence in plain English, and this picture.",
+      "focus": ["8a", "31j"],
+      "showWires": true,
+      "expect": { "type": "next" }
+    }
+  ]
+}

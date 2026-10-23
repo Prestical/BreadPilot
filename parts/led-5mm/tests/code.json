@@ -1,0 +1,8 @@
+{
+  "cases": [
+    { "name": "blink", "file": "code/blink.py", "layout": [{ "kind": "led" }], "errors": [], "warnings": [] },
+    { "name": "brightness with PWM", "file": "code/pwm.py", "layout": [{ "kind": "led" }], "errors": [], "warnings": [] },
+    { "name": "the LED pin set up as an input", "file": "code/input.py", "layout": [{ "kind": "led" }], "errors": ["C005"] },
+    { "name": "a pin that isn't wired", "file": "code/wrong-pin.py", "layout": [{ "kind": "led" }], "errors": ["C004", "C006"] }
+  ]
+}

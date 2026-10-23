@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "id": "oled-sh1106-i2c",
+  "order": 40,
+  "kind": "oled",
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/oled-sh1106-i2c.json (main at e7c3199)",
+    "date": "2026-10-23"
+  },
+  "driver": "driver/sh1106.py"
+}

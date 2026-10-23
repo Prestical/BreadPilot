@@ -1,0 +1,14 @@
+{
+  "place": {
+    "title": "Place {ref} ({ohms} resistor)",
+    "text": "Put the {ohms} resistor {ref} with one leg in hole {holes.0} and the other in hole {holes.1}.",
+    "tip": "Its color bands read {bands}. Direction doesn't matter."
+  },
+  "why": "{ref} limits how much current can flow in this part of the circuit.",
+  "whyWithLed": "{ref} limits the current through {led} to about {ma} mA ((3.3 V − {vf} V) ÷ {ohms}). Without it, too much current would flow and could damage the LED or the Pico pin.",
+  "names": {
+    "shop": ["resistor", "resistors"],
+    "shopBy": "{prop.ohms} Ω",
+    "hover": " · {prop.ohms} Ω"
+  }
+}

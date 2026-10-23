@@ -1,0 +1,99 @@
+# BreadPilot — local single-user stack.
+#   cp .env.example .env   (then set POSTGRES_PASSWORD)
+#   docker compose up -d --build        → http://localhost:8080
+#   Docs are baked into the api image and indexed automatically when the API starts
+#   (only new/changed files). After adding or changing docs: docker compose up -d --build
+#   Re-index by hand:  docker compose exec api node dist/ingest-cli.js [--force]
+#   Retrieval eval:    docker compose exec api node dist/eval-rag-cli.js
+#
+# The LLM runs in Ollama: installed on the host (containers reach it at host.docker.internal;
+# on Linux set OLLAMA_HOST=0.0.0.0 for that), or in Docker with: docker compose --profile ollama up
+# plus DOCKER_LLM_BASE_URL=http://ollama:11434/v1 in .env (see README, "Notes per operating system").
+# All ports bind to 127.0.0.1 only.
+
+name: breadpilot
+
+x-db-env: &db-env
+  # The database user/name stay "hwedu" (the project's old name): they live inside the existing volume.
+  POSTGRES_USER: ${POSTGRES_USER:-hwedu}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (cp .env.example .env)}
+  POSTGRES_DB: ${POSTGRES_DB:-hwedu}
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment: *db-env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432" # for running the API on the host (npm run dev:api)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { memory: 768m }
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hwedu}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-hwedu}
+      LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-16384}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      # Optional OpenAI model (offered next to the local one only when the key is set).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-6-luna}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-low}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # built in on Docker Desktop; needed on Linux
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health/live"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512m }
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { memory: 128m }
+    restart: unless-stopped
+
+  ollama:
+    # Optional: Ollama inside Docker (CPU; on Linux add "gpus: all" for an NVIDIA GPU). On macOS run
+    # Ollama natively instead: containers there can't use the Apple GPU.
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+
+volumes:
+  # Created when the project was still called HardwareEdu: the names are pinned so the renamed
+  # stack keeps the same database (saved projects) and downloaded Ollama models.
+  pgdata:
+    name: hardwareedu_pgdata
+  ollama:
+    name: hardwareedu_ollama

@@ -1,0 +1,13 @@
+{
+  "name": "button",
+  "height": 3,
+  "pins": { "signal": { "need": "gpio", "mode": "in_pullup" } },
+  "parts": [
+    { "ref": "BTN", "type": "self", "legs": { "1a": [0, "e"], "1b": [0, "f"], "2a": [2, "e"], "2b": [2, "f"] } }
+  ],
+  "main": "BTN",
+  "wires": [
+    { "pin": "signal", "to": [0, "j", "BTN.1b"] },
+    { "ground": [2, "j", "BTN.2b"] }
+  ]
+}

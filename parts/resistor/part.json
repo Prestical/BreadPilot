@@ -1,0 +1,31 @@
+{
+  "id": "resistor",
+  "name": "Resistor",
+  "category": "passive",
+  "legs": [
+    {
+      "id": "a",
+      "label": "leg 1"
+    },
+    {
+      "id": "b",
+      "label": "leg 2"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "resistor",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "props": {
+    "ohms": {
+      "type": "number",
+      "default": 330
+    }
+  },
+  "specs": {
+    "note": "Direction doesn't matter."
+  }
+}

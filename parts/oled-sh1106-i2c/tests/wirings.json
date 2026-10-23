@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "name": "laid out by the engine", "layout": [{ "kind": "oled" }], "expect": [] },
+    { "name": "two displays, one per I2C bus", "layout": [{ "kind": "oled" }, { "kind": "oled" }], "expect": [] },
+    { "name": "VCC on 5 V (VBUS)", "layout": [{ "kind": "oled" }], "rewire": { "OLED1.vcc": "#40(VBUS) -> #29j(OLED1.vcc)" }, "expect": ["E007", "E007", "E014"] },
+    { "name": "SDA and SCL swapped in the pin modes", "layout": [{ "kind": "oled" }], "modes": { "GP16": "i2c0_scl", "GP17": "i2c0_sda" }, "expect": ["E009", "E009", "E015", "E015"] },
+    { "name": "SDA not wired", "layout": [{ "kind": "oled" }], "removeWires": ["OLED1.sda"], "modes": { "GP16": null}, "expect": ["E009", "E015"] }
+  ]
+}

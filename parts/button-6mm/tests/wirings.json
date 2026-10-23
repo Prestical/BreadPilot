@@ -1,0 +1,8 @@
+{
+  "cases": [
+    { "name": "laid out by the engine", "layout": [{ "kind": "button" }], "expect": [] },
+    { "name": "the button's pin driven as an output (pressing shorts it to GND)", "layout": [{ "kind": "button" }], "modes": { "GP16": "out" }, "expect": ["E003"] },
+    { "name": "input with no pull-up (floating while released)", "layout": [{ "kind": "button" }], "modes": { "GP16": "in" }, "expect": ["W003"] },
+    { "name": "pull-down with the button to GND (always reads 0)", "layout": [{ "kind": "button" }], "modes": { "GP16": "in_pulldown" }, "expect": ["W003"] }
+  ]
+}

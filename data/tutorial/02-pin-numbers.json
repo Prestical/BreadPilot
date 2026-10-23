@@ -1,0 +1,46 @@
+{
+  "id": "pin-numbers",
+  "title": "Pico pin numbers",
+  "summary": "How the 40 pins are numbered.",
+  "steps": [
+    {
+      "text": "The Pico 2 W sits across the channel in rows 1-20, with its USB connector toward row 1. The labels show each pin's number and name.",
+      "focus": ["1a", "20j"],
+      "labels": true,
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "Pin numbers start at 1 next to the USB connector on the left side, and count down the left side to 20. Click pin 1.",
+      "focus": ["1a", "8j"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["pin:1"],
+        "hint": "Pin 1 is the top-left pin, closest to the USB connector.",
+        "success": "That's pin 1 (GP0)."
+      }
+    },
+    {
+      "text": "The numbers continue on the right side going up: pin 21 is at the bottom right and pin 40 at the top right. Click pin 40.",
+      "focus": ["1a", "8j"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["pin:40"],
+        "hint": "Pin 40 is the top-right pin, opposite pin 1.",
+        "success": "Correct, pin 40 is VBUS (the 5 V from USB)."
+      }
+    },
+    {
+      "text": "Now click pin 21.",
+      "focus": ["14a", "20j"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["pin:21"],
+        "hint": "Pin 21 is at the bottom of the right side, opposite pin 20.",
+        "success": "Yes, pin 21 is opposite pin 20. Left side counts down, right side counts up."
+      }
+    }
+  ]
+}

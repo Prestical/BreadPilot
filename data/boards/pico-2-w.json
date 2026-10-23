@@ -1,0 +1,805 @@
+{
+  "$comment": "Ground truth for Raspberry Pi Pico 2 W / 2 WH. Transcribed from pico-2-w-pinout.pdf (image) and cross-checked against pico-2-w-datasheet.pdf (Release 2, 03/07/2026). Edit only against the docs. Run `npm run gen:pinout` after changes.",
+  "id": "pico-2-w",
+  "name": "Raspberry Pi Pico 2 W",
+  "variants": [
+    "pico-2-w",
+    "pico-2-wh"
+  ],
+  "variantNote": "Pico 2 WH is the same board with headers pre-soldered.",
+  "electrical": {
+    "logicVoltage": 3.3,
+    "gpioMaxInputVoltage": 3.3,
+    "adcPinMaxInputVoltage": 3.6,
+    "notes": [
+      "GPIO is powered from the on-board 3.3 V rail and fixed at 3.3 V.",
+      "GPIO26-29 (ADC-capable) have a reverse diode to IOVDD: input must not exceed IOVDD + ~300 mV.",
+      "The datasheet does not state 5 V tolerance, so 5 V into any GPIO is treated as an error."
+    ],
+    "src": [
+      {
+        "doc": "pico-2-w-datasheet.pdf",
+        "page": 14,
+        "section": "3.2"
+      },
+      {
+        "doc": "pico-2-w-datasheet.pdf",
+        "page": 5,
+        "section": "1"
+      }
+    ]
+  },
+  "mechanical": {
+    "boardMm": [
+      51,
+      21,
+      1
+    ],
+    "pinPitchMm": 2.54,
+    "pinRowSpacingPitches": 7,
+    "notes": [
+      "40 pins on a 0.1-inch grid, one 0.1-inch pitch wider than a standard 40-pin DIP (0.6 in), so the pin rows are 0.7 in apart."
+    ],
+    "src": [
+      {
+        "doc": "pico-2-w-datasheet.pdf",
+        "page": 5,
+        "section": "1"
+      },
+      {
+        "doc": "pico-2-w-datasheet.pdf",
+        "page": 7,
+        "section": "2"
+      }
+    ]
+  },
+  "pinNumbering": "Pin 1 is top-left with USB at the top. Pins 1-20 run down the left side and pins 21-40 run up the right side (pin 40 is top-right).",
+  "internalGpio": [
+    {
+      "name": "GP23",
+      "use": "Wireless power-on signal"
+    },
+    {
+      "name": "GP24",
+      "use": "Wireless SPI data/IRQ"
+    },
+    {
+      "name": "GP25",
+      "use": "Wireless SPI CS (high also enables the VSYS/3 measurement on GPIO29)"
+    },
+    {
+      "name": "GP29",
+      "use": "Wireless SPI CLK / ADC3 measuring VSYS/3"
+    }
+  ],
+  "wirelessGpio": [
+    {
+      "name": "WL_GPIO0",
+      "use": "On-board user LED"
+    },
+    {
+      "name": "WL_GPIO1",
+      "use": "SMPS power-save pin (do not use)"
+    },
+    {
+      "name": "WL_GPIO2",
+      "use": "VBUS sense (high when VBUS is present)"
+    }
+  ],
+  "internalSrc": [
+    {
+      "doc": "pico-2-w-datasheet.pdf",
+      "page": 8,
+      "section": "2.1"
+    },
+    {
+      "doc": "pico-2-w-datasheet.pdf",
+      "page": 19,
+      "section": "3.8"
+    }
+  ],
+  "onboardLed": {
+    "wlGpio": "WL_GPIO0",
+    "micropython": "Pin(\"LED\", Pin.OUT)",
+    "micropythonSrc": "MicroPython convention, to be verified against the Python SDK book"
+  },
+  "pins": [
+    {
+      "phys": 1,
+      "name": "GP0",
+      "type": "gpio",
+      "gpio": 0,
+      "functions": [
+        "UART0_TX",
+        "I2C0_SDA",
+        "SPI0_RX"
+      ],
+      "defaultFunctions": [
+        "UART0_TX"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 2,
+      "name": "GP1",
+      "type": "gpio",
+      "gpio": 1,
+      "functions": [
+        "UART0_RX",
+        "I2C0_SCL",
+        "SPI0_CSN"
+      ],
+      "defaultFunctions": [
+        "UART0_RX"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 3,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 4,
+      "name": "GP2",
+      "type": "gpio",
+      "gpio": 2,
+      "functions": [
+        "I2C1_SDA",
+        "SPI0_SCK"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 5,
+      "name": "GP3",
+      "type": "gpio",
+      "gpio": 3,
+      "functions": [
+        "I2C1_SCL",
+        "SPI0_TX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 6,
+      "name": "GP4",
+      "type": "gpio",
+      "gpio": 4,
+      "functions": [
+        "UART1_TX",
+        "I2C0_SDA",
+        "SPI0_RX"
+      ],
+      "defaultFunctions": [
+        "I2C0_SDA"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 7,
+      "name": "GP5",
+      "type": "gpio",
+      "gpio": 5,
+      "functions": [
+        "UART1_RX",
+        "I2C0_SCL",
+        "SPI0_CSN"
+      ],
+      "defaultFunctions": [
+        "I2C0_SCL"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 8,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 9,
+      "name": "GP6",
+      "type": "gpio",
+      "gpio": 6,
+      "functions": [
+        "I2C1_SDA",
+        "SPI0_SCK"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 10,
+      "name": "GP7",
+      "type": "gpio",
+      "gpio": 7,
+      "functions": [
+        "I2C1_SCL",
+        "SPI0_TX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 11,
+      "name": "GP8",
+      "type": "gpio",
+      "gpio": 8,
+      "functions": [
+        "UART1_TX",
+        "I2C0_SDA",
+        "SPI1_RX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 12,
+      "name": "GP9",
+      "type": "gpio",
+      "gpio": 9,
+      "functions": [
+        "UART1_RX",
+        "I2C0_SCL",
+        "SPI1_CSN"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 13,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 14,
+      "name": "GP10",
+      "type": "gpio",
+      "gpio": 10,
+      "functions": [
+        "I2C1_SDA",
+        "SPI1_SCK"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 15,
+      "name": "GP11",
+      "type": "gpio",
+      "gpio": 11,
+      "functions": [
+        "I2C1_SCL",
+        "SPI1_TX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 16,
+      "name": "GP12",
+      "type": "gpio",
+      "gpio": 12,
+      "functions": [
+        "UART0_TX",
+        "I2C0_SDA",
+        "SPI1_RX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 17,
+      "name": "GP13",
+      "type": "gpio",
+      "gpio": 13,
+      "functions": [
+        "UART0_RX",
+        "I2C0_SCL",
+        "SPI1_CSN"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 18,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 19,
+      "name": "GP14",
+      "type": "gpio",
+      "gpio": 14,
+      "functions": [
+        "I2C1_SDA",
+        "SPI1_SCK"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 20,
+      "name": "GP15",
+      "type": "gpio",
+      "gpio": 15,
+      "functions": [
+        "I2C1_SCL",
+        "SPI1_TX"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 21,
+      "name": "GP16",
+      "type": "gpio",
+      "gpio": 16,
+      "functions": [
+        "SPI0_RX",
+        "I2C0_SDA",
+        "UART0_TX"
+      ],
+      "defaultFunctions": [
+        "SPI0_RX"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 22,
+      "name": "GP17",
+      "type": "gpio",
+      "gpio": 17,
+      "functions": [
+        "SPI0_CSN",
+        "I2C0_SCL",
+        "UART0_RX"
+      ],
+      "defaultFunctions": [
+        "SPI0_CSN"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 23,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 24,
+      "name": "GP18",
+      "type": "gpio",
+      "gpio": 18,
+      "functions": [
+        "SPI0_SCK",
+        "I2C1_SDA"
+      ],
+      "defaultFunctions": [
+        "SPI0_SCK"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 25,
+      "name": "GP19",
+      "type": "gpio",
+      "gpio": 19,
+      "functions": [
+        "SPI0_TX",
+        "I2C1_SCL"
+      ],
+      "defaultFunctions": [
+        "SPI0_TX"
+      ],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 26,
+      "name": "GP20",
+      "type": "gpio",
+      "gpio": 20,
+      "functions": [
+        "I2C0_SDA"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 27,
+      "name": "GP21",
+      "type": "gpio",
+      "gpio": 21,
+      "functions": [
+        "I2C0_SCL"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 28,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 29,
+      "name": "GP22",
+      "type": "gpio",
+      "gpio": 22,
+      "functions": [],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 30,
+      "name": "RUN",
+      "type": "control",
+      "description": "RP2350 enable. Internal ~50 kΩ pull-up to 3.3 V. Shorting it to GND resets the chip.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        }
+      ]
+    },
+    {
+      "phys": 31,
+      "name": "GP26",
+      "type": "gpio",
+      "gpio": 26,
+      "functions": [
+        "ADC0",
+        "I2C1_SDA"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ],
+      "adc": 0
+    },
+    {
+      "phys": 32,
+      "name": "GP27",
+      "type": "gpio",
+      "gpio": 27,
+      "functions": [
+        "ADC1",
+        "I2C1_SCL"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ],
+      "adc": 1
+    },
+    {
+      "phys": 33,
+      "name": "GND",
+      "aliases": [
+        "AGND"
+      ],
+      "type": "ground",
+      "description": "AGND: ground reference for GPIO26-29 (ADC). Can be used as normal ground when ADC accuracy is not critical.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        }
+      ]
+    },
+    {
+      "phys": 34,
+      "name": "GP28",
+      "type": "gpio",
+      "gpio": 28,
+      "functions": [
+        "ADC2"
+      ],
+      "defaultFunctions": [],
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ],
+      "adc": 2
+    },
+    {
+      "phys": 35,
+      "name": "ADC_VREF",
+      "type": "reference",
+      "description": "ADC supply and reference, filtered from 3.3 V. Only connect an external voltage reference here.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 14,
+          "section": "3.3"
+        }
+      ]
+    },
+    {
+      "phys": 36,
+      "name": "3V3",
+      "aliases": [
+        "3V3(OUT)",
+        "3V3_OUT",
+        "3V3OUT",
+        "3.3V"
+      ],
+      "type": "power",
+      "voltage": 3.3,
+      "maxLoadMa": 300,
+      "description": "Main 3.3 V supply from the on-board SMPS. Can power external circuits; keep the load under 300 mA.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        }
+      ]
+    },
+    {
+      "phys": 37,
+      "name": "3V3_EN",
+      "type": "control",
+      "description": "SMPS enable, pulled up to VSYS through 100 kΩ. Shorting it to GND turns off the 3.3 V supply and the RP2350.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        }
+      ]
+    },
+    {
+      "phys": 38,
+      "name": "GND",
+      "type": "ground",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "phys": 39,
+      "name": "VSYS",
+      "type": "power",
+      "voltage": 5.0,
+      "voltageRange": [
+        1.8,
+        5.5
+      ],
+      "description": "Main system input (1.8–5.5 V). When powered over USB it is VBUS minus a Schottky diode drop.",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 13,
+          "section": "2.3"
+        }
+      ]
+    },
+    {
+      "phys": 40,
+      "name": "VBUS",
+      "type": "power",
+      "voltage": 5.0,
+      "voltageRange": [
+        4.5,
+        5.5
+      ],
+      "description": "Micro-USB input voltage, nominally 5 V (0 V when USB isn't connected).",
+      "src": [
+        {
+          "doc": "pico-2-w-pinout.pdf",
+          "page": 1
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 9,
+          "section": "2.1"
+        },
+        {
+          "doc": "pico-2-w-datasheet.pdf",
+          "page": 13,
+          "section": "2.3"
+        }
+      ]
+    }
+  ]
+}

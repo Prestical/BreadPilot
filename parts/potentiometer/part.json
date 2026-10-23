@@ -1,0 +1,41 @@
+{
+  "id": "potentiometer",
+  "name": "Potentiometer (10 kΩ)",
+  "category": "input",
+  "legs": [
+    {
+      "id": "end1",
+      "label": "outer leg 1"
+    },
+    {
+      "id": "wiper",
+      "label": "middle leg (wiper)",
+      "kind": "analog_out"
+    },
+    {
+      "id": "end2",
+      "label": "outer leg 2"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "resistor",
+      "a": "end1",
+      "b": "wiper"
+    },
+    {
+      "kind": "resistor",
+      "a": "wiper",
+      "b": "end2"
+    }
+  ],
+  "props": {
+    "ohms": {
+      "type": "number",
+      "default": 10000
+    }
+  },
+  "specs": {
+    "note": "Outer legs go to 3V3 and GND; the middle leg gives a voltage between them."
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@breadpilot/web",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "predev": "npm run gen:parts -w @breadpilot/circuit-core",
+    "prebuild": "npm run gen:parts -w @breadpilot/circuit-core",
+    "pretypecheck": "npm run gen:parts -w @breadpilot/circuit-core"
+  },
+  "dependencies": {
+    "@breadpilot/circuit-core": "*",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "littlefs": "0.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.186.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^7.1.0"
+  }
+}

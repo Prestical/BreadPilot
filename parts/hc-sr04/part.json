@@ -1,0 +1,60 @@
+{
+  "id": "hc-sr04",
+  "name": "HC-SR04 ultrasonic distance sensor",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [4.5, 5.5],
+        "src": {
+          "typical": true,
+          "note": "common HC-SR04 module values; no datasheet in docs/ yet"
+        }
+      }
+    },
+    {
+      "id": "trig",
+      "label": "TRIG",
+      "kind": "digital_in"
+    },
+    {
+      "id": "echo",
+      "label": "ECHO",
+      "kind": "digital_out",
+      "level": "vcc"
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 15,
+        "src": {
+          "typical": true,
+          "note": "common HC-SR04 module values; no datasheet in docs/ yet"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "currentMa": {
+      "value": 15,
+      "src": {
+        "typical": true,
+        "note": "common HC-SR04 module values; no datasheet in docs/ yet"
+      }
+    },
+    "note": "Runs on 5 V. ECHO outputs 5 V pulses, so it needs a voltage divider before a Pico GPIO."
+  },
+  "specsSource": "common HC-SR04 module datasheet values"
+}

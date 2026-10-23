@@ -1,0 +1,38 @@
+{
+  "id": "breadboard",
+  "title": "What is a breadboard?",
+  "summary": "Which holes are connected inside the board.",
+  "steps": [
+    {
+      "text": "This is a breadboard. You push wires and parts into its holes. Metal strips inside the board connect some holes together, so you never need to solder.",
+      "focus": ["24a", "40j"],
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "Move your mouse over any hole. The holes that light up in blue are connected to it inside the board. Try a few rows.",
+      "focus": ["26a", "36j"],
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "Each row has two strips of 5 holes: a-e on the left and f-j on the right. The channel in the middle separates them. Click a hole that is connected to the yellow hole 30c.",
+      "focus": ["27a", "33j"],
+      "highlight": ["30c"],
+      "expect": {
+        "type": "click",
+        "accept": ["30a", "30b", "30d", "30e"],
+        "hint": "Connected holes are in the same row (30) and on the same side of the channel (columns a-e).",
+        "success": "Yes! 30a-30e are one strip. 30f-30j would be a different strip, across the channel."
+      }
+    },
+    {
+      "text": "The long lines along the edges are power rails: every hole along one line is connected, top to bottom. Click any hole on the right − rail, next to the blue line.",
+      "focus": ["30h", "40j"],
+      "expect": {
+        "type": "click",
+        "accept": ["RR-"],
+        "hint": "It's the outermost line of holes on the right side, next to the blue stripe.",
+        "success": "Right. Projects use this rail for GND (ground), so every part can reach it easily."
+      }
+    }
+  ]
+}

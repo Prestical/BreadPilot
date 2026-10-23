@@ -1,0 +1,14 @@
+{
+  "plan": { "line": "a push button the user presses." },
+  "words": {
+    "nouns": ["button", "buttons", "push-button", "push-buttons", "pushbutton", "pushbuttons", "switch", "switches"],
+    "nounContext": { "words": ["switch"] },
+    "impliedBy": { "words": ["press", "presses", "pressed", "pressing", "push", "pushes", "pushed", "click", "clicks", "clicked"] }
+  },
+  "names": { "label": ["a button", "buttons"], "count": ["button", "buttons"], "supports": "push buttons", "short": ["button", "buttons"] },
+  "code": {
+    "pinLine": "push button {ref} on {gpio}: Pin({g}, Pin.IN, Pin.PULL_UP). value() is 0 while pressed and 1 when released.",
+    "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN, Pin.PULL_UP)  (reads 0 while pressed)` |"],
+    "ragQuery": "GPIO digital input with pull-up resistor"
+  }
+}

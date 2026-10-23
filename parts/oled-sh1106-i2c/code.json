@@ -1,0 +1,15 @@
+{
+  "display": {
+    "class": "SH1106_I2C",
+    "width": { "value": 128, "src": { "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)" } },
+    "height": { "value": 64, "src": { "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)" } },
+    "font": { "value": 8, "src": { "typical": true, "note": "MicroPython framebuf's built-in text font is 8x8 pixels, ASCII only (MicroPython docs, not yet in docs/)" } },
+    "title": "the OLED display",
+    "var": "oled"
+  },
+  "modules": {
+    "match": ["ssd1306", "sh1106"],
+    "hint": "This display uses the SH1106 chip: use `from sh1106 import SH1106_I2C` (the sh1106.py file from this project).",
+    "onlyWith": "the OLED display"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$comment": "Standard 830-point solderless breadboard. Each row has two 5-hole strips (a-e, f-j) separated by the center channel. Rails run the full length (set splitRails=true for boards whose rails break in the middle).",
+  "id": "bb-830",
+  "name": "830-point breadboard",
+  "rows": 63,
+  "columns": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+  "strips": { "L": ["a", "b", "c", "d", "e"], "R": ["f", "g", "h", "i", "j"] },
+  "rails": [
+    { "id": "RL+", "side": "left", "polarity": "+", "label": "left + rail" },
+    { "id": "RL-", "side": "left", "polarity": "-", "label": "left − rail" },
+    { "id": "RR+", "side": "right", "polarity": "+", "label": "right + rail" },
+    { "id": "RR-", "side": "right", "polarity": "-", "label": "right − rail" }
+  ],
+  "splitRails": false,
+  "pitchMm": 2.54,
+  "picoPlacement": {
+    "$comment": "Pico straddles the channel with USB toward row 1. Pins 1-20 in column c (rows 1-20), pins 40-21 in column h (rows 1-20). The PCB covers columns d-g on rows 1-20, so only a-b and i-j are free for jumpers (listed in preference order: outermost first).",
+    "firstRow": 1,
+    "leftColumn": "c",
+    "rightColumn": "h",
+    "coveredColumns": ["c", "d", "e", "f", "g", "h"],
+    "freeLeft": ["a", "b"],
+    "freeRight": ["j", "i"]
+  }
+}

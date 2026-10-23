@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "name": "text on the display", "file": "code/hello.py", "layout": [{ "kind": "oled" }], "errors": [], "warnings": [] },
+    { "name": "the SSD1306 driver (a different chip)", "file": "code/ssd1306.py", "layout": [{ "kind": "oled" }], "errors": ["C010", "C012"] },
+    { "name": "drawn but never shown", "file": "code/no-show.py", "layout": [{ "kind": "oled" }], "errors": ["C012"] },
+    { "name": "a character the font doesn't have", "file": "code/degree.py", "layout": [{ "kind": "oled" }], "errors": ["C013"] },
+    { "name": "SDA and SCL swapped in I2C()", "file": "code/swapped.py", "layout": [{ "kind": "oled" }], "errors": ["C005"] }
+  ]
+}

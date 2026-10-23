@@ -1,0 +1,7 @@
+{
+  "cases": [
+    { "name": "laid out by the engine", "layout": [{ "kind": "pot" }], "expect": [] },
+    { "name": "three knobs on the three ADC pins (rails)", "layout": [{ "kind": "pot" }, { "kind": "pot" }, { "kind": "pot" }], "power": "rails", "expect": [] },
+    { "name": "the wiper's pin set as a digital input", "layout": [{ "kind": "pot" }], "modes": { "GP26": "in" }, "expect": ["E008"] }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "safety",
+  "title": "Safety: short circuits",
+  "summary": "See the app block a dangerous wire.",
+  "steps": [
+    {
+      "text": "A short circuit is a wire from a power pin straight to ground. Current rushes through with nothing to slow it down, and that can damage the Pico or your USB port.",
+      "focus": ["1a", "10j"],
+      "labels": true,
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "Let's watch the app stop one. Click hole 5j (next to 3V3, pin 36), then hole 3j (next to GND, pin 38).",
+      "focus": ["1a", "8j"],
+      "highlight": ["5j", "3j"],
+      "labels": true,
+      "expect": {
+        "type": "wire",
+        "from": ["5j", "5i", "pin:36"],
+        "to": ["3j", "3i", "pin:38"],
+        "mustFail": "E001",
+        "hint": "First click 5j, then click 3j.",
+        "success": "Blocked! Every wire is checked before it can appear in a build step, so a short like this never reaches your instructions."
+      }
+    }
+  ]
+}

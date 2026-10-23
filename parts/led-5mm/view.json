@@ -1,0 +1,6 @@
+{
+  "shape": "led-dome",
+  "legs": ["anode", "cathode"],
+  "colorProp": "color",
+  "colors": { "red": "#ff2a2a", "green": "#22d65c", "yellow": "#ffd21f", "blue": "#2f7bff", "white": "#f4f6ff" }
+}

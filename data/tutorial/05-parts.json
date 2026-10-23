@@ -1,0 +1,35 @@
+{
+  "id": "parts",
+  "title": "Parts have legs",
+  "summary": "LED direction, resistors, buttons.",
+  "parts": [
+    { "ref": "R1", "type": "resistor", "legs": { "a": "26h", "b": "29h" }, "props": { "ohms": 330 } },
+    { "ref": "LED1", "type": "led-5mm", "legs": { "anode": "30g", "cathode": "31g" } },
+    { "ref": "BTN1", "type": "button-6mm", "legs": { "1a": "40e", "1b": "40f", "2a": "42e", "2b": "42f" } }
+  ],
+  "steps": [
+    {
+      "text": "An LED only works one way round. The long leg is + (anode), the short leg is − (cathode). Here the long leg is in hole 30g. Click the hole with the short leg.",
+      "focus": ["28a", "33j"],
+      "highlight": ["30g"],
+      "expect": {
+        "type": "click",
+        "accept": ["31g"],
+        "hint": "Hover over the LED to see where each leg is.",
+        "success": "Right, 31g. The − leg always goes toward GND."
+      }
+    },
+    {
+      "text": "A resistor limits the current so the LED doesn't burn out. It works either way round. The colored bands tell its value: orange, orange, brown means 330 Ω.",
+      "focus": ["24a", "31j"],
+      "highlight": ["26h", "29h"],
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "A push button has 4 legs in two pairs. It goes across the channel, and pressing it connects row 40 to row 42.",
+      "focus": ["38a", "44j"],
+      "highlight": ["40e", "40f", "42e", "42f"],
+      "expect": { "type": "next" }
+    }
+  ]
+}

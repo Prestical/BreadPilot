@@ -1,0 +1,11 @@
+BreadPilot
+Copyright 2026 Prestical
+
+This product includes software developed by Prestical as part of the BreadPilot project.
+
+If you redistribute BreadPilot or a work based on it, section 4(d) of the Apache License,
+Version 2.0 requires you to include these attribution notices in a NOTICE file, in your
+documentation, or wherever your work shows third-party notices (for example an "about" screen).
+
+This product bundles third-party components under their own licenses, including the MicroPython
+firmware (MIT License). See THIRD_PARTY_NOTICES.md.

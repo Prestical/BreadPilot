@@ -1,0 +1,13 @@
+{
+  "plan": { "line": "a potentiometer (a turning knob) for analog input. At most 3." },
+  "words": {
+    "nouns": ["knob", "knobs", "dial", "dials", "potentiometer", "potentiometers", "pot", "pots", "slider", "sliders", "trimmer", "trimmers"],
+    "nounContext": { "words": ["pot", "pots"] }
+  },
+  "names": { "label": ["a knob (potentiometer)", "knobs (potentiometers)"], "count": ["knob", "knobs"], "supports": "potentiometers (knobs)", "short": ["knob", "knobs"] },
+  "code": {
+    "pinLine": "potentiometer (knob) {ref} on {gpio}: ADC({g}). read_u16() gives 0..65535 as the knob turns.",
+    "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (read_u16(): 0-65535)` |"],
+    "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "pin-names",
+  "title": "Pin number vs. GP name",
+  "summary": "Why pin 20 is called GP15.",
+  "steps": [
+    {
+      "text": "Every pin has a physical number (1-40) and a name. Pin 20 is called GP15, which means GPIO number 15. In your code you use the GPIO number: Pin(15), not 20.",
+      "focus": ["14a", "20j"],
+      "highlight": ["pin:20"],
+      "labels": true,
+      "expect": { "type": "next" }
+    },
+    {
+      "text": "Find GP16 on the labels and click it.",
+      "focus": ["14a", "20j"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["pin:21"],
+        "hint": "GP16 is physical pin 21, at the bottom of the right side.",
+        "success": "Right: GP16 is pin 21. In code it is Pin(16)."
+      }
+    },
+    {
+      "text": "Not every pin is a GPIO. Black labels are GND (ground, the − side). Red labels are power, like 3V3 (3.3 V). Click any GND pin.",
+      "focus": ["1a", "20j"],
+      "labels": true,
+      "expect": {
+        "type": "click",
+        "accept": ["pin:3", "pin:8", "pin:13", "pin:18", "pin:23", "pin:28", "pin:33", "pin:38"],
+        "hint": "Look for the black labels. There are eight GND pins.",
+        "success": "Yes! All GND pins are connected inside the Pico, so you can use any of them."
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "place": {
+    "title": "Place {ref} ({prop.color} LED)",
+    "text": "Push the {prop.color} LED {ref} into the breadboard: {list}.",
+    "tip": "The long leg is + (anode). The short leg is − (cathode), on the side where the LED's rim is flat."
+  },
+  "why": "An LED only lets current flow one way, from the long leg (+) to the short leg (−). Placed this way round, {ref} lights up when its pin turns on.",
+  "wire": {
+    "ground": "This completes {ref}'s circuit: current flows from its pin, through the resistor and the LED, and back to ground here."
+  },
+  "names": {
+    "shop": ["LED", "LEDs"],
+    "shopBy": "{prop.color}",
+    "plan": "{color} LED",
+    "planDot": "color",
+    "greeting": "LEDs",
+    "hover": " · {prop.color}"
+  }
+}

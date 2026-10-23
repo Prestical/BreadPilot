@@ -1,0 +1,17 @@
+{
+  "plan": { "line": "a 1.3 inch 128x64 OLED display (I2C) that shows text and simple drawings in one color. At most 2." },
+  "words": {
+    "nouns": ["oled", "oleds", "display", "displays", "screen", "screens"],
+    "nounContext": { "except": ["oled", "oleds"], "notAfterComputer": true, "unlessUnsupported": "displays" }
+  },
+  "names": { "label": ["an OLED display", "OLED displays"], "count": ["display", "displays"] },
+  "code": {
+    "pinLine": "OLED display {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): \"from machine import Pin, I2C\" and \"from sh1106 import SH1106_I2C\", then i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000) and oled{n} = SH1106_I2C(128, 64, i2c{n}). Draw with oled{n}.fill(0) (clear), oled{n}.text(\"Hi\", x, y), oled{n}.rect/line/pixel, then call oled{n}.show() once after drawing. Not ssd1306: this display is SH1106.\n  This screen: letters are 8x8 pixels, so 8 text rows at y = 0, 8, 16, 24, 32, 40, 48, 56 (the last row is y = 56) and at most 16 characters per row. The built-in font has only plain ASCII characters.",
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `oled = SH1106_I2C(128, 64, i2c)` |"
+    ],
+    "moduleRule": "sh1106 when an OLED display is listed",
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

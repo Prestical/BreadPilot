@@ -1,0 +1,43 @@
+{
+  "id": "button-6mm",
+  "name": "Push button (6 mm, 4 legs)",
+  "category": "input",
+  "legs": [
+    {
+      "id": "1a",
+      "label": "leg 1a"
+    },
+    {
+      "id": "1b",
+      "label": "leg 1b (always joined to 1a)"
+    },
+    {
+      "id": "2a",
+      "label": "leg 2a"
+    },
+    {
+      "id": "2b",
+      "label": "leg 2b (always joined to 2a)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "short",
+      "a": "1a",
+      "b": "1b"
+    },
+    {
+      "kind": "short",
+      "a": "2a",
+      "b": "2b"
+    },
+    {
+      "kind": "switch",
+      "a": "1a",
+      "b": "2a"
+    }
+  ],
+  "specs": {
+    "note": "Legs come in always-connected pairs. Pressing the button joins pair 1 to pair 2. Place it across the center channel so each pair straddles the channel."
+  }
+}

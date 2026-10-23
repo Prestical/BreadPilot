@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "id": "resistor",
+  "order": 100,
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/resistor.json (main at e7c3199)",
+    "date": "2026-10-23"
+  }
+}

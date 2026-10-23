@@ -1,0 +1,51 @@
+{
+  "id": "led-5mm",
+  "name": "LED (5 mm)",
+  "category": "output",
+  "legs": [
+    {
+      "id": "anode",
+      "label": "long leg (+)"
+    },
+    {
+      "id": "cathode",
+      "label": "short leg (−)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "led",
+      "a": "anode",
+      "b": "cathode"
+    }
+  ],
+  "props": {
+    "color": {
+      "enum": ["red", "green", "yellow", "blue", "white"],
+      "default": "red"
+    }
+  },
+  "specs": {
+    "forwardVoltage": {
+      "value": {
+        "red": 2.0,
+        "green": 2.1,
+        "yellow": 2.1,
+        "blue": 3.0,
+        "white": 3.0
+      },
+      "src": {
+        "typical": true,
+        "note": "typical values for 5 mm indicator LEDs; no datasheet in docs/ yet"
+      }
+    },
+    "maxCurrentMa": {
+      "value": 20,
+      "src": {
+        "typical": true,
+        "note": "typical values for 5 mm indicator LEDs; no datasheet in docs/ yet"
+      }
+    }
+  },
+  "specsSource": "typical values for 5 mm indicator LEDs; check your part's datasheet"
+}

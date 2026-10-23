@@ -1,0 +1,14 @@
+{
+  "name": "LED",
+  "height": 5,
+  "pins": { "signal": { "need": "gpio", "mode": "out" } },
+  "parts": [
+    { "ref": "R", "type": "resistor", "legs": { "a": [0, "h"], "b": [3, "h"] }, "props": { "ohms": { "request": "ohms", "default": 330 } } },
+    { "ref": "LED", "type": "self", "legs": { "anode": [3, "g"], "cathode": [4, "g"] }, "props": { "color": { "request": "color", "default": "red" } } }
+  ],
+  "main": "LED",
+  "wires": [
+    { "pin": "signal", "to": [0, "j", "R.a"] },
+    { "ground": [4, "j", "LED.cathode"] }
+  ]
+}

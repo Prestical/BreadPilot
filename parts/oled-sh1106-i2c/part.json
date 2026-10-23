@@ -1,0 +1,104 @@
+{
+  "id": "oled-sh1106-i2c",
+  "name": "1.3\" I2C OLED display (SH1106, 128x64)",
+  "category": "display",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [3.3, 5.0],
+        "src": {
+          "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)"
+        }
+      },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": {
+          "decision": "user, 20/10/2026",
+          "why": "Power it from 3.3 V: the module's SDA/SCL may be pulled up to VCC (not documented), and the Pico's GPIOs only take 3.3 V."
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd"
+    }
+  ],
+  "specs": {
+    "controller": {
+      "value": "SH1106",
+      "src": {
+        "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)"
+      }
+    },
+    "interface": {
+      "value": "I2C",
+      "src": {
+        "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)"
+      }
+    },
+    "resolution": {
+      "value": [128, 64],
+      "src": {
+        "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)"
+      }
+    },
+    "headerOrder": {
+      "value": ["vcc", "gnd", "scl", "sda"],
+      "src": {
+        "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)"
+      }
+    },
+    "i2cAddresses": {
+      "value": [60, 61],
+      "src": {
+        "doc": "SH1106.pdf",
+        "page": 13,
+        "note": "7-bit 0111100 / 0111101 = 0x3C / 0x3D, chosen by SA0"
+      }
+    },
+    "i2cMaxHz": {
+      "value": 400000,
+      "src": {
+        "doc": "SH1106.pdf",
+        "page": 1
+      }
+    },
+    "controllerColumns": {
+      "value": 132,
+      "src": {
+        "doc": "SH1106.pdf",
+        "page": 1,
+        "note": "132 x 64 display RAM"
+      }
+    },
+    "note": "Pins in this order: VCC, GND, SCL, SDA. Power it from 3V3 (not 5 V): the SDA and SCL lines may be pulled up to VCC on the module, and the Pico's GPIOs only take 3.3 V."
+  },
+  "specsSource": [
+    "Product page text supplied by the user (robotistan.com, 1.3 inc I2C OLED Ekran - SSD1106): pin order VCC-GND-SCL-SDA, VCC 3.3-5 V, I2C, 128x64, driver SH1106.",
+    "docs/hardware/components/SH1106.pdf (Sino Wealth SH1106 V2.2): 132x64 RAM (p.1), 400 kHz I2C (p.1), 7-bit addresses 0111100/0111101 = 0x3C/0x3D chosen by SA0 (p.13).",
+    "Not documented for this module: whether SDA/SCL have pull-ups to VCC, the module's current draw, and which SH1106 columns the 128-pixel panel uses. The validator treats VCC above 3.3 V as unsafe for that reason (maxSafeVoltage), by the user's decision on 20/10/2026."
+  ]
+}

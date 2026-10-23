@@ -1,0 +1,10 @@
+{
+  "cases": [
+    { "name": "laid out by the engine", "layout": [{ "kind": "led" }], "expect": [] },
+    { "name": "two LEDs in different colours", "layout": [{ "kind": "led", "props": { "color": "blue" }}, { "kind": "led", "props": { "color": "green" }}], "expect": [] },
+    { "name": "no resistor: the pin goes straight to the LED", "layout": [{ "kind": "led" }], "power": "rails", "rewire": { "R1.a": "#21(GP16) -> #27j(LED1.anode)" }, "expect": ["E004"] },
+    { "name": "LED in backwards", "layout": [{ "kind": "led" }], "swapLegs": ["LED1"], "expect": ["W009"] },
+    { "name": "no ground wire", "layout": [{ "kind": "led" }], "removeWires": ["LED1.cathode"], "expect": ["W008"] },
+    { "name": "the LED's pin set as an input", "layout": [{ "kind": "led" }], "modes": { "GP16": "in" }, "expect": ["E011", "W003"] }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "shape": "header-module",
+  "pins": ["vcc", "gnd", "scl", "sda"],
+  "board": { "size": [33, 35], "height": 8.5, "color": "#1d3c8f", "note": "The product page gives no dimensions: board and screen sizes are approximate; the header pins sit in the build's holes." },
+  "screen": { "size": [16, 31], "text": "Hello!  128x64", "bg": "#04060b", "fg": "#5aa9ff" },
+  "labels": true
+}

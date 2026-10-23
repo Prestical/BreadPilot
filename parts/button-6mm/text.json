@@ -1,0 +1,16 @@
+{
+  "place": {
+    "title": "Place {ref} (push button)",
+    "text": "Press the button {ref} into holes {holes}, so it bridges the center channel.",
+    "tip": "{note}"
+  },
+  "why": "{ref} is an input: pressing it joins its two pairs of legs, and the Pico notices the change on the pin it's wired to.",
+  "wire": {
+    "ground": "When {ref} is pressed, it connects its pin to ground, so the pin reads 0 (LOW). The rest of the time the Pico's internal pull-up makes it read 1."
+  },
+  "names": {
+    "shop": ["push button", "push buttons"],
+    "plan": "Push button",
+    "greeting": "buttons"
+  }
+}

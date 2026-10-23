@@ -1,0 +1,20 @@
+{"idea": "Make the built-in LED on the Pico blink", "expect": {"clarity": "clear", "parts": {}}}
+{"idea": "Rotate a dial to change how quickly two LEDs flash back and forth", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 2}}}
+{"idea": "Blink a red LED and a green LED at different speeds", "expect": {"clarity": "clear", "parts": {"led": 2}}}
+{"idea": "When the switch is pressed, light up a yellow LED for three seconds", "expect": {"clarity": "clear", "parts": {"button": 1, "led": 1}}}
+{"idea": "I want 4 buttons, each one turns on its own LED", "expect": {"clarity": "clear", "parts": {"button": 4, "led": 4}}}
+{"idea": "A simple game for two players: each has a button, and whoever presses first lights up their own LED", "expect": {"clarity": "clear", "parts": {"button": 2, "led": 2}}}
+{"idea": "Make an LED breathe slowly like a sleeping laptop", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Use the Pico's internal temperature sensor and turn on a blue LED when it gets warm", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Show the knob position on my computer", "expect": {"clarity": "clear", "parts": {"pot": 1}}}
+{"idea": "An LED that turns off after 10 seconds unless I press the button again", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "Connect a fan and turn it on with a button", "expect": {"clarity": "unsupported"}}
+{"idea": "Build a weather station with a humidity sensor", "expect": {"clarity": "unsupported"}}
+{"idea": "Display the score on a 7-segment display", "expect": {"clarity": "unsupported"}}
+{"idea": "Make a sound when I press a button", "expect": {"clarity": "unsupported"}}
+{"idea": "Control an LED from my phone over Wi-Fi", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Ten LEDs in a row that chase each other", "expect": {"clarity": "clear", "outcome": "handoff"}}
+{"idea": "Turn two potentiometers to mix how bright one LED is", "expect": {"clarity": "clear", "parts": {"pot": 2, "led": 1}}}
+{"idea": "Light", "expect": {"clarity": "vague"}}
+{"idea": "Butona basınca kırmızı LED yansın", "expect": {"clarity": "clear", "parts": {"button": 1, "led": 1}}}
+{"idea": "A doorbell: press the button and blink an LED, no buzzer needed", "expect": {"clarity": "clear", "parts": {"button": 1, "led": 1}}}

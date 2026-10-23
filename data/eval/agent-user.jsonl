@@ -1,0 +1,5 @@
+{"idea": "Make nearby scanner WiFi IP with Pico  when i click the button, it will display on i2C Display", "expect": {"clarity": "clear", "parts": {"button": 1, "oled": 1}}}
+{"idea": "Make ping request to my laptop (i will give the ip address) when i click to the button.", "expect": {"clarity": "clear", "parts": {"button": 1}}}
+{"idea": "Make 4 same red blinking LED flawless sequence in increasing frequency", "expect": {"clarity": "clear", "parts": {"led": 4}}}
+
+{"idea": "Wi-Fi Sniffer / Scanner, OLED display will show the nearby networks when i click on the button", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 1}}}

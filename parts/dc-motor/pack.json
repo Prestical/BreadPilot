@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "id": "dc-motor",
+  "order": 110,
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/dc-motor.json (main at e7c3199)",
+    "date": "2026-10-23"
+  }
+}

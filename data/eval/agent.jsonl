@@ -1,0 +1,30 @@
+{"idea": "Blink an LED once per second", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Turn on an LED while I hold a button", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "Use a knob to control how bright an LED is", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1}}}
+{"idea": "Traffic light with red, yellow and green LEDs that change by themselves", "expect": {"clarity": "clear", "parts": {"led": 3}}}
+{"idea": "Press a button to toggle an LED on and off", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "Two buttons: one turns the LED on, the other turns it off", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 2}}}
+{"idea": "Reaction game: an LED lights up at a random time and I press a button as fast as I can, then print my reaction time", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "Read a potentiometer and print its value to the computer", "expect": {"clarity": "clear", "parts": {"pot": 1}}}
+{"idea": "Make three LEDs light up one after another like a running light", "expect": {"clarity": "clear", "parts": {"led": 3}}}
+{"idea": "Use a knob to set how fast an LED blinks", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1}}}
+{"idea": "Count how many times I press a button and print the count", "expect": {"clarity": "clear", "parts": {"button": 1}}}
+{"idea": "A blue LED that fades in and out smoothly", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Use two knobs to control the brightness of two LEDs", "expect": {"clarity": "clear", "parts": {"pot": 2, "led": 2}}}
+{"idea": "Flash SOS in Morse code with a red LED", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"idea": "Pressing a button makes the green LED blink 5 times", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "LED bar graph: a knob lights up 0 to 4 LEDs depending on how far it is turned", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 4}}}
+{"idea": "Electronic dice: press a button and show a random number from 1 to 6 with six LEDs", "expect": {"clarity": "clear", "parts": {"led": 6, "button": 1}}}
+{"idea": "A night-light with a white LED that I switch on and off with a button", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"idea": "Two LEDs that blink one after the other", "expect": {"clarity": "clear", "parts": {"led": 2}}}
+{"idea": "A knob that picks which one of three LEDs is on", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 3}}}
+{"idea": "something cool with lights", "expect": {"clarity": "vague"}}
+{"idea": "I want to learn electronics, give me a first project", "expect": {"clarity": "vague"}}
+{"idea": "make a game", "expect": {"clarity": "vague"}}
+{"idea": "something interactive", "expect": {"clarity": "vague"}}
+{"idea": "a fun gadget for my desk", "expect": {"clarity": "vague"}}
+{"idea": "A robot car driven by two DC motors", "expect": {"clarity": "unsupported"}}
+{"idea": "Measure the room temperature and show it on an OLED screen", "expect": {"clarity": "unsupported"}}
+{"idea": "Play a melody on a buzzer", "expect": {"clarity": "unsupported"}}
+{"idea": "Open a small door with a servo when I press a button", "expect": {"clarity": "unsupported"}}
+{"idea": "A distance sensor that beeps when something gets close", "expect": {"clarity": "unsupported"}}

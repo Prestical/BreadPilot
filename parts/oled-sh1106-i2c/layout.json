@@ -1,0 +1,20 @@
+{
+  "name": "display",
+  "height": 14,
+  "max": {
+    "value": 2,
+    "src": { "doc": "SH1106.pdf", "page": 13, "note": "the module answers at one fixed address, so each display needs its own I2C bus; the Pico 2 W has two (I2C0, I2C1)" }
+  },
+  "maxMessage": "{n} displays can't be connected: they all use the same I2C address, and the Pico has two I2C buses, so at most 2 displays.",
+  "pins": { "bus": { "need": "i2c-pair" } },
+  "parts": [
+    { "ref": "OLED", "type": "self", "legs": { "vcc": [5, "f"], "gnd": [6, "f"], "scl": [7, "f"], "sda": [8, "f"] } }
+  ],
+  "main": "OLED",
+  "wires": [
+    { "power": [5, "j", "OLED.vcc"] },
+    { "ground": [6, "j", "OLED.gnd"] },
+    { "pin": "bus.scl", "to": [7, "j", "OLED.scl"], "color": "yellow" },
+    { "pin": "bus.sda", "to": [8, "j", "OLED.sda"], "color": "blue" }
+  ]
+}

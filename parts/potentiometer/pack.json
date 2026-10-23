@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "potentiometer",
+  "order": 30,
+  "kind": "pot",
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/potentiometer.json (main at e7c3199)",
+    "date": "2026-10-23"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "practice",
+  "title": "Practice",
+  "summary": "Place your first wire.",
+  "steps": [
+    {
+      "text": "Your turn. Connect GND (pin 38) to the right − rail: click the hole next to pin 38 first, then any hole on the right − rail.",
+      "focus": ["1a", "10j"],
+      "highlight": ["pin:38"],
+      "labels": true,
+      "expect": {
+        "type": "wire",
+        "from": ["3j", "3i", "pin:38"],
+        "to": ["RR-"],
+        "hint": "Pin 38 is in row 3 on the right. Click 3j, then a hole next to the blue line on the right edge.",
+        "success": "Perfect! Almost every project starts like this: GND on the − rail."
+      }
+    },
+    {
+      "text": "You can now read every build step. Open the Build tab to try the LED + button project.",
+      "focus": ["1a", "40j"],
+      "expect": { "type": "next" }
+    }
+  ]
+}

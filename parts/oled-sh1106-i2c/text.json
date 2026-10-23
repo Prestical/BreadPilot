@@ -1,0 +1,20 @@
+{
+  "place": {
+    "title": "Place {ref} (OLED display)",
+    "text": "Push the display's 4 header pins into column f: VCC into hole {hole.vcc}, GND into {hole.gnd}, SCL into {hole.scl} and SDA into {hole.sda}. The screen faces up and its board lies over the left half of the breadboard.",
+    "tip": "Read the labels printed next to the pins: the order is VCC, GND, SCL, SDA. If yours differs, follow the labels, not the picture."
+  },
+  "why": "{ref} is a 128 x 64 pixel screen. The Pico talks to it over I2C: two wires, SDA (data) and SCL (clock), shared by everything on the bus. It runs on 3.3 V here so its data lines stay at the Pico's 3.3 V.",
+  "wire": {
+    "i2c_sda": "{pin} is the I2C{bus} data line (SDA): the Pico sends the pixels to {ref} on this wire."
+  },
+  "names": {
+    "shop": [
+      "1.3\" I2C OLED display (SH1106)",
+      "1.3\" I2C OLED displays (SH1106)"
+    ],
+    "plan": "1.3\" OLED display (I2C)",
+    "greeting": "the 1.3\" OLED",
+    "driver": "display driver"
+  }
+}

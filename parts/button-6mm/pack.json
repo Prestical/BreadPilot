@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "button-6mm",
+  "order": 20,
+  "kind": "button",
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/button-6mm.json (main at e7c3199)",
+    "date": "2026-10-23"
+  }
+}

@@ -1,0 +1,15 @@
+{"question": "Which pins are ADC?", "expect": ["Analog input (ADC) pins", "GPIO 26-28 can be used either as digital GPIO or as ADC"]}
+{"question": "Which pin can read an analog voltage from a potentiometer?", "expect": ["Analog input (ADC) pins", "ADC0", "GPIO 26-28 can be used either as digital GPIO or as ADC"]}
+{"question": "How much current can I draw from the 3V3 pin?", "expect": ["300 mA"]}
+{"question": "Which pins are ground?", "expect": ["Ground (GND) pins"]}
+{"question": "What is pin 33?", "expect": ["Physical pin 33 is GND / AGND"]}
+{"question": "Which physical pin is GP15?", "expect": ["Physical pin 20 is GP15"]}
+{"question": "What voltage range can VSYS accept?", "expect": ["1.8 V to 5.5 V", "1.8-5.5 V"]}
+{"question": "How do I reset the Pico using a pin?", "expect": ["To reset RP2350 , short this pin low", "holds the Pico in reset", "RUN is the RP2350 enable pin"]}
+{"question": "How do I put the board into BOOTSEL mode to copy a UF2 file?", "expect": ["hold BOOTSEL down"]}
+{"question": "Which GPIOs are used by the wireless chip and not available?", "expect": ["Wireless SPI", "GPIOs used inside the board"]}
+{"question": "What is the on-board LED connected to?", "expect": ["WL_GPIO0"]}
+{"question": "Which pins can be I2C0 SDA?", "expect": ["I2C0 SDA can be on"]}
+{"question": "How can I power the Pico 2 W from batteries?", "expect": ["three AA cells", "Lithium-Ion cell", "VSYS to your preferred power source"]}
+{"question": "Is it safe to connect 5V to a GPIO pin?", "expect": ["Never connect 5 V to a GPIO", "fixed at 3.3 V"]}
+{"question": "What does the 3V3_EN pin do?", "expect": ["3V3_EN connects to the on-board SMPS enable pin", "Shorting it to GND turns off the 3.3 V supply"]}

@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "led-5mm",
+  "order": 10,
+  "kind": "led",
+  "review": {
+    "status": "reviewed",
+    "by": "migrated unchanged from data/components/led-5mm.json (main at e7c3199)",
+    "date": "2026-10-23"
+  }
+}

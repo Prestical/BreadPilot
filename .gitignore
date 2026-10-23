@@ -1,0 +1,36 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Generated before tests, dev servers and builds (npm run gen:parts)
+packages/circuit-core/src/parts.generated.ts
+
+# Python
+__pycache__/
+.venv/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+
+# Private notes and assistant workflow files (kept locally, not shared)
+MEMORY.md
+PLAN.md
+PLAN-part-packs.md
+CLAUDE.md
+.claude/
+
+# Local data (exported projects, eval results)
+.local/
+*-eval.json
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

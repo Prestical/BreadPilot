@@ -1,0 +1,14 @@
+{
+  "name": "potentiometer",
+  "height": 3,
+  "pins": { "signal": { "need": "adc", "mode": "adc" } },
+  "parts": [
+    { "ref": "POT", "type": "self", "legs": { "end1": [0, "h"], "wiper": [1, "h"], "end2": [2, "h"] } }
+  ],
+  "main": "POT",
+  "wires": [
+    { "power": [0, "j", "POT.end1"] },
+    { "pin": "signal", "to": [1, "j", "POT.wiper"] },
+    { "ground": [2, "j", "POT.end2"] }
+  ]
+}

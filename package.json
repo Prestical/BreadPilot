@@ -1,0 +1,29 @@
+{
+  "name": "breadpilot",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @breadpilot/api",
+    "dev:web": "npm run dev -w @breadpilot/web",
+    "build": "npm run build -w @breadpilot/api && npm run build -w @breadpilot/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:pinout": "npm run gen:pinout -w @breadpilot/circuit-core",
+    "gen:parts": "npm run gen:parts -w @breadpilot/circuit-core",
+    "pretest": "npm run gen:parts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

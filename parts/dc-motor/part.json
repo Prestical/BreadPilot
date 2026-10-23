@@ -1,0 +1,42 @@
+{
+  "id": "dc-motor",
+  "name": "Small DC motor",
+  "category": "actuator",
+  "legs": [
+    {
+      "id": "a",
+      "label": "terminal 1",
+      "highCurrent": true
+    },
+    {
+      "id": "b",
+      "label": "terminal 2",
+      "highCurrent": true
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "a",
+      "b": "b",
+      "currentMa": {
+        "value": 150,
+        "src": {
+          "typical": true,
+          "note": "typical small hobby motor; no datasheet in docs/ yet"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "currentMa": {
+      "value": 150,
+      "src": {
+        "typical": true,
+        "note": "typical small hobby motor; no datasheet in docs/ yet"
+      }
+    },
+    "note": "Motors draw far more current than a GPIO can give and create voltage spikes. Drive them through a transistor or motor driver."
+  },
+  "specsSource": "typical hobby motor"
+}

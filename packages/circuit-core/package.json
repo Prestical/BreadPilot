@@ -1,0 +1,19 @@
+{
+  "name": "@breadpilot/circuit-core",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared circuit model, connection DSL, and safety validator (used by api and web).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "gen:pinout": "node --import tsx scripts/gen-pinout.ts",
+    "gen:parts": "node --import tsx scripts/gen-parts.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "why": "Turning {ref} moves the voltage on its middle leg anywhere between 0 V and 3.3 V, which an analog (ADC) pin can measure.",
+  "wire": {
+    "ground": "This puts 0 V on one outer leg of {ref}, the low end of its range.",
+    "power": "This puts 3.3 V on the other outer leg of {ref}, so turning the knob gives any voltage from 0 to 3.3 V.",
+    "adc": "{pin} is an analog input (ADC): it measures the knob's middle-leg voltage and gives the code a number from 0 to 65535."
+  },
+  "names": {
+    "shop": ["10 kΩ potentiometer (knob)", "10 kΩ potentiometers (knobs)"],
+    "plan": "Knob (potentiometer)",
+    "greeting": "knobs"
+  }
+}
