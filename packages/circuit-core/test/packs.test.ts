@@ -77,6 +77,8 @@ describe("pack checks refuse bad packs with the exact field", () => {
   it("a layout without the signal wire", () => refuseAll((f) => f["layout.json"].wires.shift(), /no wire from signal/));
   it("a layout with an unknown part type", () => refuseAll((f) => (f["layout.json"].parts[0].type = "resistor-x"), /unknown part "resistor-x"/));
   it("a layout pin without a mode", () => refuseAll((f) => delete f["layout.json"].pins.signal.mode, /pins\.signal\.mode: missing/));
+  it("an implied-part exception naming a part kind that doesn't exist", () =>
+    refuseAll((f) => (f["agent.json"].words.impliedBy.unlessNamed = ["oledd"]), /unlessNamed: "oledd" isn't the kind of any part pack/));
   it("a layout limit without its reason", () => refuseAll((f) => delete f["layout.json"].maxMessage, /max and maxMessage go together/, "oled-sh1106-i2c"));
   it("code rules without the pack's driver", () => refuse((p) => {
     delete p.files["pack.json"].driver;

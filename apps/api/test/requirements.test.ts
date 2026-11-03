@@ -231,3 +231,47 @@ describe("displays (Milestone 6): the 1.3\" I2C OLED is a part; other display ty
     expect(minimumParts(a("Show three numbers on three OLED displays"))).toEqual([{ kind: "oled" }, { kind: "oled" }, { kind: "oled" }]);
   });
 });
+
+describe("6b. a size is not a count", () => {
+  it.each([
+    ['Show the score on the 1.3" OLED', { oled: { min: 1 } }],
+    ["Show the score on a 0.96 inch OLED", { oled: { min: 1 } }],
+    ['Two 1.3" OLEDs, one per player', { oled: { min: 2, exact: 2 } }],
+    ["Three 12 mm buttons for a quiz", { button: { min: 3, exact: 3 } }],
+    ["Blink 3 LEDs, each every 1.5 seconds", { led: { min: 3, exact: 3 } }],
+  ])("%s", (idea, parts) => {
+    const r = a(idea);
+    expect(r.parts).toMatchObject(parts);
+    for (const [kind, need] of Object.entries(parts)) if (!("exact" in need)) expect(r.parts[kind as PartKind]?.exact, kind).toBeUndefined();
+  });
+});
+
+describe("9. talking about filming isn't asking for a camera", () => {
+  it.each(["Make the LED bright enough to see on camera", "When the button is pressed, the LED says smile for the camera", "Big text on the OLED so it reads well on camera"])("%s", (idea) => {
+    expect(a(idea).unsupported).toEqual([]);
+  });
+
+  it.each(["A robot with a camera that blinks an LED", "Take a photo with the camera when the button is pressed"])("%s → a camera part, unsupported", (idea) => {
+    expect(a(idea).unsupported).toEqual(["a module that isn't supported yet"]);
+  });
+});
+
+describe("10. words that imply a part don't when a named part is what they describe", () => {
+  it.each([
+    ["The OLED flashes the score when the button is pressed", { oled: { min: 1 }, button: { min: 1 } }],
+    ["A face on the display that blinks every few seconds", { oled: { min: 1 } }],
+  ])("%s → no LED", (idea, parts) => {
+    const r = a(idea);
+    expect(r.parts).toMatchObject(parts);
+    expect(r.parts.led).toBeUndefined();
+  });
+
+  it.each([
+    ["Make something blink when I press the button", "no display named: blinking means an LED"],
+    ["Blink an LED and print the count to the computer screen", "the LED is named; the computer screen isn't our display"],
+    ["Show the count on the OLED and blink an LED with it", "the LED is named next to the display"],
+  ])("%s (LED: %s)", (idea) => {
+    expect(a(idea).parts.led).toMatchObject({ min: 1 });
+  });
+});
+

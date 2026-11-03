@@ -8,7 +8,7 @@
     "nouns": ["led", "leds"],
     "builtIn": true,
     "colors": true,
-    "impliedBy": { "words": ["light", "lights", "lamp", "lamps", "glow", "glows", "blink", "blinks", "flash", "flashes"], "unless": ["light sensor", "light sensors"] }
+    "impliedBy": { "words": ["light", "lights", "lamp", "lamps", "glow", "glows", "blink", "blinks", "flash", "flashes"], "unless": ["light sensor", "light sensors"], "unlessNamed": ["oled"] }
   },
   "names": { "label": ["an LED", "LEDs"], "count": ["LED", "LEDs"], "supports": "LEDs", "short": ["LED", "LEDs"] },
   "code": {

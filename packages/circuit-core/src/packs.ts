@@ -156,7 +156,12 @@ export interface AgentInfo {
      */
     nounContext?: { words?: string[]; except?: string[]; notAfterComputer?: boolean; unlessUnsupported?: string };
     /** Words that imply one of these parts when none is named ("press" → a button). */
-    impliedBy?: { words: string[]; unless?: string[] };
+    /**
+     * Words that imply the part when none is named ("blink" → an LED), except with the `unless`
+     * phrases, or when the idea names one of the `unlessNamed` part kinds, which the words then
+     * describe instead ("the display blinks": no LED).
+     */
+    impliedBy?: { words: string[]; unless?: string[]; unlessNamed?: string[] };
     /** The board has one built in ("the on-board LED" needs no part). */
     builtIn?: boolean;
     /** Colour words in front of the noun count as parts ("red and green LEDs" = at least 2). */
@@ -359,7 +364,7 @@ const agentFile = obj({
       obj({ "words?": words(), "except?": words(), "notAfterComputer?": bool, "unlessUnsupported?": str })(v, p);
       if (((v as { words?: unknown }).words === undefined) === ((v as { except?: unknown }).except === undefined)) fail(p, "give either words or except");
     },
-    "impliedBy?": obj({ words: words(), "unless?": words() }),
+    "impliedBy?": obj({ words: words(), "unless?": words(), "unlessNamed?": words(8) }),
     "builtIn?": bool,
     "colors?": bool,
     "claims?": words(16),
@@ -544,6 +549,13 @@ export function loadPacks(sources: readonly PackSource[]): Pack[] {
   }
   const byId = new Map(packs.map((p) => [p.meta.id, p]));
   for (const p of packs) if (p.layout) checkLayout(p, byId);
+  // impliedBy.unlessNamed names other parts by kind: a typo would silently never match.
+  const kinds = new Set(packs.map((p) => p.meta.kind).filter(Boolean));
+  for (const p of packs) {
+    for (const k of p.agent?.words.impliedBy?.unlessNamed ?? []) {
+      if (!kinds.has(k)) fail(`parts/${p.meta.id}/agent.json.words.impliedBy.unlessNamed`, `"${k}" isn't the kind of any part pack (${[...kinds].join(", ")})`);
+    }
+  }
   return packs;
 }
 

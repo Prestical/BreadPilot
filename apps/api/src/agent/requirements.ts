@@ -13,7 +13,12 @@
 //  5. The board's own features are supported: on-board LED, internal temperature sensor, Wi-Fi,
 //     Bluetooth, USB serial to a computer.
 //  6. Counts: one clear number for a part is exact ("four LEDs" → exactly 4); a choice ("2 or 3
-//     LEDs") is a range; a part named without a number ("an LED", "LEDs") means at least one.
+//     LEDs") is a range; a part named without a number ("an LED", "LEDs") means at least one. A
+//     size is not a count: the 3 in 'the 1.3" OLED' or "a 16 mm button" is a size.
+//  9. Talking about filming ("easy to see on camera", "smile for the camera") isn't asking for a
+//     camera part; "a camera" as a thing still is.
+// 10. Words that imply a part ("blink" → an LED) don't when the idea names a part they describe
+//     instead ("the display blinks"): the pack's `impliedBy.unlessNamed`.
 //  7. Later feedback overrides the original idea ("remove the button").
 //  8. An idea that names its parts gets only those parts; extra parts are only allowed for ideas
 //     that name none ("make a game"). Non-English text is never restricted (the rules can't read it).
@@ -80,6 +85,10 @@ function tokenize(input: string): Text {
   const joined = input
     .toLowerCase()
     .replace(/[’‘`]/g, "'")
+    // Sizes stay sizes: an inch mark after a number becomes "inch" ('1.3"' → "1·3 inch"), and a
+    // decimal point is kept inside its number, so neither part becomes a count.
+    .replace(/(\d)\s*["”″]/g, "$1 inch ")
+    .replace(/(\d)\.(\d)/g, "$1·$2")
     .replace(/[“”"]/g, " ")
     .replace(/([.,;:!?()])/g, " $1 ")
     .replace(/\s+/g, " ")
@@ -205,12 +214,19 @@ const CONDITIONS: Record<string, string> = {
 };
 const PRODUCE = /^(make|makes|making|play|plays|playing|produce|produces|emit|emits)$/;
 
+/** "easy to see on camera", "smile for the camera": filming, not a camera part (principle 9). */
+function aboutFilming(t: Text, i: number): boolean {
+  if (!/^cameras?$/.test(t.tokens[i]!)) return false;
+  const [b1, b2] = [t.tokens[i - 1], t.tokens[i - 2]];
+  return b1 === "on" || b1 === "off" || (b1 === "the" && ["for", "to", "at", "into", "on"].includes(b2 ?? ""));
+}
+
 function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[] } {
   const unsupported = new Set<string>();
   const ambiguous = new Set<string>();
   const internalSensor = t.tokens.some((w) => ONBOARD.has(w)) && /\b(temperature|sensor)\b/.test(t.joined);
 
-  for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i)) unsupported.add(label);
+  for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i) && !aboutFilming(t, i)) unsupported.add(label);
 
   for (const { re, label, ok, question } of CONTEXTUAL_WORDS) {
     for (const i of matches(t, re)) {
@@ -255,6 +271,8 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
 const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
 const wordsRe = (words: string[]) => new RegExp(`\\b(${words.map(escape).join("|")})\\b`);
 
+const SIZE_UNITS = new Set(["inch", "inches", "mm", "cm"]);
+
 const asNumber = (w: string | undefined): number | null => (w === undefined ? null : /^\d+$/.test(w) ? Number(w) : (NUMBERS[w] ?? null));
 
 /**
@@ -263,7 +281,13 @@ const asNumber = (w: string | undefined): number | null => (w === undefined ? nu
  */
 function numberBefore(t: Text, i: number): { n: number; or?: number } | null {
   let k = i - 1;
-  for (let skipped = 0; k >= 0 && skipped < 3 && isModifier(t.tokens[k]!); skipped++) k--;
+  for (let skipped = 0; k >= 0 && skipped < 3; skipped++) {
+    const w = t.tokens[k]!;
+    // A size between the count and the noun: "two 1.3 inch OLEDs", "3 16 mm buttons", "a 0.96 OLED".
+    if (SIZE_UNITS.has(w) && k > 0 && /^\d+(·\d+)?$/.test(t.tokens[k - 1]!)) k -= 2;
+    else if (/^\d+·\d+$/.test(w) || isModifier(w)) k--;
+    else break;
+  }
   const n = asNumber(t.tokens[k]);
   if (n === null) return null;
   const lower = t.tokens[k - 1] === "or" ? asNumber(t.tokens[k - 2]) : null;
@@ -285,6 +309,7 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
   const parts: Requirements["parts"] = {};
   const removed = new Set<PartKind>();
   const named = new Set<PartKind>();
+  const impliedOnly: { kind: PartKind; unlessNamed: string[] }[] = [];
   let onboard = false;
 
   for (const pack of AGENT_PACKS) {
@@ -320,9 +345,12 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
     }
     min = Math.max(min, colors.size);
     const distinct = [...new Set(counts.map((c) => `${c.n}|${c.or ?? ""}`))];
-    // Words that imply the part when none is named ("press" → a button, "blink" → an LED).
+    // Words that imply the part when none is named ("press" → a button, "blink" → an LED): decided
+    // after every part is read, because a named part can be what those words describe.
     const implied = w.impliedBy;
-    if (implied && min === 0 && !(w.builtIn && onboard) && !removed.has(kind) && wordsRe(implied.words).test(t.joined) && !(implied.unless && wordsRe(implied.unless).test(t.joined))) min = 1;
+    if (implied && min === 0 && !(w.builtIn && onboard) && !removed.has(kind) && wordsRe(implied.words).test(t.joined) && !(implied.unless && wordsRe(implied.unless).test(t.joined))) {
+      impliedOnly.push({ kind, unlessNamed: implied.unlessNamed ?? [] });
+    }
     if (min > 0) {
       const need: PartNeed = { min };
       // Exactly one clear number (repeated mentions of the same number are fine) → exact.
@@ -334,6 +362,8 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
       parts[kind] = need;
     }
   }
+  // Implied parts: "the display blinks" describes the named display, not an LED (principle 10).
+  for (const { kind, unlessNamed } of impliedOnly) if (!unlessNamed.some((k) => named.has(k))) parts[kind] = { min: 1 };
   return { parts, removed: [...removed], onboard, named: [...named] };
 }
 
