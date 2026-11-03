@@ -64,6 +64,8 @@ export interface LlmConfig {
   apiKey?: string;
   /** OpenAI reasoning models only ("openai" api): sent as reasoning_effort; turns on the strict schema. */
   reasoningEffort?: ReasoningEffort;
+  /** Ollama only: how long it keeps the model in memory after a request (default "15m"). */
+  keepAlive?: string;
   fetchImpl?: typeof fetch;
 }
 
@@ -133,7 +135,7 @@ export function createLlm(cfg: LlmConfig): LlmClient {
     const url = ollama ? `${root(cfg.baseUrl)}/api/chat` : `${root(cfg.baseUrl)}/v1/chat/completions`;
     const reasoning = !ollama && cfg.reasoningEffort !== undefined;
     const body = ollama
-      ? { model: cfg.model, messages, stream: false, format: schema, keep_alive: "15m", options: { num_ctx: cfg.numCtx, temperature, ...(maxTokens ? { num_predict: maxTokens } : {}) } }
+      ? { model: cfg.model, messages, stream: false, format: schema, keep_alive: cfg.keepAlive ?? "15m", options: { num_ctx: cfg.numCtx, temperature, ...(maxTokens ? { num_predict: maxTokens } : {}) } }
       : reasoning
         ? {
             model: cfg.model,
@@ -156,7 +158,7 @@ export function createLlm(cfg: LlmConfig): LlmClient {
     }
     if (!res.ok) {
       const text = (await res.text().catch(() => "")).slice(0, 300);
-      if (cfg.apiKey && res.status === 401) throw new LlmError("OpenAI rejected the API key (HTTP 401). Check OPENAI_API_KEY in .env.");
+      if (cfg.apiKey && res.status === 401) throw new LlmError("OpenAI rejected the API key (HTTP 401). Check the key in Settings (⚙).");
       if (cfg.apiKey && res.status === 429) throw new LlmError(`OpenAI says the key is out of credit or over its rate limit (HTTP 429): ${text}`);
       throw new LlmError(`Language model returned HTTP ${res.status}: ${text}`);
     }

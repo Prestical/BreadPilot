@@ -5,6 +5,13 @@
 
 import { readFile } from "node:fs/promises";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import * as pdfWorker from "pdfjs-dist/legacy/build/pdf.worker.mjs";
+
+// pdfjs runs its parser in this thread under Node, but in the desktop app's engine (an Electron
+// utility process, process.type "utility") it doesn't recognise Node and looks for a browser worker
+// file, so every PDF failed ("No GlobalWorkerOptions.workerSrc specified"). Handing it the worker
+// module makes it run in this thread there too: pdfjs's documented globalThis.pdfjsWorker hook.
+(globalThis as { pdfjsWorker?: unknown }).pdfjsWorker ??= pdfWorker;
 
 export interface PageText {
   page: number;

@@ -36,7 +36,7 @@ import { CodeSchema, IntakeSchema, normalizeIntake, normalizePlan, PlanSchema, t
 export const MAX_REPAIRS = 3;
 /** Output caps per stage (tokens), so a looping model stops early. */
 export const MAX_TOKENS = { intake: 600, plan: 1200, code: 2500 } as const;
-/** Whole-project time budget. Below nginx's 300 s proxy timeout, so the browser always gets an answer. */
+/** Whole-project time budget: a longer run stops as FAILED (it can be resumed), so the page always gets an answer. */
 export const PROJECT_BUDGET_MS = 240_000;
 const MIN_CALL_MS = 5_000;
 
@@ -76,7 +76,7 @@ export interface CreateOptions extends RunOptions {
 
 const powerOf = (p: Project): PowerMode => p.power ?? "rails";
 
-const OPENAI_MISSING = "OpenAI isn't set up on this computer: add OPENAI_API_KEY to the .env file and restart, or use the local model.";
+const OPENAI_MISSING = "OpenAI isn't set up yet: add your OpenAI API key in Settings (⚙), or use the local model.";
 
 /** The model a project uses; an OpenAI project fails clearly when the key has been removed since. */
 function clientFor(deps: AgentDeps, p: Project): LlmClient {

@@ -33,11 +33,13 @@ class FakeDb {
     }
     return { rows: [] };
   };
-  connect = async () => {
+  exec = async () => {};
+  /** Like a real transaction: the document only counts once `fn` returns (commit). */
+  transaction = async <T,>(fn: (tx: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>; exec: FakeDb["exec"] }) => Promise<T>): Promise<T> => {
     let path = "";
     let hash = "";
     let chunks = 0;
-    return {
+    const result = await fn({
       query: async (sql: string, params: unknown[] = []) => {
         if (sql.startsWith("INSERT INTO documents")) {
           path = params[2] as string;
@@ -45,13 +47,14 @@ class FakeDb {
           return { rows: [{ id: this.docs.get(path)?.id ?? this.nextId++ }] };
         }
         if (sql.startsWith("INSERT INTO chunks")) chunks++;
-        if (sql === "COMMIT") this.docs.set(path, { id: this.docs.get(path)?.id ?? this.nextId, hash, chunks });
         return { rows: [] };
       },
-      release: () => {},
-    };
+      exec: this.exec,
+    });
+    this.docs.set(path, { id: this.docs.get(path)?.id ?? this.nextId, hash, chunks });
+    return result;
   };
-  get pool() {
+  get db() {
     return this as never;
   }
 }
@@ -85,13 +88,13 @@ describe("#1 an empty or missing docs folder never wipes the index", () => {
   it("leaves existing documents alone", async () => {
     const db = new FakeDb();
     db.docs.set("docs/hardware/pico-2-w/pico-2-w-datasheet.pdf", { id: 1, hash: "x", chunks: 39 });
-    const report = await ingestAll({ pool: db.pool, embedder: embedder(), repoDir: await repoWith({}), embedModel: "m" });
+    const report = await ingestAll({ db: db.db, embedder: embedder(), repoDir: await repoWith({}), embedModel: "m" });
     expect(report.removed).toEqual([]);
     expect(db.docs.size).toBe(1);
     expect(db.statements.some((s) => s.startsWith("DELETE"))).toBe(false);
   });
   it("removeMissing refuses an empty keep-list", async () => {
-    await expect(removeMissing(new FakeDb().pool, [])).rejects.toThrow(/refusing/);
+    await expect(removeMissing(new FakeDb().db, [])).rejects.toThrow(/refusing/);
   });
 });
 
@@ -99,25 +102,26 @@ describe("#2 a forced reindex during a running one is queued, not ignored", () =
   it("runs again with force after the current run", async () => {
     const db = new FakeDb();
     const repoDir = await repoWith({ "data/boards/pico-2-w.pinout.generated.md": "## Pins\n- Pin 1." });
-    const first = ingestAll({ pool: db.pool, embedder: embedder(undefined, 30), repoDir, embedModel: "m" });
-    const forced = ingestAll({ pool: db.pool, embedder: embedder(), repoDir, embedModel: "m", force: true });
+    const first = ingestAll({ db: db.db, embedder: embedder(undefined, 30), repoDir, embedModel: "m" });
+    const forced = ingestAll({ db: db.db, embedder: embedder(), repoDir, embedModel: "m", force: true });
     expect(forced).not.toBe(first);
     expect((await first).indexed).toHaveLength(1);
     // Same file, unchanged hash: only a forced run indexes it again.
     expect((await forced).indexed).toHaveLength(1);
-    expect((await ingestAll({ pool: db.pool, embedder: embedder(), repoDir, embedModel: "m" })).unchanged).toHaveLength(1);
+    expect((await ingestAll({ db: db.db, embedder: embedder(), repoDir, embedModel: "m" })).unchanged).toHaveLength(1);
   });
 });
 
 describe("#4 one failing document doesn't stop the others", () => {
-  it("reports the failure and indexes the rest", async () => {
+  it("stores it for keyword search, reports it and indexes the rest", async () => {
     const db = new FakeDb();
     const repoDir = await repoWith({
       "data/boards/aaa.pinout.generated.md": "## Pins\n- BROKEN",
       "data/boards/pico-2-w.pinout.generated.md": "## Pins\n- Pin 1.",
     });
-    const report = await ingestAll({ pool: db.pool, embedder: embedder((t) => t.includes("BROKEN")), repoDir, embedModel: "m" });
-    expect(report.failed).toEqual([{ path: "data/boards/aaa.pinout.generated.md", error: "embedding model crashed" }]);
+    const report = await ingestAll({ db: db.db, embedder: embedder((t) => t.includes("BROKEN")), repoDir, embedModel: "m" });
+    expect(report.failed).toEqual([]);
+    expect(report.textOnly).toEqual([{ path: "data/boards/aaa.pinout.generated.md", error: "embedding model crashed" }]);
     expect(report.indexed.map((i) => i.path)).toEqual(["data/boards/pico-2-w.pinout.generated.md"]);
   });
 });

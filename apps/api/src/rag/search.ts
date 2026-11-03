@@ -3,7 +3,7 @@
 // "ADC_VREF" that embeddings blur; vectors catch paraphrases ("analog input").
 // If the embedding model is down, search degrades to full-text only.
 
-import type pg from "pg";
+import type { Db } from "../db";
 import { getBoard } from "@breadpilot/circuit-core";
 import { toVectorLiteral, type Embedder } from "./embed";
 
@@ -79,7 +79,7 @@ export const VECTOR_SQL = `SELECT ${COLUMNS}, c.embedding <=> $1::vector AS dist
   LIMIT $3`;
 
 export async function hybridSearch(
-  pool: pg.Pool,
+  db: Db,
   embedder: Embedder | null,
   query: string,
   opts: { board?: string; k?: number } = {},
@@ -89,7 +89,7 @@ export async function hybridSearch(
   const board = opts.board ? (getBoard(opts.board)?.id ?? opts.board) : null;
   const rows = new Map<number, Row>();
 
-  const fts = await pool.query<Row>(FULLTEXT_SQL, [query, board, CANDIDATES]);
+  const fts = await db.query<Row>(FULLTEXT_SQL, [query, board, CANDIDATES]);
   fts.rows.forEach((r) => rows.set(r.id, r));
 
   let vectorIds: number[] = [];
@@ -97,7 +97,7 @@ export async function hybridSearch(
   if (embedder) {
     try {
       const v = await embedder.query(query);
-      const vec = await pool.query<Row>(VECTOR_SQL, [toVectorLiteral(v), board, CANDIDATES]);
+      const vec = await db.query<Row>(VECTOR_SQL, [toVectorLiteral(v), board, CANDIDATES]);
       vec.rows.forEach((r) => rows.set(r.id, { ...r, distance: Number(r.distance) }));
       vectorIds = vec.rows.map((r) => r.id);
     } catch (err) {

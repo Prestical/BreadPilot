@@ -1,4 +1,4 @@
-import type pg from "pg";
+import type { Db } from "../db";
 import type { Embedder } from "./embed";
 import { ingestAll, type IngestReport } from "./ingest";
 import { hybridSearch, type SearchResult } from "./search";
@@ -12,11 +12,11 @@ export interface RagService {
   chunkCount(): Promise<number>;
 }
 
-export function createRagService(deps: { pool: pg.Pool; embedder: Embedder; repoDir: string; embedModel: string; log: (msg: string) => void }): RagService {
+export function createRagService(deps: { db: Db; embedder: Embedder; repoDir: string; embedModel: string; log: (msg: string) => void }): RagService {
   return {
-    search: (query, opts) => hybridSearch(deps.pool, deps.embedder, query, opts),
-    documents: () => listDocuments(deps.pool),
+    search: (query, opts) => hybridSearch(deps.db, deps.embedder, query, opts),
+    documents: () => listDocuments(deps.db),
     reindex: (force) => ingestAll({ ...deps, force }),
-    chunkCount: () => chunkCount(deps.pool),
+    chunkCount: () => chunkCount(deps.db),
   };
 }

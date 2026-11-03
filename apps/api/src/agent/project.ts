@@ -1,4 +1,4 @@
-import type pg from "pg";
+import type { Db } from "../db";
 import type { Build, BuildStep, CodeCheckReport, CodeIssue, PlacedBlock, PowerMode } from "@breadpilot/circuit-core";
 import type { Intake, Plan } from "./schemas";
 import type { TokenUsage } from "./llm";
@@ -94,28 +94,29 @@ export function memoryStore(): ProjectStore {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function pgStore(pool: pg.Pool): ProjectStore {
+/** Projects in the database (Postgres or PGlite), one JSON document per project. */
+export function dbStore(db: Db): ProjectStore {
   const write = (p: Project) => [p.id, p.title, p.board, p.idea, p.state, JSON.stringify(p), p.updatedAt];
   return {
     async create(p) {
-      await pool.query("INSERT INTO projects (id, title, board, idea, state, data, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", write(p));
+      await db.query("INSERT INTO projects (id, title, board, idea, state, data, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", write(p));
     },
     async save(p) {
-      await pool.query("UPDATE projects SET title = $2, board = $3, idea = $4, state = $5, data = $6, updated_at = $7 WHERE id = $1", write(p));
+      await db.query("UPDATE projects SET title = $2, board = $3, idea = $4, state = $5, data = $6, updated_at = $7 WHERE id = $1", write(p));
     },
     async get(id) {
       if (!UUID.test(id)) return null;
-      const { rows } = await pool.query<{ data: Project }>("SELECT data FROM projects WHERE id = $1", [id]);
+      const { rows } = await db.query<{ data: Project }>("SELECT data FROM projects WHERE id = $1", [id]);
       return rows[0]?.data ?? null;
     },
     async delete(id) {
       if (!UUID.test(id)) return false;
       // Rows that point at the project (messages, old plan/build tables) go with it: ON DELETE CASCADE.
-      const { rowCount } = await pool.query("DELETE FROM projects WHERE id = $1", [id]);
+      const { rowCount } = await db.query("DELETE FROM projects WHERE id = $1", [id]);
       return (rowCount ?? 0) > 0;
     },
     async list() {
-      const { rows } = await pool.query<{ id: string; title: string; state: Project["state"]; idea: string; updatedAt: Date }>(
+      const { rows } = await db.query<{ id: string; title: string; state: Project["state"]; idea: string; updatedAt: Date }>(
         `SELECT id, title, state, idea, updated_at AS "updatedAt" FROM projects ORDER BY updated_at DESC LIMIT 100`,
       );
       return rows.map((r) => ({ ...r, updatedAt: new Date(r.updatedAt).toISOString() }));

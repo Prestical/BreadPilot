@@ -7,7 +7,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 const external = Object.keys(pkg.dependencies ?? {}).filter((d) => !d.startsWith("@breadpilot/"));
 
 await build({
-  entryPoints: ["src/server.ts", "src/ingest-cli.ts", "src/eval-rag-cli.ts", "src/eval-agent-cli.ts"],
+  entryPoints: ["src/server.ts", "src/desktop.ts", "src/ingest-cli.ts", "src/eval-rag-cli.ts", "src/eval-agent-cli.ts"],
   outdir: "dist",
   bundle: true,
   platform: "node",
@@ -16,4 +16,4 @@ await build({
   sourcemap: true,
   external,
 });
-console.log("api built → dist/server.js + CLIs (ingest, eval-rag, eval-agent)");
+console.log("api built → dist/server.js, dist/desktop.js + CLIs (ingest, eval-rag, eval-agent)");

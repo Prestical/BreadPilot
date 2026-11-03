@@ -14,15 +14,15 @@ const llm: LlmClient = {
 };
 const health = { checkDb: async () => ({ status: "ok" as const, detail: "" }), listModels: async () => [], llmModel: "m", embedModel: "e" };
 let app: FastifyInstance;
-const make = (allowedHosts?: string[]) => (app = buildApp({ agent: { llm, store: memoryStore() }, health, allowedHosts }));
+const make = () => (app = buildApp({ agent: { llm, store: memoryStore() }, health }));
 afterEach(async () => {
   await app?.close();
 });
 
 describe("Host check (DNS rebinding)", () => {
-  it("answers localhost, 127.0.0.1, [::1], *.localhost and the Docker service name", async () => {
+  it("answers localhost, 127.0.0.1, [::1] and *.localhost", async () => {
     make();
-    for (const host of ["localhost:8080", "127.0.0.1:3000", "[::1]:8080", "app.localhost:8080", "api:3000"]) {
+    for (const host of ["localhost:8080", "127.0.0.1:3000", "[::1]:8080", "app.localhost:8080"]) {
       expect((await app.inject({ method: "GET", url: "/api/projects", headers: { host } })).statusCode, host).toBe(200);
     }
   });
@@ -36,9 +36,9 @@ describe("Host check (DNS rebinding)", () => {
     expect(create.statusCode).toBe(421);
   });
 
-  it("accepts extra hosts from ALLOWED_HOSTS", async () => {
-    make(["MyPi.lan"]);
-    expect((await app.inject({ method: "GET", url: "/api/projects", headers: { host: "mypi.lan:8080" } })).statusCode).toBe(200);
+  it("refuses the old Docker service name", async () => {
+    make();
+    expect((await app.inject({ method: "GET", url: "/api/projects", headers: { host: "api:3000" } })).statusCode).toBe(421);
   });
 });
 

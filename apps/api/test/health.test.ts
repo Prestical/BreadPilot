@@ -109,15 +109,16 @@ describe("hasModel", () => {
 });
 
 describe("loadConfig", () => {
-  it("applies defaults", () => {
-    const c = loadConfig({ DATABASE_URL: "postgres://u:p@localhost:5433/db" });
+  it("applies defaults: no database server, data in .local/data", () => {
+    const c = loadConfig({});
     expect(c.API_PORT).toBe(3000);
     expect(c.LLM_NUM_CTX).toBe(16384);
-    expect(c.API_HOST).toBe("127.0.0.1");
+    expect(c.DATA_DIR).toMatch(/[\\/]\.local[\\/]data$/);
+    expect(c.WEB_DIR).toBe("");
   });
 
-  it("rejects a missing DATABASE_URL with a helpful message", () => {
-    expect(() => loadConfig({})).toThrow(/DATABASE_URL[\s\S]*\.env\.example/);
+  it("rejects a bad value with a helpful message", () => {
+    expect(() => loadConfig({ LLM_API: "nope" })).toThrow(/LLM_API[\s\S]*\.env\.example/);
   });
 });
 

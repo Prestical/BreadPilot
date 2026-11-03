@@ -1,4 +1,4 @@
-import type pg from "pg";
+import type { Db } from "./db";
 
 export type CheckStatus = "ok" | "down";
 export type OverallStatus = "ok" | "degraded" | "down";
@@ -40,17 +40,17 @@ export function errorMessage(err: unknown): string {
   return String(err);
 }
 
-export function dbCheck(pool: pg.Pool): () => Promise<CheckResult> {
+export function dbCheck(db: Db): () => Promise<CheckResult> {
   return async () => {
     const start = performance.now();
     try {
-      const { rows } = await pool.query<{ extversion: string | null }>(
+      const { rows } = await db.query<{ extversion: string | null }>(
         "SELECT (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS extversion",
       );
       const latencyMs = Math.round(performance.now() - start);
       const ext = rows[0]?.extversion;
       if (!ext) return { status: "down", detail: "pgvector extension not installed", latencyMs };
-      return { status: "ok", detail: `postgres reachable, pgvector ${ext}`, latencyMs };
+      return { status: "ok", detail: `database reachable, pgvector ${ext}`, latencyMs };
     } catch (err) {
       return { status: "down", detail: errorMessage(err) };
     }

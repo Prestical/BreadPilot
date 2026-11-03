@@ -3,7 +3,8 @@ import { z } from "zod";
 import { REASONING_EFFORTS } from "./agent/llm";
 
 const EnvSchema = z.object({
-  DATABASE_URL: z.string().url(),
+  /** Where the encrypted database (data.enc) lives. The desktop app passes its own app-data folder. */
+  DATA_DIR: z.string().default(resolve(process.cwd(), "../../.local/data")),
   LLM_BASE_URL: z.string().url().default("http://localhost:11434/v1"),
   LLM_MODEL: z.string().min(1).default("qwen3:4b-instruct-2507-q4_K_M"),
   LLM_NUM_CTX: z.coerce.number().int().positive().default(16384),
@@ -19,10 +20,10 @@ const EnvSchema = z.object({
   OPENAI_REASONING_EFFORT: z.enum(REASONING_EFFORTS).default("low"),
   OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
   EMBED_MODEL: z.string().min(1).default("nomic-embed-text"),
-  /** Extra host names the API answers to, comma-separated (localhost always works). */
-  ALLOWED_HOSTS: z.string().default("").transform((v) => v.split(",").map((h) => h.trim()).filter(Boolean)),
-  API_HOST: z.string().default("127.0.0.1"),
+  /** Port of the development API (npm run dev:api); the desktop app picks a free one. */
   API_PORT: z.coerce.number().int().positive().default(3000),
+  /** The web build to serve (apps/web/dist). Empty = API only (Vite serves the page in development). */
+  WEB_DIR: z.string().default(""),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   MIGRATIONS_DIR: z.string().default(resolve(process.cwd(), "../../db/migrations")),
   /** Repo root: docs/hardware/** and data/boards/*.pinout.generated.md are indexed from here. */

@@ -539,7 +539,7 @@ describe("LLM client", () => {
 
   it("explains OpenAI key and credit errors", async () => {
     const make = (status: number) => createLlm({ api: "openai", baseUrl: "https://x/v1", model: "m", numCtx: 1, temperature: 0, timeoutMs: 1000, apiKey: "sk", reasoningEffort: "low", fetchImpl: (async () => new Response("nope", { status })) as never });
-    await expect(make(401).json(CodeSchema, [])).rejects.toThrow(/rejected the API key.*OPENAI_API_KEY/);
+    await expect(make(401).json(CodeSchema, [])).rejects.toThrow(/rejected the API key.*Settings/);
     await expect(make(429).json(CodeSchema, [])).rejects.toThrow(/out of credit or over its rate limit/);
   });
 
@@ -605,7 +605,7 @@ describe("choosing the model per project", () => {
 
   it("refuses OpenAI without a key, before storing anything", async () => {
     const d = deps(fakeLlm({}).llm);
-    await expect(createProject(d, "LED and button", undefined, { llm: "openai" })).rejects.toThrow(/OPENAI_API_KEY/);
+    await expect(createProject(d, "LED and button", undefined, { llm: "openai" })).rejects.toThrow(/key in Settings/);
     expect(await d.store.list()).toEqual([]);
   });
 
@@ -615,7 +615,7 @@ describe("choosing the model per project", () => {
     const failed = await createProject(deps(fakeLlm({}).llm, { cloudLlm: cloud.llm, store }), "LED and button", undefined, { llm: "openai" });
     expect(failed.state).toBe("FAILED");
     const retried = await retryProject(deps(fakeLlm({}).llm, { store }), failed.id);
-    expect(retried.failure).toMatch(/OPENAI_API_KEY/);
+    expect(retried.failure).toMatch(/key in Settings/);
   });
 });
 

@@ -1,5 +1,5 @@
 // Agent eval (Milestone 4 acceptance + model comparison).
-//   docker compose exec api node dist/eval-agent-cli.js [--file data/eval/agent-holdout.jsonl] [--only 3,7] [--model qwen3:8b] [--openai] [--limit 5] [--json /tmp/out.json]
+//   npm run eval:agent -w @breadpilot/api -- [--file data/eval/agent-holdout.jsonl] [--only 3,7] [--model qwen3:8b] [--openai] [--limit 5] [--json /tmp/out.json]
 //   --openai: run every idea on OpenAI's model (OPENAI_API_KEY, OPENAI_MODEL in .env) to compare with the local one.
 // Runs every idea in data/eval/agent.jsonl through the real pipeline (in-memory project store,
 // real LLM, real documentation search). Vague plans are auto-approved as-is.
@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { checkMicroPython, getBoard, validateBuild } from "@breadpilot/circuit-core";
 import { mistakeReport } from "./agent/eval-report";
 import { loadConfig } from "./config";
-import { createPool } from "./db";
+import { devKey, openDataDir } from "./datadir";
 import { createLlm } from "./agent/llm";
 import { approvePlan, createProject, type AgentDeps } from "./agent/pipeline";
 import { memoryStore, type Project } from "./agent/project";
@@ -57,7 +57,8 @@ if (openai && !config.OPENAI_API_KEY.trim()) throw new Error("--openai needs OPE
 const model = arg("model") ?? (openai ? config.OPENAI_MODEL : config.LLM_MODEL);
 const limit = Number(arg("limit") ?? Infinity);
 const only = arg("only")?.split(",").map(Number);
-const pool = createPool(config.DATABASE_URL);
+const data = await openDataDir({ dir: config.DATA_DIR, key: await devKey(config.DATA_DIR) });
+const db = data.db;
 const embedder = openAiEmbedder(config.LLM_BASE_URL, config.EMBED_MODEL);
 
 const deps: AgentDeps = {
@@ -65,7 +66,7 @@ const deps: AgentDeps = {
     ? createLlm({ api: "openai", baseUrl: config.OPENAI_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.OPENAI_TIMEOUT_MS, apiKey: config.OPENAI_API_KEY.trim(), reasoningEffort: config.OPENAI_REASONING_EFFORT })
     : createLlm({ api: config.LLM_API, baseUrl: config.LLM_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.LLM_TIMEOUT_MS }),
   store: memoryStore(),
-  search: async (q) => (await hybridSearch(pool, embedder, q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
+  search: async (q) => (await hybridSearch(db, embedder, q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
 };
 
 const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "n/a");
@@ -162,6 +163,6 @@ try {
   console.log(mistakeReport(results));
   if (built.length / Math.max(1, supported.length) < 0.9) process.exitCode = 1;
 } finally {
-  await pool.end();
+  await data.close();
 }
 

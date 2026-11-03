@@ -8,6 +8,10 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
     "build": "node build.mjs",
     "start": "node dist/server.js",
+    "ingest": "tsx --env-file-if-exists=../../.env src/ingest-cli.ts",
+    "eval:rag": "tsx --env-file-if-exists=../../.env src/eval-rag-cli.ts",
+    "eval:agent": "tsx --env-file-if-exists=../../.env src/eval-agent-cli.ts",
+    "template": "node --import tsx src/template-cli.ts",
     "typecheck": "tsc -p tsconfig.json",
     "predev": "npm run gen:parts -w @breadpilot/circuit-core",
     "prebuild": "npm run gen:parts -w @breadpilot/circuit-core",
@@ -15,13 +19,14 @@
   },
   "dependencies": {
     "@breadpilot/circuit-core": "*",
+    "@electric-sql/pglite": "0.5.11",
+    "@electric-sql/pglite-pgvector": "0.0.12",
+    "@fastify/static": "10.1.6",
     "fastify": "^5.4.0",
     "pdfjs-dist": "^4.10.38",
-    "pg": "^8.16.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.20.0"
   }

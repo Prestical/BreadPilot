@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative } from "node:path";
-import type pg from "pg";
+import type { Db } from "../db";
 import { getBoard } from "@breadpilot/circuit-core";
 import { CHUNKER_VERSION, chunkMarkdown, chunkPages, type Chunk } from "./chunk";
 import type { Embedder } from "./embed";
@@ -25,8 +25,13 @@ export interface IngestReport {
   indexed: { path: string; chunks: number }[];
   unchanged: string[];
   skipped: { path: string; reason: string }[];
-  /** Documents that failed (e.g. corrupt PDF, embedding error). Other documents still run. */
+  /** Documents that failed (e.g. a corrupt PDF). Other documents still run. */
   failed: { path: string; error: string }[];
+  /**
+   * Stored without vectors because the embedding model wasn't available: keyword search finds
+   * them now; the next run (e.g. once the model is downloaded) adds the vectors.
+   */
+  textOnly: { path: string; error: string }[];
   removed: string[];
 }
 
@@ -85,7 +90,7 @@ export async function chunkSource(source: Source): Promise<Chunk[] | { skip: str
   return chunkPages(pages, parseToc(raw), source.title);
 }
 
-type IngestOptions = { pool: pg.Pool; embedder: Embedder; repoDir: string; embedModel: string; force?: boolean; log?: (msg: string) => void };
+type IngestOptions = { db: Db; embedder: Embedder; repoDir: string; embedModel: string; force?: boolean; log?: (msg: string) => void };
 
 let running: Promise<IngestReport> | null = null;
 let queuedForce: Promise<IngestReport> | null = null;
@@ -111,8 +116,11 @@ export function ingestAll(opts: IngestOptions): Promise<IngestReport> {
   return queuedForce;
 }
 
-async function run({ pool, embedder, repoDir, embedModel, force = false, log = () => {} }: IngestOptions): Promise<IngestReport> {
-  const report: IngestReport = { indexed: [], unchanged: [], skipped: [], failed: [], removed: [] };
+/** Marks a document stored without vectors (its hash never matches, so it's embedded next time). */
+const TEXT_ONLY = ":text-only";
+
+async function run({ db, embedder, repoDir, embedModel, force = false, log = () => {} }: IngestOptions): Promise<IngestReport> {
+  const report: IngestReport = { indexed: [], unchanged: [], skipped: [], failed: [], textOnly: [], removed: [] };
   const sources = await discoverSources(repoDir);
   if (sources.length === 0) {
     // A missing docs/ folder (wrong REPO_DIR, broken build) must never wipe the index.
@@ -123,20 +131,30 @@ async function run({ pool, embedder, repoDir, embedModel, force = false, log = (
     try {
       const bytes = await readFile(src.abs);
       const hash = createHash("sha256").update(bytes).update(`|chunker:${CHUNKER_VERSION}|model:${embedModel}`).digest("hex");
-      if (!force && (await documentHash(pool, src.path)) === hash) {
+      if (!force && (await documentHash(db, src.path)) === hash) {
         report.unchanged.push(src.path);
         continue;
       }
       const chunks = await chunkSource(src);
       if (!Array.isArray(chunks)) {
         // Drop any older indexed version so stale text can't be retrieved.
-        await removePath(pool, src.path);
+        await removePath(db, src.path);
         report.skipped.push({ path: src.path, reason: chunks.skip });
         log(`rag: skipped ${src.path}: ${chunks.skip}`);
         continue;
       }
-      const vectors = await embedder.documents(chunks.map((c) => c.content));
-      await replaceDocument(pool, { title: src.title, board: src.board, path: src.path, hash }, chunks.map((c, i) => ({ ...c, embedding: vectors[i]! })));
+      let vectors: (number[] | null)[];
+      try {
+        vectors = await embedder.documents(chunks.map((c) => c.content));
+      } catch (err) {
+        // No embedding model (Ollama off or the model not downloaded): store the text anyway, so
+        // keyword search works. The hash is marked, so the next run embeds it properly.
+        await replaceDocument(db, { title: src.title, board: src.board, path: src.path, hash: `${hash}${TEXT_ONLY}` }, chunks.map((c) => ({ ...c, embedding: null })));
+        report.textOnly.push({ path: src.path, error: (err as Error).message });
+        log(`rag: stored ${src.path} without vectors (${(err as Error).message})`);
+        continue;
+      }
+      await replaceDocument(db, { title: src.title, board: src.board, path: src.path, hash }, chunks.map((c, i) => ({ ...c, embedding: vectors[i]! })));
       report.indexed.push({ path: src.path, chunks: chunks.length });
       log(`rag: indexed ${src.path} (${chunks.length} chunks)`);
     } catch (err) {
@@ -144,6 +162,6 @@ async function run({ pool, embedder, repoDir, embedModel, force = false, log = (
       log(`rag: FAILED ${src.path}: ${(err as Error).message}`);
     }
   }
-  report.removed = await removeMissing(pool, sources.map((s) => s.path));
+  report.removed = await removeMissing(db, sources.map((s) => s.path));
   return report;
 }

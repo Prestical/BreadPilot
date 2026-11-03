@@ -182,7 +182,7 @@ describe("RAG API routes", () => {
       ],
     })),
     documents: vi.fn(async () => []),
-    reindex: vi.fn(async () => ({ indexed: [], unchanged: [], skipped: [], failed: [], removed: [] })),
+    reindex: vi.fn(async () => ({ indexed: [], unchanged: [], skipped: [], failed: [], textOnly: [], removed: [] })),
     chunkCount: vi.fn(async () => 0),
   };
   const make = () =>

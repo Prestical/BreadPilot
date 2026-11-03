@@ -13,7 +13,7 @@ const ApproveBody = z.object({ feedback: z.string().max(1000).optional() });
 /** `?async=1`: answer 202 at once and run in the background (progress via the events stream). */
 const AsyncQuery = z.object({ async: z.enum(["1", "true", "0", "false"]).optional() });
 
-/** SSE keep-alive, well below nginx's 300 s proxy_read_timeout. */
+/** SSE keep-alive: a comment line every 15 s keeps the event stream open while the AI works. */
 export const SSE_HEARTBEAT_MS = 15_000;
 
 const withRunning = (p: Project) => ({ ...p, running: isRunning(p.id) });
