@@ -1,0 +1,63 @@
+# Desktop installers (D7): BreadPilot-<version>-<arch>.dmg / -Setup.exe / .AppImage.
+# Built from the staged app (scripts/stage.mjs: an allowlist, checked by scripts/check-leaks.mjs),
+# never from the repo folder. Unsigned by a certificate: macOS gets an ad-hoc signature, so users
+# open it once through System Settings → Privacy & Security → Open Anyway (README "Quick start"),
+# instead of seeing "damaged".
+appId: io.github.prestical.breadpilot
+productName: BreadPilot
+copyright: Copyright © 2026 BreadPilot contributors
+electronVersion: 44.10.1
+
+directories:
+  app: .stage
+  output: release
+  buildResources: build
+
+# Plain files, not an asar archive: the engine's database (WebAssembly) and PDF parser load their
+# files from disk in the utility process.
+asar: false
+files:
+  - "**/*"
+  - "!**/.*" # no hidden files at all (belt and braces: the stage has none)
+  - "!**/*.map"
+npmRebuild: false # no native modules
+publish: null # never uploads anything (releases are made by hand / in D8)
+
+# Hardening: the app binary can't be used to run other Node code or to be debugged from outside.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  # Off: Electron would keep its cookie key in the keychain under the app's build identity, and
+  # without an Apple Developer ID macOS asks for the login password after every update. The only
+  # cookie is the per-launch session cookie, which is never written to disk.
+  enableCookieEncryption: false
+  grantFileProtocolExtraPrivileges: false
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.developer-tools
+  identity: "-" # ad-hoc signature (no Apple certificate)
+  hardenedRuntime: false # needed with ad-hoc signing (electron-builder docs); notarization would need both
+  artifactName: ${productName}-${version}-${arch}.${ext}
+dmg:
+  title: ${productName} ${version}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-Setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false # installs for the current user, no administrator rights needed
+  allowToChangeInstallationDirectory: true
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Development
+  artifactName: ${productName}-${version}-${arch}.${ext}

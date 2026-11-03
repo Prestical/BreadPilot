@@ -1,0 +1,23 @@
+{
+  "name": "@breadpilot/desktop",
+  "version": "0.2.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.mjs",
+  "scripts": {
+    "predev": "npm run build -w @breadpilot/api && npm run build -w @breadpilot/web",
+    "dev": "electron .",
+    "build:all": "npm run build -w @breadpilot/api && npm run build -w @breadpilot/web",
+    "stage": "npm run build:all && node scripts/stage.mjs && node scripts/check-leaks.mjs .stage",
+    "dist": "npm run stage && electron-builder --publish never && node scripts/check-leaks.mjs release && node scripts/clean-release.mjs",
+    "dist:mac": "npm run stage && electron-builder --mac --publish never && node scripts/check-leaks.mjs release && node scripts/clean-release.mjs",
+    "dist:win": "npm run stage && electron-builder --win --publish never && node scripts/check-leaks.mjs release && node scripts/clean-release.mjs",
+    "dist:linux": "npm run stage && electron-builder --linux --publish never && node scripts/check-leaks.mjs release && node scripts/clean-release.mjs",
+    "dist:dir": "npm run stage && electron-builder --dir --publish never && node scripts/check-leaks.mjs release"
+  },
+  "devDependencies": {
+    "electron": "44.10.1",
+    "electron-builder": "26.17.0"
+  }
+}

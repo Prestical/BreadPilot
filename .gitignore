@@ -34,3 +34,8 @@ CLAUDE.md
 Thumbs.db
 .idea/
 .vscode/
+
+# Desktop app packaging (apps/desktop/scripts/stage.mjs, electron-builder): built, never committed
+apps/desktop/.stage/
+apps/desktop/release/
+apps/desktop/build/template.tar.gz
