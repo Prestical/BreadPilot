@@ -1,6 +1,28 @@
-# BreadPilot
+<h1 align="center">
+  <img src="apps/desktop/build/icon.png" alt="" width="72" align="center">
+  BreadPilot
+</h1>
 
-**Describe a hardware project in plain words. Build it step by step on a 3D breadboard.**
+<p align="center"><strong>Describe a hardware project in plain words. Build it step by step on a 3D breadboard.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/Prestical/BreadPilot/releases/latest"><img src="https://img.shields.io/github/v/release/Prestical/BreadPilot?label=latest" alt="Latest release"></a>
+  <a href="https://github.com/Prestical/BreadPilot/releases/latest"><img src="https://img.shields.io/github/release-date/Prestical/BreadPilot?label=last%20release" alt="Date of the last release"></a>
+  <a href="https://github.com/Prestical/BreadPilot/releases"><img src="https://img.shields.io/github/downloads/Prestical/BreadPilot/total?label=downloads" alt="Total downloads of all releases"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20soon-5b5bd6" alt="Platforms: macOS and Linux, Windows coming soon">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Prestical/BreadPilot?color=4c9a2a" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Prestical/BreadPilot/releases/latest"><img src="https://img.shields.io/badge/Download-Latest%20release-4c9a2a?style=for-the-badge&logo=github&logoColor=white" alt="Download the latest release"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Install</a> ·
+  <a href="#using-the-app">Usage</a> ·
+  <a href="#supported-hardware">Supported hardware</a> ·
+  <a href="#uninstalling">Uninstall</a>
+</p>
 
 <p align="center">
   <img src="docs/media/hero.gif" alt="BreadPilot showing a numbered build step on the 3D breadboard: placing a push button, with the step's instructions and the reason next to it" width="860">
@@ -27,7 +49,8 @@ code you can flash to the board in one click. It runs on your own computer with 
 - [Project structure](#project-structure)
 - [Adding a new part](#adding-a-new-part)
 - [Development](#development)
-- [Stopping the app](#stopping-the-app)
+- [Your data](#your-data)
+- [Uninstalling](#uninstalling)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -42,7 +65,7 @@ code you can flash to the board in one click. It runs on your own computer with 
 | 🧊 **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
 | 🐍 **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
 | ⬇️ **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
-| 🔒 **Local first** | Runs in Docker on your own machine (Linux, Windows or macOS) with [Ollama](https://ollama.com). An OpenAI model is optional, per project. |
+| 🔒 **Local first** | A desktop app for macOS and Linux (Windows coming soon), with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
 
 ---
 
@@ -57,47 +80,54 @@ https://github.com/user-attachments/assets/0161edb4-e6da-4555-9ad4-219627323e4f
 
 ## Quick start
 
-Works on **Linux, Windows and macOS**. You need:
+1. **Download BreadPilot** for your computer from the
+   [latest release](https://github.com/Prestical/BreadPilot/releases/latest):
+   `BreadPilot-…-arm64.dmg` (Mac with Apple silicon), `BreadPilot-…-x64.dmg` (Intel Mac, not
+   tested yet) or `BreadPilot-…-x86_64.AppImage` (Linux). **Windows is coming soon.**
+2. **Install [Ollama](https://ollama.com/download)** for the free local AI, or skip it and use an
+   OpenAI key instead.
+3. **Open BreadPilot.** A short setup checks Ollama, downloads the AI models with one click
+   (about 3 GB) and, if you like, takes an OpenAI key. A guided tour shows the rest.
 
-- **Docker** with Compose v2 (Docker Engine or Docker Desktop)
-- **[Ollama](https://ollama.com)** for the local AI model (or run it inside Docker, see below)
+BreadPilot isn't signed with a paid developer certificate yet, so the first start needs one extra
+click:
 
-```bash
-cp .env.example .env            # then set POSTGRES_PASSWORD
-ollama pull qwen3:4b-instruct-2507-q4_K_M
-ollama pull nomic-embed-text
-docker compose up -d --build
-```
+| System | First start |
+|---|---|
+| **macOS** | See the steps below. |
+| **Windows** | Coming soon. |
+| **Linux** | Make the AppImage executable (`chmod +x BreadPilot-*.AppImage`) and run it. If it doesn't start, install FUSE (`sudo apt install libfuse2`, on Ubuntu 24.04 `libfuse2t64`). BreadPilot keeps its key in your keyring (GNOME Keyring or KWallet). |
 
-Open **http://localhost:8080**. The status line in the sidebar shows whether the database, the AI
-model and the documentation search are ready. On Linux and macOS, `chmod 600 .env` keeps your
-password and keys readable only by you.
+**macOS, first start** (macOS 15 Sequoia and newer):
+
+1. Open the `.dmg` and drag **BreadPilot** into **Applications**.
+2. Open BreadPilot from Applications. macOS says *"Apple could not verify 'BreadPilot' is free of
+   malware…"*. Click **Done** (not *Move to Trash*).
+3. Open **System Settings → Privacy & Security**, scroll down to *"'BreadPilot' was blocked…"* and
+   click **Open Anyway** (it's shown for about an hour after step 2). Enter your Mac password if asked.
+4. Click **Open** in the last question. From then on BreadPilot opens normally, also after updates
+   installed the same way.
+
+On macOS 14 and older: right-click BreadPilot in Applications → **Open** → **Open**.
+
+This is macOS's check for apps without a paid Apple Developer ID; it isn't a password for
+BreadPilot. BreadPilot never asks for your keychain password (see [Your data](#your-data)).
+
+Your projects are saved encrypted on your computer (see [Your data](#your-data)). The OpenAI key,
+if you add one in **⚙ Settings**, is stored encrypted too and only ever sent to OpenAI.
 
 <details>
-<summary><strong>Notes per operating system</strong></summary>
+<summary><strong>Run from the source code</strong> (developers)</summary>
 
-| System | Ollama | Notes |
-|---|---|---|
-| **macOS** | Install the Ollama app and keep it running. | Run Ollama natively, not in Docker: Docker on macOS can't use the Apple GPU. Tested. |
-| **Windows** | Install Ollama for Windows. | Use Docker Desktop (WSL 2 backend). Containers reach Ollama at `host.docker.internal`. Not tested yet. |
-| **Linux** | Install Ollama, then let containers reach it: run `sudo systemctl edit ollama`, add `[Service]` / `Environment="OLLAMA_HOST=0.0.0.0"`, and restart it. Or skip installing it and use **Ollama in Docker** below. | Ollama listens only on `127.0.0.1` by default, which containers can't reach. With `0.0.0.0` it's reachable from your network too, so keep a firewall on port 11434. Not tested yet. |
-
-**Ollama in Docker** (any system, no install): add `DOCKER_LLM_BASE_URL=http://ollama:11434/v1`
-to `.env`, then
+You need [Node.js](https://nodejs.org) 22 or newer and Ollama.
 
 ```bash
-docker compose --profile ollama up -d --build
-docker compose exec ollama ollama pull qwen3:4b-instruct-2507-q4_K_M
-docker compose exec ollama ollama pull nomic-embed-text
+npm install
+node node_modules/electron/install.js     # once: downloads Electron (npm 11 skips its install step)
+npm run dev:desktop
 ```
 
-It runs on the CPU (slower). For an NVIDIA GPU on Linux, install the NVIDIA Container Toolkit and
-add `gpus: all` to the `ollama` service in `docker-compose.yml`.
-
 </details>
-
-**Optional:** put an `OPENAI_API_KEY` in `.env` to offer OpenAI's model in the model menu. Projects
-that use it send their idea, plan and code to OpenAI and are billed to your key.
 
 ---
 
@@ -114,6 +144,8 @@ that use it send their idea, plan and code to OpenAI and are billed to your key.
 New to breadboards? **Breadboard & Pico 101** in the sidebar is a short interactive tutorial.
 The **⚡ Power** switch on the 3D view wires parts to the breadboard rails (default) or straight to
 the Pico's pins; the code stays the same.
+
+BreadPilot follows your system's light or dark appearance.
 
 ---
 
@@ -163,20 +195,19 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph Browser
+    subgraph Page["Page in the BreadPilot window"]
         UI[React app<br/>3D workbench · steps · code]
         CC1[circuit-core<br/>re-checks every build]
     end
-    subgraph Docker
-        WEB[web<br/>nginx :8080]
-        API[api<br/>Fastify · agent pipeline · RAG]
-        DB[(Postgres + pgvector<br/>projects · document index)]
+    subgraph App["Desktop app (Electron)"]
+        API[api in a background process<br/>Fastify · agent pipeline · RAG · serves the page]
+        DB[(PGlite + pgvector in memory<br/>saved as one encrypted file)]
     end
     LLM[Ollama on your machine<br/>or OpenAI, optional]
     PARTS[[parts/<br/>one folder per part]]
     DOCS[[docs/hardware<br/>datasheets]]
 
-    UI <--> WEB <--> API
+    UI <-- launch token --> API
     API <--> DB
     API <--> LLM
     PARTS -. built into .-> CC1
@@ -188,6 +219,9 @@ flowchart TB
   and the layout, validator and checker read the same data.
 - **Documentation search (RAG)** indexes the datasheets and the verified pinout when the API starts
   (hybrid vector + full-text search) and adds the most relevant paragraphs to the code prompt.
+- **The database** is PGlite (Postgres compiled to WebAssembly) running inside the app. It is
+  saved as one AES-256-GCM encrypted file; the key is protected by your operating system's secure
+  storage (macOS Keychain, Windows DPAPI, Linux keyring).
 
 ---
 
@@ -196,8 +230,9 @@ flowchart TB
 ```text
 BreadPilot/
 ├── apps/
+│   ├── desktop/          Electron: the window, the launch token, the database key
 │   ├── web/              React + Vite + react-three-fiber: 3D workbench, steps, code panel
-│   └── api/              Fastify: agent pipeline, documentation search, projects
+│   └── api/              Fastify: agent pipeline, documentation search, projects, PGlite database
 ├── packages/
 │   └── circuit-core/     Shared TypeScript: connection format, validator, layout, steps,
 │                         code checker, part pack loader, UF2 builder
@@ -237,9 +272,9 @@ shape) needs that added to the engine once. Full format: [`parts/README.md`](par
 
 ```bash
 npm install
-docker compose up -d db         # Postgres + pgvector on 127.0.0.1:5433
-npm run dev:api                 # API on http://127.0.0.1:3000
-npm run dev:web                 # web on http://localhost:5173 (proxies /api)
+npm run dev:api                 # API on http://127.0.0.1:3000 (data in .local/data)
+npm run dev:web                 # web on http://localhost:5173 (proxies /api), with hot reload
+npm run dev:desktop             # or: the whole desktop app
 ```
 
 ```bash
@@ -252,27 +287,50 @@ npm test
   dev server is running.
 - The driver test runs under `python3` when it's installed. One Pico build test also mounts the
   filesystem with littlefs-python when you set `LITTLEFS_PYTHON=<folder>`; otherwise it's skipped.
-- After adding or changing a datasheet in `docs/hardware/`, rebuild with
-  `docker compose up -d --build` (documents are copied into the API image and indexed at start).
+- After adding or changing a datasheet in `docs/hardware/`, restart the API: new or changed
+  documents are indexed when it starts.
+- Only one program can use a data folder at a time (it holds `data.lock`): stop `npm run dev:api`
+  before running the command-line tools below.
+
+<details>
+<summary><strong>Building the installers</strong></summary>
+
+```bash
+npm run template -w @breadpilot/api         # ready-made database: needs Ollama with nomic-embed-text
+npm run dist:mac -w @breadpilot/desktop     # or dist:linux, dist:win
+```
+
+Each build stages the app, checks it for leaks, builds, checks the installers again and then
+removes everything but the installers.
+
+The installers land in `apps/desktop/release/`. The app is built from an allowlist
+(`apps/desktop/scripts/stage.mjs`), and `apps/desktop/scripts/check-leaks.mjs` fails the build if
+the app contains your home folder path, user name, computer name, git e-mail address, the OpenAI
+key from `.env`, the development key, anything shaped like an OpenAI key, or private files
+(`.env`, `.local`, notes, `.claude`, source maps). Only the installers stay in `release/`; a Mac can
+build all three systems' installers.
+
+</details>
 
 <details>
 <summary><strong>API and command-line tools</strong></summary>
 
 ```bash
 # Projects
-curl -s -X POST 'http://localhost:8080/api/projects?async=1' -H 'Content-Type: application/json' \
+# (development API; the desktop app needs its launch token)
+curl -s -X POST 'http://127.0.0.1:3000/api/projects?async=1' -H 'Content-Type: application/json' \
      -d '{"idea":"Blink an LED"}'                                    # 202, runs in the background
-curl -N http://localhost:8080/api/projects/<id>/events               # live progress (server-sent events)
-curl -s http://localhost:8080/api/projects/<id>/handoff              # handoff bundle (Markdown)
+curl -N http://127.0.0.1:3000/api/projects/<id>/events               # live progress (server-sent events)
+curl -s http://127.0.0.1:3000/api/projects/<id>/handoff              # handoff bundle (Markdown)
 
 # Documentation search
-curl -s -X POST http://localhost:8080/api/rag/search -H 'Content-Type: application/json' \
+curl -s -X POST http://127.0.0.1:3000/api/rag/search -H 'Content-Type: application/json' \
      -d '{"query":"Which pins are ADC?","k":3}'
-docker compose exec api node dist/ingest-cli.js [--force]           # re-index documents
-docker compose exec api node dist/eval-rag-cli.js                   # retrieval eval
+npm run ingest -w @breadpilot/api [-- --force]                      # re-index documents
+npm run eval:rag -w @breadpilot/api                                 # retrieval eval
 
 # Agent eval (ideas in data/eval/)
-docker compose exec api node dist/eval-agent-cli.js [--model <name>] [--openai] [--json <file>]
+npm run eval:agent -w @breadpilot/api -- [--model <name>] [--openai] [--json <file>]
 ```
 
 Project states: `AWAIT_APPROVAL` (approve with `POST /api/projects/<id>/approve`, optionally
@@ -282,17 +340,62 @@ Project states: `AWAIT_APPROVAL` (approve with `POST /api/projects/<id>/approve`
 
 ---
 
-## Stopping the app
+## Your data
 
-| Goal | Command | Your projects |
-|---|---|---|
-| Pause | `docker compose stop` | kept |
-| Stop and remove containers | `docker compose down` | kept |
-| Full reset ⚠️ | `docker compose down -v` | **deleted** |
+| | Where |
+|---|---|
+| macOS | `~/Library/Application Support/BreadPilot/` |
+| Windows | `%APPDATA%\BreadPilot\` |
+| Linux | `~/.config/BreadPilot/` |
 
-Start again with `docker compose up -d` (add `--profile ollama` if you run Ollama in Docker). A
-natively installed Ollama runs outside Docker: stop it the way your system runs it (the app, or
-`systemctl stop ollama` on Linux).
+`data/data.enc` holds your projects and the documentation index, encrypted with a key that only
+your operating system can unlock (see below). Closing the app saves everything. Deleting the folder resets
+BreadPilot and **deletes your projects**. Running the desktop app from the source code
+(`npm run dev:desktop`) uses a separate **BreadPilot Dev** folder and keychain entry, so it never
+touches an installed BreadPilot's projects or key. The development API (`npm run dev:api`) keeps its
+own data in `.local/data/` with a development key.
+
+On macOS the key lives in your login keychain as **BreadPilot data key**, saved and read through
+Apple's built-in `security` tool, so BreadPilot never asks for your password, not even after an
+update. It's encrypted with your login password: a copy of your disk or a backup can't open your
+projects. The tradeoff, until BreadPilot is signed with an Apple Developer ID: another program you
+run on your Mac could read that entry without asking. On Windows and Linux, `key.bin` holds the key,
+encrypted by the operating system.
+
+---
+
+## Uninstalling
+
+Removing the app **keeps your projects**, so a reinstall picks up where you left off. To remove
+everything, also delete the data folder (this **deletes your projects**) and the key.
+
+**macOS**
+
+1. Quit BreadPilot (⌘Q).
+2. Drag **BreadPilot** from **Applications** to the Trash.
+3. To remove everything: delete `~/Library/Application Support/BreadPilot` (in Finder: Go → Go to
+   Folder…) and the key, either in **Keychain Access** (search "BreadPilot data key", delete it) or
+   in Terminal:
+
+   ```bash
+   security delete-generic-password -s "BreadPilot data key"
+   ```
+
+**Windows**
+
+1. Quit BreadPilot.
+2. **Settings → Apps → Installed apps → BreadPilot → Uninstall**.
+3. To remove everything: delete the folder `%APPDATA%\BreadPilot` (paste it into the File Explorer
+   address bar). The key is inside it.
+
+**Linux (AppImage)**
+
+1. Quit BreadPilot and delete the `BreadPilot-….AppImage` file.
+2. To remove everything: delete `~/.config/BreadPilot`, and the entry "BreadPilot Safe Storage" in
+   your keyring app (for example **Passwords and Keys**).
+
+Ran BreadPilot from the source code? Its data is in a separate **BreadPilot Dev** folder (same
+places) with the keychain entry "BreadPilot Dev data key".
 
 ---
 
