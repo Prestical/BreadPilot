@@ -9,6 +9,9 @@ import { TutorialPanel } from "./tutorial/TutorialPanel";
 import { tutorialScene } from "./tutorial/scene";
 import { CodeSide } from "./ui/CodeSide";
 import { PromptBar } from "./ui/PromptBar";
+import { SettingsDialog } from "./ui/Settings";
+import { SetupDialog } from "./ui/Setup";
+import { Tour } from "./ui/Tour";
 import { Sidebar } from "./ui/Sidebar";
 import { StageOverlay } from "./ui/StageOverlay";
 import { StepCard, StepStrip } from "./ui/StepCard";
@@ -66,9 +69,10 @@ export function App() {
 
   // Reopen the last project after a reload, and load the project list and the model options.
   useEffect(() => {
-    const { openProject, refreshList, loadAiOptions } = useApp.getState();
+    const { openProject, refreshList, loadAiOptions, checkSetup } = useApp.getState();
     void refreshList();
     void loadAiOptions();
+    void checkSetup();
     const last = rememberedProject();
     if (last) void openProject(last);
   }, []);
@@ -99,9 +103,12 @@ export function App() {
         Skip to the build
       </a>
       <Sidebar />
+      <SettingsDialog />
+      <SetupDialog />
+      <Tour />
       {sidebarOpen && <div className="scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
 
-      <main className="stage" id="stage" tabIndex={-1} aria-label="3D workbench">
+      <main className="stage" id="stage" data-tour="stage" tabIndex={-1} aria-label="3D workbench">
         {!sceneReady && (
           <div className="loading scene-loading" role="status">
             Loading the 3D workbench…
@@ -134,7 +141,7 @@ export function App() {
               ☰
             </button>
             {mode === "build" && <PowerToggle />}
-            <button type="button" onClick={toggleLabels} aria-pressed={showLabels}>
+            <button type="button" data-tour="view" onClick={toggleLabels} aria-pressed={showLabels}>
               {showLabels ? "Hide pin labels" : "Show pin labels"}
             </button>
             <button type="button" onClick={resetCamera}>

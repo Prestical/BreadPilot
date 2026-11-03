@@ -47,6 +47,12 @@ interface AppState {
   codeOpen: boolean;
   /** Narrow screens: the project sidebar is a drawer. */
   sidebarOpen: boolean;
+  /** The Settings dialog. */
+  settingsOpen: boolean;
+  /** The first-run setup (shown until it's finished or skipped). */
+  setupOpen: boolean;
+  /** The guided tour of the app (starts once after the setup; Settings can replay it). */
+  tourOpen: boolean;
   /** Text in the prompt bar (example chips fill it in). */
   draft: string;
   /** Power wiring for examples and new projects (an agent project keeps its own `power`). */
@@ -66,12 +72,17 @@ interface AppState {
   setStep(i: number): void;
   setCodeOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
+  setSettingsOpen(open: boolean): void;
+  setSetupOpen(open: boolean): void;
+  setTourOpen(open: boolean): void;
   setDraft(text: string): void;
   /** Leaves the open project with an error banner hidden. */
   dismissError(): void;
   setPower(power: PowerMode): Promise<void>;
   setAi(ai: AiChoice): void;
   loadAiOptions(): Promise<void>;
+  /** Opens the first-run setup, or else the tour, if it hasn't been finished or skipped yet. */
+  checkSetup(): Promise<void>;
   startIdea(idea: string): Promise<void>;
   openProject(id: string): Promise<void>;
   approve(feedback?: string): Promise<void>;
@@ -226,6 +237,9 @@ export const useApp = create<AppState>((set, get) => {
   stepIndex: 0,
   codeOpen: false,
   sidebarOpen: false,
+  settingsOpen: false,
+  setupOpen: false,
+  tourOpen: false,
   draft: "",
   power: loadPower(),
   ai: loadAi(),
@@ -252,6 +266,10 @@ export const useApp = create<AppState>((set, get) => {
   },
   setCodeOpen: (codeOpen) => set({ codeOpen }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen, sidebarOpen: false }),
+  setSetupOpen: (setupOpen) => set({ setupOpen }),
+  // The tour points at the build screen's parts, so it starts there with the sidebar visible.
+  setTourOpen: (tourOpen) => set(tourOpen ? { tourOpen, mode: "build", settingsOpen: false, codeOpen: false } : { tourOpen }),
   setDraft: (draft) => set({ draft }),
   dismissError: () => patchAgent({ error: null }),
   startIdea: (idea) => {
@@ -265,6 +283,15 @@ export const useApp = create<AppState>((set, get) => {
       /* not remembered across reloads */
     }
     set({ ai });
+  },
+  checkSetup: async () => {
+    try {
+      const s = await api.getSettings();
+      if (!s.setupDone) set({ setupOpen: true });
+      else if (!s.tourDone) get().setTourOpen(true);
+    } catch {
+      /* the status line already says when the app's server can't be reached */
+    }
   },
   loadAiOptions: async () => {
     try {

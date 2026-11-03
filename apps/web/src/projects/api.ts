@@ -1,5 +1,5 @@
 import type { PowerMode } from "@breadpilot/circuit-core";
-import type { AiChoice, ApiProject, LlmOptions, ProgressEvent, ProjectSummary } from "./types";
+import type { AiChoice, ApiProject, KeyCheck, LlmOptions, ProgressEvent, ProjectSummary, PullState, SettingsPatch, SettingsView } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -40,6 +40,18 @@ export const listProjects = () => call<ProjectSummary[]>("GET", "/api/projects")
 /** Removes a project for good (204, no body). */
 export const deleteProject = (id: string) => call<null>("DELETE", `/api/projects/${id}`);
 export const handoffUrl = (id: string) => `/api/projects/${id}/handoff?download=1`;
+
+// Settings (the OpenAI key goes in once and never comes back: answers only say whether it's set).
+export const getSettings = () => call<SettingsView>("GET", "/api/settings");
+export const saveSettings = (patch: SettingsPatch) => call<SettingsView>("PUT", "/api/settings", patch);
+/** Checked with OpenAI first; saved only if it works. */
+export const saveOpenAiKey = (key: string) => call<SettingsView & { check: KeyCheck }>("PUT", "/api/settings/openai-key", { key });
+export const removeOpenAiKey = () => call<SettingsView>("DELETE", "/api/settings/openai-key");
+/** Tests the pasted key, or the saved one when none is given. Saves nothing. */
+/** Downloads one of the two models in Settings through Ollama; poll getPulls for progress. */
+export const startPull = (model: string) => call<PullState>("POST", "/api/ollama/pull", { model });
+export const getPulls = async () => (await call<{ pulls: PullState[] }>("GET", "/api/ollama/pulls")).pulls;
+export const testOpenAiKey = (key?: string) => call<KeyCheck>("POST", "/api/settings/openai-key/test", key ? { key } : {});
 
 export interface WatchHandlers {
   snapshot(p: ApiProject): void;

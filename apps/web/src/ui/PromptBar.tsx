@@ -46,13 +46,20 @@ export function PromptBar() {
     };
     fit();
     let width = el.clientWidth;
+    let frame = 0;
     const observer = new ResizeObserver(() => {
       if (el.clientWidth === width) return;
       width = el.clientWidth;
-      fit();
+      // Resizing inside the observer's own callback changes the layout it's reporting on, and the
+      // browser logs "ResizeObserver loop completed with undelivered notifications": wait a frame.
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
     });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [draft, placeholder]);
 
   const text = draft.trim();
@@ -70,7 +77,7 @@ export function PromptBar() {
         {aiLabel(open.llm, options)} · {usageText(open.usage)}
       </p>
     )}
-    <form className={`prompt${focused ? " focused" : ""}`} onSubmit={submit} aria-label={revising ? "Change the plan" : "New project idea"}>
+    <form className={`prompt${focused ? " focused" : ""}`} data-tour="prompt" onSubmit={submit} aria-label={revising ? "Change the plan" : "New project idea"}>
       <textarea
         ref={ref}
         rows={1}
@@ -91,7 +98,6 @@ export function PromptBar() {
         }}
       />
       <ModelMenu />
-      <span className="prompt-mode">{revising ? "Plan change" : "New idea"}</span>
       {canStop ? (
         <button
           type="button"

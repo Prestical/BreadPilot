@@ -93,6 +93,44 @@ export interface TokenUsage {
 export type AiChoice = "local" | "openai";
 
 /** GET /api/llm-options: the models a new project can use. */
+export type ReasoningEffort = "none" | "low" | "medium" | "high";
+
+/** GET /api/settings: the OpenAI key itself is never sent, only whether it's set and how it ends. */
+export interface SettingsView {
+  /** keepAliveMin: minutes Ollama keeps the model in memory after a request. */
+  local: { baseUrl: string; model: string; embedModel: string; numCtx: number; keepAliveMin: number };
+  openai: { model: string; reasoningEffort: ReasoningEffort; keySet: boolean; keyHint: string | null; /** Why no key can be saved on this computer. */ keyRefused?: string | null };
+  /** The desktop app's operating system ("darwin", "win32", "linux"); null for the development server. */
+  dataHome?: string | null;
+  browserAccess: { enabled: boolean; port: number; url: string | null; pairingUrl: string | null; error: string | null };
+  /** The first-run setup was finished or skipped. */
+  setupDone: boolean;
+  /** The guided tour was finished or skipped. */
+  tourDone: boolean;
+}
+
+export interface SettingsPatch {
+  local?: Partial<SettingsView["local"]>;
+  openai?: Partial<Pick<SettingsView["openai"], "model" | "reasoningEffort">>;
+  browserAccess?: Partial<Pick<SettingsView["browserAccess"], "enabled" | "port">>;
+  setupDone?: boolean;
+  tourDone?: boolean;
+}
+
+/** An Ollama model download started from the app (GET /api/ollama/pulls). */
+export interface PullState {
+  model: string;
+  status: "pulling" | "done" | "error";
+  completed: number;
+  total: number;
+  message: string;
+}
+
+export interface KeyCheck {
+  ok: boolean;
+  message: string;
+}
+
 export interface LlmOptions {
   local: { model: string };
   openai: { available: true; model: string } | { available: false };

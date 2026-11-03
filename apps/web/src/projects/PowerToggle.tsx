@@ -20,7 +20,7 @@ export function PowerToggle() {
   const setPower = useApp((s) => s.setPower);
   const busy = useApp((s) => s.agent.busy);
   return (
-    <div className="power-toggle" role="group" aria-label="Power wiring (both modes use the Pico's USB power)">
+    <div className="power-toggle" data-tour="power" role="group" aria-label="Power wiring (both modes use the Pico's USB power)">
       <span className="power-label" aria-hidden="true">
         ⚡ Power
       </span>

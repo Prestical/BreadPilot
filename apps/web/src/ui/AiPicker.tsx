@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { AiChoice, LlmOptions } from "../projects/types";
 import { useApp } from "../store";
+import { useHealth } from "../useHealth";
+import { statusView } from "./status";
 import { modelName } from "./labels";
 
 interface Option {
@@ -29,9 +31,14 @@ export function ModelMenu() {
   const ai = useApp((s) => s.ai);
   const options = useApp((s) => s.aiOptions);
   const setAi = useApp((s) => s.setAi);
+  const setSettingsOpen = useApp((s) => s.setSettingsOpen);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = AI_OPTIONS.find((o) => o.id === ai)!;
+  // The status of the AI picked here, shown as a dot on the button and in words in the menu.
+  const health = useHealth();
+  const status = statusView(health.report, health.error, ai);
+  const localOffline = health.report?.checks.llm.status === "down";
 
   // Closes on a click outside or Escape.
   useEffect(() => {
@@ -49,12 +56,34 @@ export function ModelMenu() {
   }, [open]);
 
   return (
-    <div className="model-menu" ref={ref}>
-      <button type="button" className="model-button" aria-haspopup="menu" aria-expanded={open} title="The AI that writes new projects" onClick={() => setOpen(!open)}>
+    <div className="model-menu" data-tour="model" ref={ref}>
+      <button
+        type="button"
+        className={`model-button tone-${status.tone}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`AI for new projects: ${current.label(options)}. ${status.text}`}
+        title={status.text}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="status-dot" aria-hidden="true" />
         {current.label(options)} <span aria-hidden="true">{open ? "▾" : "▴"}</span>
       </button>
       {open && (
         <div className="model-list" role="menu" aria-label="AI for new projects">
+          <div className={`model-status tone-${status.tone}`} role="status">
+            <p>
+              <span className="status-dot" aria-hidden="true" />
+              {status.text}
+            </p>
+            {status.details.length > 0 && (
+              <ul aria-label="System status details">
+                {status.details.map((d) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+            )}
+          </div>
           {AI_OPTIONS.map((o) => {
             const missing = o.id === "openai" && !options?.openai.available;
             return (
@@ -63,10 +92,11 @@ export function ModelMenu() {
                 type="button"
                 role="menuitemradio"
                 aria-checked={ai === o.id}
-                className="model-item"
-                disabled={missing}
+                className={`model-item${missing ? " locked" : ""}`}
                 onClick={() => {
-                  setAi(o.id);
+                  // Without a key, the entry leads to where the key is added.
+                  if (missing) setSettingsOpen(true);
+                  else setAi(o.id);
                   setOpen(false);
                 }}
               >
@@ -78,7 +108,7 @@ export function ModelMenu() {
                     {o.label(options)}
                     {o.id === "local" && <span className="model-tag">Default</span>}
                   </span>
-                  <span className="model-note">{missing ? "Not set up yet: add OPENAI_API_KEY to the .env file and restart the app." : o.note}</span>
+                  <span className="model-note">{missing ? "Not set up yet: click to add your OpenAI key in Settings." : o.id === "local" && localOffline ? "Offline: start the Ollama app." : o.note}</span>
                 </span>
               </button>
             );
