@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { layoutProject } from "@breadpilot/circuit-core";
 import { checkDraft, insertIndent, loadEdit, saveEdit } from "../src/steps/codeEdits";
 
-const build = layoutProject([{ kind: "led" }, { kind: "button" }]).build; // GP16 LED, GP17 button
+const build = layoutProject([{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP17" }]).build;
 const GENERATED = "from machine import Pin\nimport time\n\nled = Pin(16, Pin.OUT)\nbutton = Pin(17, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01)\n";
 
 describe("user edits to main.py", () => {

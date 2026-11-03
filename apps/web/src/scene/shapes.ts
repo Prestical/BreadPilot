@@ -168,12 +168,14 @@ function knob(part: ResolvedPart, state: ItemState, v: Spec<"rotary-knob">): Sha
   const center = mid(Object.values(legs));
   const opacity = state === "ghost" ? 0.3 : 1;
   const t = opacity < 1;
+  // The body sits a little toward the board's outer edge: right on the right half, left on the left.
+  const outward = center[0] < 0 ? -1 : 1;
   return {
     node: "group",
     children: [
       ...Object.values(legs).map((p): ShapeNode => ({ node: "rod", from: p, to: [p[0], 2, p[2]], opacity })),
       group(
-        [center[0] + 1.5, 4, center[2]],
+        [center[0] + 1.5 * outward, 4, center[2]],
         [
           { node: "mesh", geometry: { type: "box", args: [7, 4, 9.5] }, pulse: true, material: { kind: "standard", color: v.body, emissive: "#ffffff", transparent: t, opacity } },
           { node: "mesh", position: [0, 3, 0], geometry: { type: "cylinder", args: [2.6, 2.6, 2.4, 20] }, material: { kind: "standard", color: v.knob, transparent: t, opacity } },

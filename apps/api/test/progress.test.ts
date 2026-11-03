@@ -23,7 +23,7 @@ const PLAN = {
   questions: [],
 };
 const GOOD_CODE = {
-  code: "from machine import Pin\nimport time\n\nled = Pin(16, Pin.OUT)\nbutton = Pin(17, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01)\n",
+  code: "from machine import Pin\nimport time\n\nled = Pin(16, Pin.OUT)\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01)\n",
   explanation: "The LED is on while you hold the button.",
 };
 const BAD_CODE = { code: "from machine import Pin\nled = Pin(15, Pin.OUT)\n", explanation: "wrong pin" };

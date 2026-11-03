@@ -19,7 +19,7 @@ export const BREADBOARD = bbJson as {
 };
 
 const PICO = BREADBOARD.picoPlacement;
-const PICO_PINS_PER_SIDE = 20;
+export const PICO_PINS_PER_SIDE = 20;
 export const PICO_LAST_ROW = PICO.firstRow + PICO_PINS_PER_SIDE - 1;
 export const RAIL_IDS = BREADBOARD.rails.map((r) => r.id);
 

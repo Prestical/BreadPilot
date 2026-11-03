@@ -36,10 +36,10 @@ describe("buildSteps", () => {
     expect(signal.text).toBe(
       "Take a yellow jumper wire. Plug one end into hole 20j, right next to Pico pin 21 (GP16). Plug the other end into hole 24j, in the same row as R1 leg 1.",
     );
-    const gnd = steps.find((s) => s.dsl === "#23(GND) -> #RR-(GND)")!;
-    expect(gnd.text).toContain("hole 18j, right next to Pico pin 23 (GND)");
-    expect(gnd.text).toContain("the right − rail (blue line), next to row 18");
-    expect(gnd.focus).toEqual({ holes: ["18j"], rails: ["RR-"] });
+    const gnd = steps.find((s) => s.dsl === "#38(GND) -> #RR-(GND)")!;
+    expect(gnd.text).toContain("hole 3j, right next to Pico pin 38 (GND)");
+    expect(gnd.text).toContain("the right − rail (blue line), next to row 3");
+    expect(gnd.focus).toEqual({ holes: ["3j"], rails: ["RR-"] });
   });
 
   it("explains resistor bands", () => {
@@ -59,13 +59,13 @@ describe("buildSteps", () => {
     expect(why((s) => s.partRef === "R1")).toBe(
       "R1 limits the current through LED1 to about 3.9 mA ((3.3 V − 2 V) ÷ 330 Ω). Without it, too much current would flow and could damage the LED or the Pico pin.",
     );
-    expect(why((s) => s.dsl === "#23(GND) -> #RR-(GND)")).toMatch(/ground \(0 V\) on the whole − rail/);
+    expect(why((s) => s.dsl === "#38(GND) -> #RR-(GND)")).toMatch(/ground \(0 V\) on the whole − rail/);
     expect(why((s) => s.dsl === "#28j(LED1.cathode) -> #RR-(GND)")).toMatch(/completes LED1's circuit/);
     expect(why((s) => s.dsl === "#32j(BTN1.2b) -> #RR-(GND)")).toBe(
       "When BTN1 is pressed, it connects its pin to ground, so the pin reads 0 (LOW). The rest of the time the Pico's internal pull-up makes it read 1.",
     );
     expect(why((s) => s.dsl === "#21(GP16) -> #24j(R1.a)")).toBe("GP16 is an output: when the code turns it on (3.3 V), current flows through R1 and lights LED1.");
-    expect(why((s) => s.dsl === "#22(GP17) -> #30j(BTN1.1b)")).toBe("GP17 is the input the code reads to see BTN1: 1 while it's released and 0 while it's pressed.");
+    expect(why((s) => s.dsl === "#24(GP18) -> #30j(BTN1.1b)")).toBe("GP18 is the input the code reads to see BTN1: 1 while it's released and 0 while it's pressed.");
     expect(why((s) => s.kind === "usb")).toMatch(/Power goes in last/);
   });
 

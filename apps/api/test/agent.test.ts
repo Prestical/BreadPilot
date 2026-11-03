@@ -55,7 +55,7 @@ const LED_BUTTON = plan([
   { kind: "button", purpose: "switch" },
 ]);
 const GOOD_CODE = {
-  code: "from machine import Pin\nimport time\n\n# LED on GP16\nled = Pin(16, Pin.OUT)\n# button on GP17\nbutton = Pin(17, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01)\n",
+  code: "from machine import Pin\nimport time\n\n# LED on GP16\nled = Pin(16, Pin.OUT)\n# button on GP18\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01)\n",
   explanation: "The LED is on while you hold the button.",
 };
 
@@ -82,7 +82,7 @@ describe("clear idea → READY", () => {
     expect(p.plans[0]!.approved).toBe(true);
     expect(p.build!.blocks.map((b) => [b.kind, b.gpio, b.mode])).toEqual([
       ["led", "GP16", "out"],
-      ["button", "GP17", "in_pullup"],
+      ["button", "GP18", "in_pullup"], // GP17 is skipped: its row is next to GP16's wire
     ]);
     expect(p.build!.build.parts.find((x) => x.ref === "LED1")!.props).toEqual({ color: "green" });
     expect(p.build!.steps.find((x) => x.dsl === "#32j(BTN1.2b) -> #RR-(GND)")!.why).toMatch(/^When BTN1 is pressed, it connects its pin to ground/);
@@ -97,7 +97,7 @@ describe("clear idea → READY", () => {
     await createProject(deps(llm, { search: async () => [{ content: "GPIO is fixed at 3.3 V.", citation: "Datasheet, p.14" }] }), "x LED button");
     const prompt = calls.find((c) => c.stage === "code")!.messages[1]!.content;
     expect(prompt).toContain("green LED LED1 on GP16: Pin(16, Pin.OUT)");
-    expect(prompt).toContain("push button BTN1 on GP17: Pin(17, Pin.IN, Pin.PULL_UP)");
+    expect(prompt).toContain("push button BTN1 on GP18: Pin(18, Pin.IN, Pin.PULL_UP)");
     expect(prompt).toContain("[Datasheet, p.14]");
     const system = calls.find((c) => c.stage === "code")!.messages[0]!.content;
     expect(system).toContain("Only use modules built into MicroPython on the Pico 2 W");
@@ -246,7 +246,7 @@ describe("rules that ask instead of guessing", () => {
 
 describe("impossible requests are caught early (no repair loop)", () => {
   it.each([
-    ["Ten LEDs in a row", "10 LEDs"],
+    ["Twenty LEDs in a row", "20 LEDs"], // 12 fit on the two halves of the breadboard
     ["four knobs to mix colors on four LEDs", "4 LEDs, 4 knobs"],
   ])("%s", async (idea, text) => {
     const { llm, calls } = fakeLlm({ intake: [intake("clear")] });
@@ -394,7 +394,7 @@ describe("live-eval regressions (run 1)", () => {
 
   it("allows 7 parts (dice: six LEDs + a button)", async () => {
     const dice = plan([...Array.from({ length: 6 }, () => ({ kind: "led" as const, purpose: "pip", color: "red" as const })), { kind: "button", purpose: "roll" }]);
-    const code = { code: "from machine import Pin\nimport random\nPINS = [16, 17, 18, 19, 20, 21]\nleds = [Pin(p, Pin.OUT) for p in PINS]\nbtn = Pin(22, Pin.IN, Pin.PULL_UP)\nwhile True:\n    if btn.value() == 0:\n        n = random.randint(1, 6)\n        for i, led in enumerate(leds):\n            led.value(1 if i < n else 0)\n", explanation: "Rolls." };
+    const code = { code: "from machine import Pin\nimport random\nPINS = [16, 18, 20, 15, 13, 11]\nleds = [Pin(p, Pin.OUT) for p in PINS]\nbtn = Pin(22, Pin.IN, Pin.PULL_UP)\nwhile True:\n    if btn.value() == 0:\n        n = random.randint(1, 6)\n        for i, led in enumerate(leds):\n            led.value(1 if i < n else 0)\n", explanation: "Rolls." };
     const { llm } = fakeLlm({ intake: [intake("clear")], plan: [dice], code: [code] });
     const p = await createProject(deps(llm), "Electronic dice: press a button and show a random number from 1 to 6 with six LEDs");
     expect(p.build!.blocks).toHaveLength(7);

@@ -16,18 +16,19 @@ export interface Project extends Omit<Demo, "build"> {
 
 /** Written by hand in the connection DSL (Milestone 2 acceptance: plays step by step in 3D). */
 function ledButtonByHand(power: PowerMode): Build {
+  // GND from pin 38 at the top; the button on GP18 so its wire isn't in the row next to GP16's.
   const rails = `
-    #23(GND) -> #RR-(GND)
+    #38(GND) -> #RR-(GND)
     #21(GP16) -> #24j(R1.a)            // signal to the resistor
     #28j(LED1.cathode) -> #RR-(GND)
-    #22(GP17) -> #30j(BTN1.1b)         // button input
+    #24(GP18) -> #30j(BTN1.1b)         // button input
     #32j(BTN1.2b) -> #RR-(GND)
   `;
-  // Direct to the Pico: no rails, both GND wires go to pin 23 (it has two free holes).
+  // Direct to the Pico: no rails; each GND wire on its own GND pin (28 and 23).
   const direct = `
     #21(GP16) -> #24j(R1.a)
-    #23(GND) -> #28j(LED1.cathode)
-    #22(GP17) -> #30j(BTN1.1b)
+    #28(GND) -> #28j(LED1.cathode)
+    #24(GP18) -> #30j(BTN1.1b)
     #23(GND) -> #32j(BTN1.2b)
   `;
   const { wires, errors } = parseConnections(power === "direct" ? direct : rails);
@@ -41,7 +42,7 @@ function ledButtonByHand(power: PowerMode): Build {
       { ref: "BTN1", type: "button-6mm", legs: { "1a": "30e", "1b": "30f", "2a": "32e", "2b": "32f" } },
     ],
     wires: wires.map((w, i) => ({ ...w, color: colors[i]! })),
-    gpioModes: { GP16: "out", GP17: "in_pullup" },
+    gpioModes: { GP16: "out", GP18: "in_pullup" },
   };
 }
 

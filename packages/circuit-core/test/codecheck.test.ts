@@ -4,7 +4,8 @@ import { checkMicroPython, evalInts, stripStringsAndComments } from "../src/code
 import { layoutProject } from "../src/layout";
 
 // LED on GP16 (out), button on GP17 (in_pullup), pot on GP26 (adc)
-const { build } = layoutProject([{ kind: "led" }, { kind: "button" }, { kind: "pot" }]);
+// The pins the sample code below uses (requested, so the checker tests don't depend on pin choice).
+const { build } = layoutProject([{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP17" }, { kind: "pot", pin: "GP26" }]);
 const check = (src: string) => checkMicroPython(src, build, PICO_2_W);
 const codes = (src: string) => check(src).issues.map((i) => i.code);
 
@@ -80,7 +81,7 @@ describe("checkMicroPython", () => {
 
   it("accepts block headers that continue on the next lines", () => {
     const head = "from machine import Pin\nimport time\nled = Pin(16, Pin.OUT)\nbtn = Pin(17, Pin.IN, Pin.PULL_UP)\nk = None\n";
-    const lb = layoutProject([{ kind: "led" }, { kind: "button" }]).build;
+    const lb = layoutProject([{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP17" }]).build;
     const ok = (body: string) => checkMicroPython(head + body, lb, PICO_2_W).issues.filter((i) => i.severity === "error");
     expect(ok("x = 1\nif (btn.value() == 0 and\n        x == 1):\n    led.on()\n")).toEqual([]);
     expect(ok("def blink(times,\n          delay):\n    for _ in range(times):\n        led.toggle()\n        time.sleep(delay)\n")).toEqual([]);
@@ -89,7 +90,7 @@ describe("checkMicroPython", () => {
   });
 
   it("resolves pins set up through lists and loops", () => {
-    const three = layoutProject([{ kind: "led" }, { kind: "led" }, { kind: "led" }]).build;
+    const three = layoutProject([{ kind: "led", pin: "GP16" }, { kind: "led", pin: "GP17" }, { kind: "led", pin: "GP18" }]).build;
     const ok = (src: string) => checkMicroPython(src, three, PICO_2_W).issues.map((i) => i.code);
     expect(ok("from machine import Pin\nleds = [Pin(p, Pin.OUT) for p in (16, 17, 18)]\n")).toEqual([]);
     expect(ok("from machine import Pin\nPINS = [16, 17, 18]\nleds = [Pin(p, Pin.OUT) for p in PINS]\n")).toEqual([]);
@@ -126,7 +127,7 @@ describe("safety and habits", () => {
   });
   it("C009 warns about a loop without sleep, but not with irq/Timer", () => {
     const busy = "from machine import Pin\nled = Pin(16, Pin.OUT)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = None\nwhile True:\n    led.value(not b.value())\n";
-    const r = checkMicroPython(busy, layoutProject([{ kind: "led" }, { kind: "button" }]).build, PICO_2_W);
+    const r = checkMicroPython(busy, layoutProject([{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP17" }]).build, PICO_2_W);
     expect(r.ok).toBe(true);
     expect(r.issues.map((i) => i.code)).toEqual(["C009"]);
   });
@@ -136,7 +137,7 @@ describe("safety and habits", () => {
 });
 
 describe("pins computed in code (no false positives)", () => {
-  const four = layoutProject([{ kind: "led" }, { kind: "led" }, { kind: "led" }, { kind: "led" }]).build; // GP16-GP19
+  const four = layoutProject(["GP16", "GP17", "GP18", "GP19"].map((pin) => ({ kind: "led", pin }))).build;
   const run = (src: string) => checkMicroPython(src, four, PICO_2_W).issues.map((i) => i.code);
   it.each([
     "leds = []\nfor i in range(4):\n    leds.append(Pin(16 + i, Pin.OUT))",

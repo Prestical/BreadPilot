@@ -40,7 +40,7 @@ describe("OLED layout", () => {
   it("wires VCC to 3V3, GND, SCL and SDA in the module's pin order (rails)", () => {
     const { build, blocks } = layoutProject([{ kind: "oled" }]);
     expect(build.wires.map(formatWire)).toEqual([
-      "#23(GND) -> #RR-(GND)",
+      "#38(GND) -> #RR-(GND)",
       "#36(3V3) -> #RR+(3V3)",
       "#29j(OLED1.vcc) -> #RR+(3V3)",
       "#30j(OLED1.gnd) -> #RR-(GND)",
@@ -55,7 +55,8 @@ describe("OLED layout", () => {
   it("direct power: VCC straight to 3V3 (pin 36), GND straight to a GND pin", () => {
     const wires = layoutProject([{ kind: "oled" }], undefined, { power: "direct" }).build.wires.map(formatWire);
     expect(wires).toContain("#36(3V3) -> #29j(OLED1.vcc)");
-    expect(wires).toContain("#23(GND) -> #30j(OLED1.gnd)");
+    // Pin 28, not 23: GND 23's row is next to the display's SCL wire on GP17.
+    expect(wires).toContain("#28(GND) -> #30j(OLED1.gnd)");
   });
 
   it("two displays get separate buses (same address); a third is refused", () => {
@@ -72,7 +73,8 @@ describe("OLED layout", () => {
 
   it("LEDs and buttons don't take the display's pair", () => {
     const { build } = layoutProject([{ kind: "led" }, { kind: "button" }, { kind: "oled" }]);
-    expect(build.gpioModes).toEqual({ GP16: "i2c0_sda", GP17: "i2c0_scl", GP18: "out", GP19: "in_pullup" });
+    // GP19 is passed over for GP20 so the button's wire isn't next to the LED's on GP18.
+    expect(build.gpioModes).toEqual({ GP16: "i2c0_sda", GP17: "i2c0_scl", GP18: "out", GP20: "in_pullup" });
     expect(validateBuild(build).issues).toEqual([]);
   });
 });
