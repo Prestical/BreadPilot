@@ -9,7 +9,7 @@
   <a href="https://github.com/Prestical/BreadPilot/releases/latest"><img src="https://img.shields.io/github/v/release/Prestical/BreadPilot?label=latest" alt="Latest release"></a>
   <a href="https://github.com/Prestical/BreadPilot/releases/latest"><img src="https://img.shields.io/github/release-date/Prestical/BreadPilot?label=last%20release" alt="Date of the last release"></a>
   <a href="https://github.com/Prestical/BreadPilot/releases"><img src="https://img.shields.io/github/downloads/Prestical/BreadPilot/total?label=downloads" alt="Total downloads of all releases"></a>
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20soon-5b5bd6" alt="Platforms: macOS and Linux, Windows coming soon">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-5b5bd6" alt="Platforms: macOS, Windows, Linux">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Prestical/BreadPilot?color=4c9a2a" alt="License"></a>
 </p>
 
@@ -65,7 +65,7 @@ code you can flash to the board in one click. It runs on your own computer with 
 | 🧊 **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
 | 🐍 **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
 | ⬇️ **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
-| 🔒 **Local first** | A desktop app for macOS and Linux (Windows coming soon), with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
+| 🔒 **Local first** | A desktop app for macOS, Windows and Linux, with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
 
 ---
 
@@ -83,7 +83,7 @@ https://github.com/user-attachments/assets/0161edb4-e6da-4555-9ad4-219627323e4f
 1. **Download BreadPilot** for your computer from the
    [latest release](https://github.com/Prestical/BreadPilot/releases/latest):
    `BreadPilot-…-arm64.dmg` (Mac with Apple silicon), `BreadPilot-…-x64.dmg` (Intel Mac, not
-   tested yet) or `BreadPilot-…-x86_64.AppImage` (Linux). **Windows is coming soon.**
+   tested yet), `BreadPilot-…-Setup.exe` (Windows 10 and 11) or `BreadPilot-…-x86_64.AppImage` (Linux).
 2. **Install [Ollama](https://ollama.com/download)** for the free local AI, or skip it and use an
    OpenAI key instead.
 3. **Open BreadPilot.** A short setup checks Ollama, downloads the AI models with one click
@@ -95,7 +95,7 @@ click:
 | System | First start |
 |---|---|
 | **macOS** | See the steps below. |
-| **Windows** | Coming soon. |
+| **Windows** | Run the setup (no administrator rights needed). If Windows says "Windows protected your PC", click **More info → Run anyway**. |
 | **Linux** | Make the AppImage executable (`chmod +x BreadPilot-*.AppImage`) and run it. If it doesn't start, install FUSE (`sudo apt install libfuse2`, on Ubuntu 24.04 `libfuse2t64`). BreadPilot keeps its key in your keyring (GNOME Keyring or KWallet). |
 
 **macOS, first start** (macOS 15 Sequoia and newer):
