@@ -31,35 +31,16 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/hero.gif" alt="BreadPilot showing a numbered build step on the 3D breadboard: placing a push button, with the step's instructions and the reason next to it" width="860">
+  <img src="docs/media/showcase-v030-steps.gif" alt="BreadPilot going through numbered build steps on the 3D breadboard: inserting the Pico 2 W, placing the DHT11 sensor and its pull-up resistor, then wiring the OLED display, with each step's instructions and the reason next to it" width="860">
 </p>
 
 BreadPilot turns an idea like *"blink an LED when I press a button"* into a checked circuit for
 the **Raspberry Pi Pico 2 W**, numbered wiring steps in an interactive 3D scene, and MicroPython
-code you can flash to the board in one click. It runs on your own computer with a local AI model.
+code, built into one file you drag onto the board. It runs on your own computer with a local AI model.
 
 > **The AI writes words; code checks the physics.** The AI only understands your idea and drafts
 > text and code. Pin choices, breadboard layout and every safety rule are plain code, so a step is
 > never shown unless the circuit passed the safety check.
-
----
-
-## Contents
-
-- [What it does](#what-it-does)
-- [Demo](#demo)
-- [Quick start](#quick-start)
-- [Using the app](#using-the-app)
-- [Choosing a local model](#choosing-a-local-model)
-- [Supported hardware](#supported-hardware)
-- [How it works](#how-it-works)
-- [Project structure](#project-structure)
-- [Adding a new part](#adding-a-new-part)
-- [Development](#development)
-- [Your data](#your-data)
-- [Uninstalling](#uninstalling)
-- [Contributing](#contributing)
-- [License](#license)
 
 ---
 
@@ -78,10 +59,13 @@ code you can flash to the board in one click. It runs on your own computer with 
 
 ## Demo
 
-A 40-second tour: describe a two-player reaction game, follow the 3D steps, check the code and
-build the Pico file.
+A tour of BreadPilot 0.3.0, from an idea to a working board (click to watch on YouTube).
 
-https://github.com/user-attachments/assets/0161edb4-e6da-4555-9ad4-219627323e4f
+<a href="https://youtu.be/P4tDY0AZgy4">
+  <img src="https://img.youtube.com/vi/P4tDY0AZgy4/maxresdefault.jpg" alt="BreadPilot v0.3.0 Release Showcase on YouTube" width="860">
+</a>
+
+▶ [Watch on YouTube](https://youtu.be/P4tDY0AZgy4)
 
 ---
 
