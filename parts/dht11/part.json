@@ -24,7 +24,7 @@
   "specs": {
     "legOrder": {
       "value": ["vcc", "data", "nc", "gnd"],
-      "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "Pin Description 1-4; the user's pin picture shows the same order, left to right with the grid facing you" }
+      "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "Pin Description 1-4; a pinout picture of the sensor shows the same order, left to right with the grid facing you" }
     },
     "pullUpOhms": { "value": 5100, "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "typical circuit: 5.1K pull-up for cables shorter than 20 m" } },
     "minReadIntervalS": { "value": 2, "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "Sampling period: greater than 2 seconds; each read returns the previous measurement" } },

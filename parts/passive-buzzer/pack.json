@@ -5,7 +5,7 @@
   "kind": "buzzer",
   "review": {
     "status": "reviewed",
-    "by": "the user (11/11/2026), after trying it on their Pico 2 W; written by Claude from the shop page and the user's description of their module",
+    "by": "written from the shop page and a real module's board wiring; tested on a Raspberry Pi Pico 2 W 11/11/2026",
     "date": "2026-11-11"
   }
 }

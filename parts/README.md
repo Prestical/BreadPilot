@@ -34,8 +34,7 @@ Text placeholders such as `{ref}`, `{hole.vcc}`, `{prop.color}` are checked when
 
 ## 3D look (the house style)
 
-New parts are modelled the same way as the M15 parts (slide switch, buzzer module, DHT11; Fable 5.2,
-12/11/2026), so every part looks like it belongs to the same app:
+New parts are modelled the same way as the slide switch, buzzer module and DHT11, so every part looks like it belongs to the same app:
 
 - **A shape is plain data** in `apps/web/src/scene/shapes.ts` (no React or three.js objects; `Parts.tsx`
   only turns the nodes into meshes), in millimetres (1 unit = 1 mm), and tested in
@@ -60,7 +59,7 @@ New parts are modelled the same way as the M15 parts (slide switch, buzzer modul
 ```jsonc
 { "value": 3.3, "src": { "doc": "SH1106.pdf", "page": 13 } }          // a document: in docs/hardware/ or in the part's reference.md
 { "value": [3.3, 5.0], "src": { "product": "seller's product page …" } }
-{ "value": 3.3, "src": { "decision": "user, 20/10/2026", "why": "…" } }
+{ "value": 3.3, "src": { "decision": "maintainer, 20/10/2026", "why": "…" } }
 { "value": 20, "src": { "typical": true, "note": "no datasheet yet" } } // listed as unverified
 ```
 

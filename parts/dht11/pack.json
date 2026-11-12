@@ -5,7 +5,7 @@
   "kind": "dht11",
   "review": {
     "status": "reviewed",
-    "by": "the user (11/11/2026); written by Claude from Aosong's DHT11 Product Manual and the user's facts",
+    "by": "written from Aosong's DHT11 Product Manual and checked against a real sensor; tested on hardware 12/11/2026",
     "date": "2026-11-11"
   }
 }

@@ -5,8 +5,8 @@
 //
 // Facts carry their source: { "value": …, "src": … } where src is one of
 //   { "doc": "SH1106.pdf", "page": 13 }      a document in docs/hardware/ or in the part's reference.md
-//   { "product": "…" }                       the seller's product page (text supplied by the user)
-//   { "decision": "user, 20/10/2026", "why": "…" }
+//   { "product": "…" }                       the seller's product page
+//   { "decision": "maintainer, 20/10/2026", "why": "…" }
 //   { "typical": true, "note": "…" }         common value, no datasheet yet: shown as unverified
 // A pack can only add facts that the engine's safety rules act on; it can't switch a rule off.
 import { PACK_SOURCES } from "./parts.generated";

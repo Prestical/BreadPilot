@@ -14,7 +14,7 @@
   "specs": {
     "legs": {
       "value": "3 legs in a row, straight down, fitting next-to-each-other breadboard holes",
-      "src": { "decision": "user, 11/11/2026", "why": "the user's own IC206 switch (the shop page gives no drawing)" }
+      "src": { "decision": "maintainer, 11/11/2026", "why": "checked on a real IC206 switch (the shop page gives no drawing)" }
     },
     "note": "The middle leg is joined to one outer leg or the other, depending on where the slider is. It stays where you leave it."
   }
