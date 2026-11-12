@@ -125,6 +125,9 @@ async function main() {
     license: "Apache-2.0",
     author: "BreadPilot contributors",
     homepage: "https://github.com/Prestical/BreadPilot",
+    // Linux: Electron names its windows after this (app_id / WM_CLASS), and electron-builder names the
+    // .desktop entry the same (linux.syncDesktopName), so the running window gets BreadPilot's icon.
+    desktopName: "breadpilot.desktop",
     type: "module",
     main: "main.mjs",
     dependencies,

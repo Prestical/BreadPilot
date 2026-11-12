@@ -26,7 +26,7 @@ const PRIVATE_NAMES = [
   /^\.git$/, /^\.DS_Store$/,
   /^(MEMORY|CLAUDE)\.md$/, /^PLAN(-.*)?\.md$/, // private notes
   /^.*-eval\.json$/, // eval results
-  /\.enc$/, /^key\.bin$/, /^dev-key\.hex$/, /^data\.lock$/, /^window\.json$/, // app data
+  /\.enc$/, /^key\.(bin|plain)$/, /^dev-key\.hex$/, /^data\.lock$/, /^window\.json$/, // app data
   /\.map$/, // source maps (can carry build paths)
 ];
 

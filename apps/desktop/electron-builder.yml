@@ -45,6 +45,9 @@ mac:
     - target: dmg
       arch: [arm64, x64]
   category: public.app-category.developer-tools
+  # Apple's icon grid: the rounded square with a 100 px margin in the 1024 canvas (made from
+  # docs/media/brand/icon-mac.svg), so the Dock shows it at the same size as other apps.
+  icon: build/icon-mac.png
   identity: "-" # ad-hoc signature (no Apple certificate)
   hardenedRuntime: false # needed with ad-hoc signing (electron-builder docs); notarization would need both
   artifactName: ${productName}-${version}-${arch}.${ext}
@@ -66,4 +69,10 @@ linux:
     - target: AppImage
       arch: [x64]
   category: Development
+  # A little smaller than the full square (made from docs/media/brand/icon-linux.svg), like the app
+  # icons of desktops such as GNOME.
+  icon: build/icon-linux.png
+  # The .desktop entry is named after desktopName in the staged package.json (scripts/stage.mjs), so
+  # desktops link the running window to it (taskbar icon) instead of showing a generic one.
+  syncDesktopName: true
   artifactName: ${productName}-${version}-${arch}.${ext}
