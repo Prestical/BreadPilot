@@ -1,7 +1,7 @@
 // Local model list view logic (Milestone 7, step 7.3).
 import { describe, expect, it } from "vitest";
 import type { LocalModel, LocalModelsView } from "../src/projects/types";
-import { actionsFor, computerLine, formatBytes, formatMemory, groupModels, localLabel, memoryShort, optionText, tooBigWarning, warningShort } from "../src/ui/modelList";
+import { actionsFor, computerLine, formatBytes, formatMemory, groupModels, localLabel, memoryShort, optionText, smallModelWarning, tooBigWarning, warningShort } from "../src/ui/modelList";
 
 const sizes = (weightsBytes: number, extra: Partial<LocalModel["sizes"] & object> = {}) => ({ downloadBytes: weightsBytes + 13_000, weightsBytes, visionBytes: 0, draftBytes: 0, parameters: "4.0B", quantization: "Q4_K_M", ...extra });
 const model = (p: Partial<LocalModel> & { tag: string }): LocalModel => ({
@@ -92,5 +92,14 @@ describe("buttons", () => {
     expect(actionsFor(model({ tag: "a", installed: true }), { ...opts, measuring: "a" })).toEqual(["use", "checking", "remove"]);
     // Loading a model that can't fit could freeze the computer: no Check button.
     expect(actionsFor(model({ tag: "a", installed: true, fit: { kind: "too-big", reason: "" } }), opts)).toEqual(["use", "remove"]);
+  });
+});
+
+describe("small model warning", () => {
+  it("names the model, says the wiring is still checked, and recommends GPT-6 Luna", () => {
+    expect(smallModelWarning("Qwen3 4B Instruct")).toBe(
+      "Qwen3 4B Instruct is a small model: its code often has logic mistakes, even when it matches the wiring (BreadPilot checks the wiring itself). For better results, use OpenAI's GPT-6 Luna.",
+    );
+    expect(smallModelWarning()).toMatch(/^Small models: their code often has logic mistakes/);
   });
 });

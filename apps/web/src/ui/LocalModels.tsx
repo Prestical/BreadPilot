@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../projects/api";
 import type { LocalModel, LocalModelsView, PullState, SettingsView } from "../projects/types";
 import { useApp } from "../store";
-import { actionsFor, computerLine, formatBytes, groupModels, optionText, tooBigWarning, warningShort } from "./modelList";
+import { actionsFor, computerLine, formatBytes, groupModels, optionText, smallModelWarning, tooBigWarning, warningShort } from "./modelList";
 
 const PULL_MS = 1000;
 const AFTER_DOWNLOAD_MS = 3000;
@@ -27,7 +27,8 @@ function Progress({ pull }: { pull: PullState }) {
  * it at once; a model that isn't downloaded gets a "Download and use" button. `onSaved` gets the
  * settings after a model is picked. `initialView` shows a list before the first answer (previews).
  */
-export function LocalModels({ active = true, onSaved, initialView = null }: { active?: boolean; onSaved?: (v: SettingsView) => void; initialView?: LocalModelsView | null }) {
+/** warnSmall: say that small models make more code mistakes (Settings only, user 08/11/2026). */
+export function LocalModels({ active = true, onSaved, initialView = null, warnSmall = false }: { active?: boolean; onSaved?: (v: SettingsView) => void; initialView?: LocalModelsView | null; warnSmall?: boolean }) {
   const loadAiOptions = useApp((s) => s.loadAiOptions);
   const [view, setView] = useState<LocalModelsView | null>(initialView);
   const [choice, setChoice] = useState<string | null>(initialView?.selected ?? null);
@@ -198,6 +199,7 @@ export function LocalModels({ active = true, onSaved, initialView = null }: { ac
         </select>
       </label>
       {chosen && warningShort(chosen) && <p className={`small ${chosen.fit.kind === "too-big" ? "fit-text-bad" : "fit-text-warn"}`}>{chosen.fit.reason}</p>}
+      {warnSmall && chosen?.tier === "small" && <p className="small fit-text-warn">⚠ {smallModelWarning(chosen.name)}</p>}
       {chosen && (
         <div className="model-row-actions">
           {actions.map((a) => {

@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { driversFor, PACKS, type CodeIssue, type DriverFile } from "@breadpilot/circuit-core";
+import { driversFor, type CodeIssue } from "@breadpilot/circuit-core";
 import { handoffUrl } from "../projects/api";
 import type { ApiProject } from "../projects/types";
 import { checkDraft, insertIndent, loadEdit, saveEdit } from "./codeEdits";
@@ -20,44 +20,6 @@ async function copyText(text: string): Promise<boolean> {
   } catch {
     return false; // clipboard blocked: the user can still select the text
   }
-}
-
-/** A driver file the Pico needs next to main.py (e.g. sh1106.py for the OLED display). */
-function DriverFileView({ d }: { d: DriverFile }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <section className="driver-file">
-      <div className="code-head">
-        <span className="eyebrow">
-          {d.file} · {PACKS.find((p) => p.driver?.file === d.file)?.text?.names?.driver ?? "driver"}
-        </span>
-        <span className="code-actions">
-          <button
-            type="button"
-            className="btn small-btn"
-            onClick={() =>
-              void copyText(d.source).then((ok) => {
-                if (!ok) return;
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              })
-            }
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
-          <button type="button" className="btn small-btn" onClick={() => download(d.file, d.source)}>
-            Download
-          </button>
-        </span>
-      </div>
-      <details>
-        <summary className="small muted">Show code ({d.source.split("\n").length} lines)</summary>
-        <pre className="code" tabIndex={0} aria-label={`${d.file} driver code`}>
-          <code>{d.source}</code>
-        </pre>
-      </details>
-    </section>
-  );
 }
 
 function IssueList({ issues }: { issues: CodeIssue[] }) {
@@ -183,10 +145,6 @@ export function CodePanel({ p }: { p: ApiProject }) {
             }}
           />
         )}
-
-        {drivers.map((d) => (
-          <DriverFileView key={d.file} d={d} />
-        ))}
       </div>
 
       {/* Right: is it safe to run, put it on the Pico, what it does. */}
@@ -252,7 +210,11 @@ export function CodePanel({ p }: { p: ApiProject }) {
             <li>In Thonny, pick the MicroPython (Raspberry Pi Pico) interpreter.</li>
             {drivers.map((d) => (
               <li key={d.file}>
-                Save <code>{d.file}</code> on the Pico.
+                Save{" "}
+                <button type="button" className="link-btn" onClick={() => download(d.file, d.source)}>
+                  {d.file}
+                </button>{" "}
+                (click to download) on the Pico too: the display needs it.
               </li>
             ))}
             <li>

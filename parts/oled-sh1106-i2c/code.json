@@ -3,7 +3,7 @@
     "class": "SH1106_I2C",
     "width": { "value": 128, "src": { "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)" } },
     "height": { "value": 64, "src": { "product": "robotistan.com product page '1.3 inc I2C OLED Ekran - SSD1106', text supplied by the user (20/10/2026)" } },
-    "font": { "value": 8, "src": { "typical": true, "note": "MicroPython framebuf's built-in text font is 8x8 pixels, ASCII only (MicroPython docs, not yet in docs/)" } },
+    "font": { "value": 8, "src": { "typical": true, "note": "MicroPython v1.29.0 framebuf: 'All characters have dimensions of 8x8 pixels' (docs/software/micropython-v1.29.0/docs__library__framebuf.rst, FrameBuffer.text); characters outside 32-127 are drawn as character 127 (extmod__modframebuf.c, line 844)" } },
     "title": "the OLED display",
     "var": "oled"
   },

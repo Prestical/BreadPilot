@@ -234,6 +234,7 @@ pre.code { margin: 0; max-height: 420px; overflow: auto; background: var(--code-
 .need ul { margin: 4px 0 0; padding-left: 18px; }
 .need li { margin: 2px 0; }
 .link-btn { border: 0; background: none; padding: 0; margin: 0 0 6px; color: var(--accent-ink); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.howto .link-btn { margin: 0; font-size: inherit; font-family: var(--mono, monospace); text-decoration: underline; }
 .stage canvas { display: block; touch-action: none; }
 .loading { display: grid; place-items: center; height: 100%; color: var(--muted); }
 .stage-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
@@ -338,10 +339,6 @@ pre.code { margin: 0; max-height: 420px; overflow: auto; background: var(--code-
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
 
-/* Driver files (e.g. sh1106.py) shown under main.py in the Code panel. */
-.driver-file { display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--border); border-radius: 10px; padding: 10px; }
-.driver-file details summary { cursor: pointer; }
-.driver-file pre.code { margin-top: 8px; max-height: 260px; }
 
 /* Code panel: Preview / Edit */
 .view-switch { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; margin-right: 4px; }
@@ -365,7 +362,6 @@ pre.code.numbered .ln::before { counter-increment: ln; content: counter(ln); dis
 .code-view .code-panel { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; }
 .code-main { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 14px 16px; }
 .code-main pre.code, .code-main .code-editor { flex: 1; min-height: 240px; max-height: none; resize: none; }
-.code-main .driver-file { flex: none; }
 .code-aside { display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow-y: auto; padding: 16px 20px; border-left: 1px solid var(--border); background: var(--surface); }
 .code-aside details summary { cursor: pointer; font-weight: 600; }
 .code-aside > .btn { align-self: flex-start; }

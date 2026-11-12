@@ -45,6 +45,32 @@ export interface PackSource {
   driver?: { file: string; source: string };
 }
 
+/**
+ * The name tables at the top level of a MicroPython driver: `NAME = ("a", "b")` gives its strings,
+ * `NAME = {"a": …, "b": …}` its keys. E.g. sh1106.py's ICONS, TEXT_STYLES, BAR_STYLES.
+ */
+export function driverLists(source: string): Record<string, string[]> {
+  const lists: Record<string, string[]> = {};
+  for (const m of source.matchAll(/^([A-Z][A-Z_]*)\s*=\s*\(([^)]*)\)/gm)) lists[m[1]!] = [...m[2]!.matchAll(/"([^"]*)"/g)].map((x) => x[1]!);
+  for (const m of source.matchAll(/^([A-Z][A-Z_]*)\s*=\s*\{([^{}]*)\}/gm)) lists[m[1]!] = [...m[2]!.matchAll(/"([^"]*)"\s*:/g)].map((x) => x[1]!);
+  return lists;
+}
+
+/** `NAME = {"a": 8, "b": 11}` tables of numbers at the driver's top level (e.g. TEXT_HEIGHT). */
+export function driverNumbers(source: string): Record<string, Record<string, number>> {
+  const tables: Record<string, Record<string, number>> = {};
+  for (const m of source.matchAll(/^([A-Z][A-Z_]*)\s*=\s*\{([^}]*)\}/gm)) {
+    const pairs = [...m[2]!.matchAll(/"([^"]*)"\s*:\s*(-?\d+)\s*(?=,|$)/g)];
+    if (pairs.length && pairs.length === [...m[2]!.matchAll(/"[^"]*"\s*:/g)].length) tables[m[1]!] = Object.fromEntries(pairs.map((x) => [x[1]!, Number(x[2])]));
+  }
+  return tables;
+}
+
+/** The public methods of the driver's classes (`    def name(`), e.g. show, big_text, icon. */
+export function driverMethods(source: string): string[] {
+  return [...new Set([...source.matchAll(/^ {4}def ([a-z]\w*)\s*\(/gm)].map((m) => m[1]!))];
+}
+
 /** A hole relative to the block's first row: [row offset, column, "REF.leg"]. */
 export type TemplateHole = [number, Column, string];
 
@@ -182,6 +208,11 @@ export interface AgentInfo {
   code: {
     /** The part's line in the code prompt's pin table. */
     pinLine: string;
+    /**
+     * Import lines the part's code needs, e.g. "from machine import ADC". The code prompt merges every
+     * part's lines into one import block, so the model gets them in one place.
+     */
+    imports: string[];
     /** Rows of the handoff pin table. */
     handoff: string[];
     /** "When to import the driver" for the code rules, e.g. "sh1106 when an OLED display is listed". */
@@ -201,7 +232,8 @@ export interface Pack {
   agent?: AgentInfo;
   /** Every fact in part.json with its JSON path, for review lists. */
   facts: { path: string; src: Source }[];
-  driver?: { file: string; module: string; source: string };
+  /** `lists`: the driver's top-level name tables (e.g. ICONS, TEXT_STYLES), see driverLists(). */
+  driver?: { file: string; module: string; source: string; lists: Record<string, string[]>; numbers: Record<string, Record<string, number>>; methods: string[] };
 }
 
 export class PackError extends Error {}
@@ -356,6 +388,11 @@ const codeFile = obj({
 });
 
 const words = (max = 64) => arr(str, max);
+/** "from machine import Pin, ADC" or "import time": nothing else, so a pack can't put code in the prompt. */
+const importLine: Check = (v, p) => {
+  str(v, p);
+  if (!/^(from [a-z_][\w.]* import [A-Za-z_]\w*(, [A-Za-z_]\w*)*|import [a-z_]\w*)$/.test(v as string)) fail(p, 'not an import line ("from machine import Pin" or "import time")');
+};
 const agentFile = obj({
   plan: obj({ line: str, "hint?": str, "props?": record(str) }),
   words: obj({
@@ -370,7 +407,7 @@ const agentFile = obj({
     "claims?": words(16),
   }),
   names: obj({ label: arr(str, 2), count: arr(str, 2), "supports?": str, "short?": arr(str, 2) }),
-  code: obj({ pinLine: str, handoff: words(4), "moduleRule?": str, ragQuery: str }),
+  code: obj({ pinLine: str, imports: arr(importLine, 4), handoff: words(4), "moduleRule?": str, ragQuery: str }),
 });
 
 const textFile = obj({
@@ -519,7 +556,7 @@ export function loadPack(src: PackSource): Pack {
     if (!/^[\x09\x0a\x0d\x20-\x7e]*$/.test(source)) fail(`${at}/${meta.driver}`, "driver must be plain ASCII");
     if (source.length > 64 * 1024) fail(`${at}/${meta.driver}`, "driver larger than 64 KB");
     const file = meta.driver.slice("driver/".length);
-    driver = { file, module: file.replace(/\.py$/, ""), source };
+    driver = { file, module: file.replace(/\.py$/, ""), source, lists: driverLists(source), numbers: driverNumbers(source), methods: driverMethods(source) };
   } else if (src.driver) fail(`${at}/driver`, "driver file present but not named in pack.json");
   const layout = layoutRaw === undefined ? undefined : (unwrap(layoutRaw, "layout", facts) as LayoutTemplate);
   const pack: Pack = { meta, part, facts, ...(layout ? { layout } : {}), ...(textRaw ? { text: textRaw as TextTemplates } : {}), ...(viewRaw ? { view: viewRaw as ViewSpec } : {}), ...(codeRaw ? { code: unwrap(codeRaw, "code", facts) as CodeRules } : {}), ...(agentRaw ? { agent: agentRaw as AgentInfo } : {}), ...(driver ? { driver } : {}) };
@@ -532,6 +569,16 @@ export function loadPack(src: PackSource): Pack {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(w)) fail(`${at}/agent.json.words`, `"${w}" must be one lower-case word (letters, digits, dashes)`);
   }
   if (pack.code && !pack.driver) fail(`${at}/code.json`, "code rules need the pack's driver (pack.json driver)");
+  // {ICONS}, {TEXT_STYLES} … in the AI's pin line become the driver's own lists, so a new icon or
+  // style is one line in the driver and nothing else.
+  if (pack.agent) {
+    const pinLine = pack.agent.code.pinLine.replace(/\{([A-Z][A-Z_]*)\}/g, (_, name: string) => {
+      const list = driver?.lists[name];
+      if (!list?.length) fail(`${at}/agent.json.code.pinLine`, `{${name}}: the driver has no ${name} list`);
+      return list!.join(", ");
+    });
+    pack.agent = { ...pack.agent, code: { ...pack.agent.code, pinLine } };
+  }
   return pack;
 }
 

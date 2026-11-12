@@ -15,6 +15,12 @@ export interface CodeIssue {
   severity: "error" | "warning";
   message: string;
   line?: number;
+  /**
+   * The exact correction when the checker knows it: the code's own line with only the wrong part
+   * replaced (e.g. `pot = Pin(26)` → `pot = ADC(26)`). Used for repair messages; the code itself is
+   * never changed by BreadPilot.
+   */
+  fix?: { line: number; write: string };
 }
 
 export interface CodeCheckReport {
@@ -222,6 +228,20 @@ function syntaxIssues(src: string, clean: string): CodeIssue[] {
 }
 
 const MACHINE_NAMES = ["Pin", "ADC", "PWM", "Timer", "I2C", "SoftI2C", "SPI", "UART", "RTC", "WDT"];
+/**
+ * Every name the `machine` module can have on the Pico 2 W in MicroPython v1.29.0: the module table
+ * in docs/software/micropython-v1.29.0/extmod__modmachine.c plus the rp2 port's extras in
+ * ports__rp2__modmachine.c (Pin, RTC, Timer, PWRON_RESET, WDT_RESET). Names behind a build flag
+ * whose rp2 value isn't in our files (mem8, Signal, DAC, CAN…) are kept, so they're never flagged.
+ * A test reads both files to keep this list honest.
+ */
+export const MACHINE_MODULE_NAMES = [
+  "mem8", "mem16", "mem32", "mem_backup", "unique_id", "soft_reset", "bootloader", "reset", "reset_cause", "idle", "freq", "lightsleep", "deepsleep",
+  "disable_irq", "enable_irq", "bitstream", "dht_readinto", "time_pulse_us", "PinBase", "Signal", "SoftI2C", "SoftSPI",
+  "ADC", "ADCBlock", "CAN", "DAC", "I2C", "I2CTarget", "I2S", "PWM", "SDCard", "SPI", "UART", "USBDevice", "WDT",
+  "Pin", "RTC", "Timer", "PWRON_RESET", "WDT_RESET",
+];
+
 const MODULES = ["time", "utime", "random", "urandom", "math", "network", "machine", "sys", "rp2", "socket", "urequests", "requests", "bluetooth", "json"];
 
 /**
@@ -446,6 +466,143 @@ function importIssues(clean: string): CodeIssue[] {
   return issues;
 }
 
+/**
+ * C015: a name the Pico's `machine` module doesn't have (`machine.temperature()`, `from machine import
+ * machine`) stops the program with an error at that line. Names from MACHINE_MODULE_NAMES (v1.29.0).
+ */
+function machineNameIssues(clean: string): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  const known = new Set(MACHINE_MODULE_NAMES);
+  const list = `The machine module has: ${MACHINE_MODULE_NAMES.filter((n) => /^[A-Z]/.test(n) && !n.endsWith("_RESET")).join(", ")} and the functions ${MACHINE_MODULE_NAMES.filter((n) => /^[a-z]/.test(n)).join(", ")}.`;
+  const seen = new Set<string>();
+  const aliases = new Set<string>();
+  const flag = (name: string, index: number, how: string) => {
+    if (known.has(name) || seen.has(name)) return;
+    seen.add(name);
+    const line = lineOf(clean, index);
+    issues.push({ code: "C015", severity: "error", message: `Line ${line} ${how}, but MicroPython's machine module on the Pico has no ${name}, so the program stops with an error there. ${list}`, line });
+  };
+  for (const m of clean.matchAll(/^\s*from\s+machine\s+import\s+([^\n]+)/gm)) {
+    for (const item of m[1]!.replace(/[()\\]/g, "").split(",")) {
+      const [name, alias] = item.trim().split(/\s+as\s+/).map((x) => x.trim());
+      if (name && name !== "*") flag(name, m.index!, `imports ${name} from machine`);
+      if (name === "machine") aliases.add(alias || name); // its uses (machine.temperature) are checked too
+    }
+  }
+  // machine.X / um.X for every name the machine module is imported as (import machine as um)
+  for (const m of clean.matchAll(/^\s*import\s+([^\n]+)/gm)) {
+    for (const item of m[1]!.split(",")) {
+      const [name, alias] = item.trim().split(/\s+as\s+/);
+      if (name?.trim() === "machine") aliases.add((alias ?? name).trim());
+    }
+  }
+  for (const alias of aliases) {
+    for (const m of clean.matchAll(new RegExp(`(?<![\\w.])${alias}\\.([A-Za-z_]\\w*)`, "g"))) flag(m[1]!, m.index!, `uses ${alias}.${m[1]}`);
+  }
+  return issues;
+}
+
+// ---------- "is it all used" (M8 8.5): code that only looks like it does the job ----------
+
+/** The comment on each line (text after a # that isn't inside a string), from the source. */
+function lineComments(src: string, clean: string): Map<number, string> {
+  const out = new Map<number, string>();
+  const srcLines = src.split("\n");
+  const cleanLines = clean.split("\n");
+  srcLines.forEach((line, i) => {
+    const c = cleanLines[i] ?? "";
+    for (let p = line.indexOf("#"); p >= 0; p = line.indexOf("#", p + 1)) {
+      // Comments are blanked to the end of the line; a # inside a string has its closing quote after it.
+      if (c[p] === " " && c.slice(p).trim() === "") {
+        out.set(i + 1, line.slice(p + 1));
+        break;
+      }
+    }
+  });
+  return out;
+}
+
+/**
+ * C016: code that fakes or skips part of the job, so it passes every other check but doesn't do what
+ * was asked: a fixed number marked as a placeholder (`temp = 25.0  # Placeholder`, the local model's
+ * real answer when it didn't know how to read a sensor), TODO/FIXME notes, and functions that only
+ * `pass` or raise NotImplementedError.
+ */
+function unfinishedIssues(src: string, clean: string): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  const comments = lineComments(src, clean);
+  const cleanLines = clean.split("\n");
+  // Words that mean "not the real value". Not "simulated" or "hard-coded": games simulate gravity and
+  // constants are hard-coded on purpose.
+  const FAKE = /\b(placeholders?|dummy|fake|mock(?:ed)?|stub|pretend)\b/i;
+  const UNFINISHED = /\b(TODO|FIXME|not (?:yet )?implemented|implement (?:this|later|me))\b/i;
+  for (const [line, comment] of comments) {
+    const code = cleanLines[line - 1] ?? "";
+    const fixed = /^\s*([A-Za-z_][\w.]*)\s*=\s*(-?\d+(?:\.\d+)?|True|False)\s*$/.exec(code);
+    const fake = FAKE.exec(comment);
+    if (fixed && fake) {
+      issues.push({ code: "C016", severity: "error", message: `Line ${line} sets ${fixed[1]} to a fixed ${fixed[2]} marked "${fake[1]}", so the program shows or uses a made-up value instead of doing the job. Write the real code that gets this value (read the part or compute it), or leave the feature out of the plan.`, line });
+      continue;
+    }
+    const todo = UNFINISHED.exec(comment);
+    if (todo) issues.push({ code: "C016", severity: "error", message: `Line ${line} says "${todo[1]}", so this part of the program isn't finished. Write the missing code now: the program must do everything the plan says.`, line });
+  }
+  // Functions whose body is only pass / ... / raise NotImplementedError.
+  cleanLines.forEach((text, i) => {
+    const def = /^(\s*)def\s+([A-Za-z_]\w*)\s*\(.*\)\s*:\s*$/.exec(text);
+    if (!def) return;
+    const indent = def[1]!.length;
+    const body: string[] = [];
+    for (let j = i + 1; j < cleanLines.length; j++) {
+      const l = cleanLines[j]!;
+      if (!l.trim()) continue;
+      if (l.length - l.trimStart().length <= indent) break;
+      body.push(l.trim());
+    }
+    if (body.length && body.every((b) => b === "pass" || b === "..." || /^raise\s+NotImplementedError\b/.test(b))) {
+      issues.push({ code: "C016", severity: "error", message: `Line ${i + 1}: the function ${def[2]}() does nothing (its body is only ${body[0]}). Write what it should do, or remove it.`, line: i + 1 });
+    }
+  });
+  return issues;
+}
+
+/**
+ * C017: input() waits for someone to type on a computer over USB. On a Pico running on its own (power
+ * from a charger or battery) the program stops there forever. When the build has buttons or knobs, the
+ * program should use those instead (an error); without them it may be on purpose (a warning).
+ */
+function inputCallIssues(clean: string, modes: Record<string, string>): CodeIssue[] {
+  const m = /(?<![\w.])input\s*\(/.exec(clean);
+  if (!m) return [];
+  const line = lineOf(clean, m.index);
+  const hasInputs = Object.values(modes).some((mode) => /^(in|in_pullup|in_pulldown|adc)$/.test(mode));
+  return [
+    hasInputs
+      ? { code: "C017", severity: "error", message: `Line ${line} calls input(), which waits for someone to type on a computer over USB: on its own the Pico stops there forever. Use the build's buttons or knobs to get the user's choice instead.`, line }
+      : { code: "C017", severity: "warning", message: `Line ${line} calls input(), which waits for someone to type on a computer over USB; the program stops there when the Pico isn't plugged into a computer with a terminal open.`, line },
+  ];
+}
+
+/**
+ * C006 (second form): a wired part set up in a variable that the program never uses again, e.g.
+ * `pot = ADC(26)` and then nothing reads pot, so turning the knob does nothing.
+ */
+function unusedPartIssues(clean: string, modes: Record<string, string>, ints: Map<string, number>): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  for (const m of clean.matchAll(/^\s*([A-Za-z_]\w*)\s*=\s*(?:machine\.)?(Pin|ADC|PWM)\s*\(\s*(?:(?:machine\.)?Pin\s*\(\s*)?([A-Za-z_]\w*|\d+)/gm)) {
+    const [, name, kind, arg] = m;
+    const n = /^\d+$/.test(arg!) ? Number(arg) : ints.get(arg!);
+    if (n === undefined) continue;
+    const gpio = kind === "ADC" && n <= 3 ? n + 26 : n; // ADC(0) is GP26 … ADC(3) GP29
+    if (!modes[`GP${gpio}`]) continue;
+    const uses = [...clean.matchAll(new RegExp(`(?<![\\w.])${name}\\b`, "g"))].length;
+    if (uses > 1) continue;
+    const line = lineOf(clean, m.index!);
+    issues.push({ code: "C006", severity: "error", message: `Line ${line} sets up ${name} (GP${gpio}), but the program never uses ${name} again, so that part does nothing. ${kind === "Pin" && /Pin\.(IN|PULL_UP|PULL_DOWN)/.test(m.input!.slice(m.index!, m.index! + 200).split("\n")[0]!) ? `Read it with ${name}.value()` : kind === "ADC" ? `Read it with ${name}.read_u16()` : kind === "PWM" ? `Set its brightness with ${name}.duty_u16(…)` : `Switch it with ${name}.value(1) / ${name}.value(0)`} in the main loop.`, line });
+  }
+  return issues;
+}
+
 // ---------- tiny integer evaluator for pin expressions ----------
 
 const MAX_VALUES = 64;
@@ -590,6 +747,29 @@ export function constructorFor(gpio: number, mode: string, modes: Record<string,
   }
 }
 
+/**
+ * The plain code for a wired pin, to put in a corrected line: `ADC(26)`, `Pin(18, Pin.IN, Pin.PULL_UP)`.
+ * Null where one expression can't say it (I2C needs its own setup line; "out" can be Pin or PWM, so
+ * the code's own choice decides).
+ */
+export function codeFor(gpio: number, mode: string, fn: "Pin" | "ADC" | "PWM" | "I2C" | "SoftI2C"): string | null {
+  switch (mode) {
+    case "adc":
+      return `ADC(${gpio})`;
+    case "in_pullup":
+      return `Pin(${gpio}, Pin.IN, Pin.PULL_UP)`;
+    case "in_pulldown":
+      return `Pin(${gpio}, Pin.IN, Pin.PULL_DOWN)`;
+    case "in":
+      return `Pin(${gpio}, Pin.IN)`;
+    case "out":
+    case "pwm":
+      return fn === "PWM" ? `PWM(Pin(${gpio}))` : `Pin(${gpio}, Pin.OUT)`;
+    default:
+      return null;
+  }
+}
+
 /** Splits call arguments at top-level commas: "0, sda=Pin(16), scl=Pin(17)" → 3 items. */
 function splitArgs(args: string): string[] {
   const out: string[] = [];
@@ -607,19 +787,88 @@ function splitArgs(args: string): string[] {
   return out;
 }
 
-type Display = NonNullable<CodeRules["display"]> & { driver: string };
+/** `lists`: the driver's ICONS, TEXT_STYLES, BAR_STYLES … (packs.ts driverLists). */
+type Display = NonNullable<CodeRules["display"]> & { driver: string; lists: Record<string, string[]>; numbers: Record<string, Record<string, number>>; methods: string[] };
+
+/**
+ * framebuf.FrameBuffer's methods in MicroPython v1.29.0: the method table `framebuf_locals_dict_table`
+ * in docs/software/micropython-v1.29.0/extmod__modframebuf.c (poly needs MICROPY_PY_ARRAY, on for
+ * the rp2 port). A test reads that file to keep this list honest.
+ */
+export const FRAMEBUF_METHODS = ["fill", "fill_rect", "pixel", "hline", "vline", "rect", "line", "ellipse", "poly", "blit", "scroll", "text"];
+
+/** Methods models reach for that the display doesn't have, and what to write instead. */
+const DISPLAY_INSTEAD: Record<string, string> = {
+  clear: "fill(0)", clear_screen: "fill(0)", erase: "fill(0)", cls: "fill(0)",
+  display: "show()", update: "show()", refresh: "show()", flush: "show()",
+  print: "text(s, x, y)", write: "text(s, x, y)", draw_text: "text(s, x, y)", print_text: "text(s, x, y)", write_text: "text(s, x, y)",
+  draw_line: "line(x1, y1, x2, y2, 1)", draw_pixel: "pixel(x, y, 1)", set_pixel: "pixel(x, y, 1)",
+  draw_rect: "rect(x, y, w, h, 1)", draw_rectangle: "rect(x, y, w, h, 1)", fill_rectangle: "fill_rect(x, y, w, h, 1)",
+  circle: "ellipse(x, y, r, r, 1)", draw_circle: "ellipse(x, y, r, r, 1)", fill_circle: "ellipse(x, y, r, r, 1, True)",
+};
+
+/** A plain string literal: "Hello", 'Hi', r"x" (no escapes, no concatenation). */
+const STRING_LITERAL = /^[rRbB]?(["'])([^"'\\\n]*)\1$/;
+
+/**
+ * Values of names assigned exactly once in the whole program, at the top level:
+ * `DISPLAY_WIDTH = 128`, `HALF = DISPLAY_WIDTH - 64`, `TITLE = "Hello"`. Checks that read a number or
+ * a text (display size, positions, text length) use these, so `SH1106_I2C(DISPLAY_WIDTH, …)` is read
+ * as 128 instead of a false alarm. A name assigned again anywhere (in a loop, a function, `+=`) is
+ * not a constant: its value can change, so it stays unknown.
+ */
+export function moduleConstants(src: string, clean: string): { ints: Map<string, number>; strings: Map<string, string> } {
+  const counts = new Map<string, number>();
+  const count = (name: string) => counts.set(name, (counts.get(name) ?? 0) + 1);
+  for (const m of clean.matchAll(/^\s*([A-Za-z_]\w*)\s*(?:[-+*/%|&^]|\/\/|\*\*|<<|>>)?=(?!=)/gm)) count(m[1]!);
+  for (const m of clean.matchAll(/\bfor\s+([A-Za-z_]\w*)(?:\s*,\s*([A-Za-z_]\w*))?\s+in\b/g)) [m[1], m[2]].forEach((n) => n && count(n));
+  for (const m of clean.matchAll(/\b(?:global|nonlocal)\s+([\w\s,]+)/g)) m[1]!.split(",").forEach((n) => n.trim() && count(n.trim()));
+  for (const m of clean.matchAll(/^\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*=(?!=)/gm)) m[1]!.split(",").forEach((n) => count(n.trim()));
+
+  const srcLines = src.split("\n");
+  const once = [...clean.split("\n").entries()].flatMap(([i, text]) => {
+    const m = /^([A-Za-z_]\w*)\s*=(?!=)\s*(.+?)\s*$/.exec(text);
+    return m && counts.get(m[1]!) === 1 ? [{ name: m[1]!, value: m[2]!, line: i }] : [];
+  });
+  const ints = new Map<string, number>();
+  const names = new Map<string, number[]>();
+  // Two passes, so a name defined from a later one still resolves.
+  for (let pass = 0; pass < 2; pass++) {
+    for (const c of once) {
+      const v = evalInts(c.value, names);
+      if (v && v.length === 1) {
+        ints.set(c.name, v[0]!);
+        names.set(c.name, v);
+      }
+    }
+  }
+  const strings = new Map<string, string>();
+  for (const c of once) {
+    const literal = STRING_LITERAL.exec((/=(?!=)\s*(.+?)\s*$/.exec(srcLines[c.line] ?? "")?.[1] ?? "").trim());
+    if (literal) strings.set(c.name, literal[2]!);
+  }
+  return { ints, strings };
+}
+
+/** A number written directly or through a constant; null when it can't be known. */
+const numberOf = (arg: string | undefined, ints: Map<string, number>): number | null => {
+  const a = arg?.trim();
+  if (!a) return null;
+  const v = evalInts(a, new Map([...ints].map(([k, n]) => [k, [n]])));
+  return v && v.length === 1 ? v[0]! : null;
+};
 
 /** Framebuf displays in the build (from their packs' code.json), in pack order. */
 function displaysIn(build: Build): Display[] {
   const types = new Set(build.parts.map((p) => p.type));
-  return PACKS.filter((p) => p.code?.display && types.has(p.meta.id)).map((p) => ({ ...p.code!.display!, driver: p.driver!.module }));
+  return PACKS.filter((p) => p.code?.display && types.has(p.meta.id)).map((p) => ({ ...p.code!.display!, driver: p.driver!.module, lists: p.driver!.lists, numbers: p.driver!.numbers, methods: p.driver!.methods }));
 }
 
 /**
  * C012: a display in the build must be set up in the code with the shipped driver, e.g.
  * `oled = SH1106_I2C(128, 64, i2c)`. Without it the screen stays dark (the pins alone don't do it).
  */
-function displayIssues(clean: string, d: Display, modes: Record<string, string>): CodeIssue[] {
+function displayIssues(clean: string, d: Display, modes: Record<string, string>, ints: Map<string, number>): CodeIssue[] {
   const issues: CodeIssue[] = [];
   const created = [...clean.matchAll(new RegExp(`\\b${d.class}\\s*\\(([^)]*)\\)`, "g"))];
   const bus = [...new Set(Object.values(modes).flatMap((m) => /^i2c(\d)_/.exec(m)?.[1] ?? []))][0] ?? "0";
@@ -633,8 +882,11 @@ function displayIssues(clean: string, d: Display, modes: Record<string, string>)
   }
   for (const m of created) {
     const [w, h] = splitArgs(m[1]!);
-    if (w !== String(d.width) || h !== String(d.height)) {
-      issues.push({ code: "C012", severity: "error", message: `Line ${lineOf(clean, m.index!)} creates the display with size ${w ?? "?"} x ${h ?? "?"}; this screen is ${d.width} x ${d.height}: ${d.class}(${d.width}, ${d.height}, i2c).`, line: lineOf(clean, m.index!) });
+    const [wn, hn] = [numberOf(w, ints), numberOf(h, ints)];
+    if (wn !== d.width || hn !== d.height) {
+      // Say what a constant stands for, so the AI sees which number is wrong.
+      const shown = (arg: string | undefined, n: number | null) => (arg === undefined ? "?" : n !== null && arg.trim() !== String(n) ? `${arg} (= ${n})` : arg);
+      issues.push({ code: "C012", severity: "error", message: `Line ${lineOf(clean, m.index!)} creates the display with size ${shown(w, wn)} x ${shown(h, hn)}; this screen is ${d.width} x ${d.height}: ${d.class}(${d.width}, ${d.height}, i2c).`, line: lineOf(clean, m.index!) });
     }
   }
   if (!/\.show\s*\(\s*\)/.test(clean)) {
@@ -646,9 +898,11 @@ function displayIssues(clean: string, d: Display, modes: Record<string, string>)
 /**
  * C013: text on a framebuf display (e.g. the OLED). framebuf's built-in 8x8 font only has ASCII (other characters show as
  * blanks or garbage), the last text row is y = 56, and a row holds 16 characters. Errors for what
- * can never work (non-ASCII text, a fixed y below the screen); warnings for what may be cut off.
+ * can never work (non-ASCII text, a fixed y below the screen) and for text that is surely cut off
+ * (a known string wider than the screen from a known x: an error since M8 8.5, user 10/11/2026);
+ * warnings for row layouts that may run off the screen.
  */
-function displayTextIssues(src: string, clean: string, screen: Display): CodeIssue[] {
+function displayTextIssues(src: string, clean: string, screen: Display, consts: { ints: Map<string, number>; strings: Map<string, string> }): CodeIssue[] {
   const LAST_ROW_Y = screen.height - screen.font;
   const issues: CodeIssue[] = [];
   const nonAscii = (text: string) => [...new Set([...text].filter((c) => c.charCodeAt(0) > 126))].join(" ");
@@ -667,7 +921,8 @@ function displayTextIssues(src: string, clean: string, screen: Display): CodeIss
   }
   const drawRows: { line: number; A: number; B: number; v: string }[] = [];
 
-  for (const m of clean.matchAll(/\.text\s*\(/g)) {
+  // text() and the driver's text helpers: big_text(s, x, y, scale=2), center_text(s, y, scale=1), title(s).
+  for (const m of clean.matchAll(/\.(text|big_text|center_text|title)\s*\(/g)) {
     const open = m.index! + m[0].length - 1;
     let depth = 0;
     let end = open;
@@ -694,29 +949,120 @@ function displayTextIssues(src: string, clean: string, screen: Display): CodeIss
       }
     }
 
+    if (m[1] !== "text") {
+      issues.push(...bigTextIssues(m[1]!, args, src.slice(open + 1, end), line, screen, consts));
+      continue;
+    }
     // Position: text(string, x, y)
     const [textArg, xArg, yArg] = args;
-    const x = xArg && /^\d+$/.test(xArg) ? Number(xArg) : null;
+    const x = numberOf(xArg, consts.ints);
     const y = yArg?.trim();
-    if (y && /^\d+$/.test(y) && Number(y) > LAST_ROW_Y) {
-      issues.push({ code: "C013", severity: "error", message: `Line ${line} draws text at y = ${y}, below the screen: it's ${screen.height} pixels tall and letters are ${screen.font} high, so the last row is y = ${LAST_ROW_Y}.`, line });
+    const yNumber = numberOf(y, consts.ints);
+    if (yNumber !== null && yNumber > LAST_ROW_Y) {
+      issues.push({ code: "C013", severity: "error", message: `Line ${line} draws text at y = ${y === String(yNumber) ? y : `${y} (= ${yNumber})`}, below the screen: it's ${screen.height} pixels tall and letters are ${screen.font} high, so the last row is y = ${LAST_ROW_Y}.`, line });
     }
-    if (y && !/^\d+$/.test(y)) {
+    if (y && yNumber === null) {
       const lin = linear(y, linearVars);
       if (lin?.v) drawRows.push({ line, ...lin, v: lin.v });
       else if (lin && lin.A > LAST_ROW_Y) issues.push({ code: "C013", severity: "error", message: `Line ${line} draws text at y = ${lin.A}, below the screen: the last text row is y = ${LAST_ROW_Y}.`, line });
     }
     // Length of a literal string: 16 characters per row from x = 0.
     // Only a single plain string literal ("Hello"), not an expression like "A" if x else "B".
-    const literal = textArg ? /^[rRbB]?(["'])([^"'\\\n]*)\1$/.exec(src.slice(open + 1, end).split(",")[0]!.trim()) : null;
-    if (literal && x !== null) {
+    const literal = textArg ? STRING_LITERAL.exec(src.slice(open + 1, end).split(",")[0]!.trim())?.[2] ?? consts.strings.get(textArg.trim()) : undefined;
+    if (literal !== undefined && x !== null) {
       const fits = Math.max(0, Math.floor((screen.width - x) / screen.font));
-      if (literal[2]!.length > fits) {
-        issues.push({ code: "C013", severity: "warning", message: `Line ${line}: "${literal[2]}" is ${literal[2]!.length} characters, but only ${fits} fit from x = ${x} (each letter is 8 pixels wide). Shorten it or split it over two rows.`, line });
+      if (literal.length > fits) {
+        issues.push({ code: "C013", severity: "error", message: `Line ${line}: "${literal}" is ${literal.length} characters, but only ${fits} fit from x = ${x} (each letter is 8 pixels wide). Shorten it or split it over two rows.`, line });
       }
     }
   }
   issues.push(...rowLayoutIssues(drawRows, src, constants, screen));
+  issues.push(...driverNameIssues(src, clean, screen));
+  issues.push(...displayMethodIssues(clean, screen));
+  return issues;
+}
+
+/**
+ * C013: a method the display doesn't have (`oled.clear()`) stops the program with AttributeError on
+ * the Pico. The display's methods are framebuf's (v1.29.0 method table) plus the driver's own.
+ */
+function displayMethodIssues(clean: string, screen: Display): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  const known = new Set([...FRAMEBUF_METHODS, ...screen.methods]);
+  const names = new Set([...clean.matchAll(new RegExp(`^\\s*([A-Za-z_][\\w.]*)\\s*=\\s*(?:\\w+\\.)?${screen.class}\\s*\\(`, "gm"))].map((m) => m[1]!));
+  for (const name of names) {
+    const esc = name.replace(/\./g, "\\.");
+    for (const m of clean.matchAll(new RegExp(`(?<![\\w.])${esc}\\.([A-Za-z_]\\w*)\\s*\\(`, "g"))) {
+      const method = m[1]!;
+      if (known.has(method) || method.startsWith("_")) continue;
+      const line = lineOf(clean, m.index!);
+      const instead = DISPLAY_INSTEAD[method];
+      issues.push({ code: "C013", severity: "error", message: `Line ${line} calls ${name}.${method}(), but the display has no ${method}() method, so the program stops with an error.${instead ? ` Write ${name}.${instead} instead.` : ""} Its methods: ${[...known].join(", ")}.`, line });
+    }
+  }
+  return issues;
+}
+
+/** Does a big_text / center_text / title string fit across the screen? (letters are 8 x scale pixels wide) */
+function bigTextIssues(fn: string, args: string[], rawArgs: string, line: number, screen: Display, consts: { ints: Map<string, number>; strings: Map<string, string> }): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  const named = (i: number, name: string) => args.find((a) => new RegExp(`^\\s*${name}\\s*=`).test(a))?.split("=")[1] ?? (args[i] && !/=/.test(args[i]!) ? args[i] : undefined);
+  const scale = fn === "title" ? 1 : (numberOf(named(fn === "big_text" ? 3 : 2, "scale"), consts.ints) ?? (fn === "big_text" ? 2 : 1));
+  if (scale < 1) return [];
+  // Bottom: block/dots are 8 x scale tall, seg 11 x scale (the driver's TEXT_HEIGHT table).
+  if (fn !== "title") {
+    // The style is read from the source (string contents are blanked in the cleaned args).
+    const styleArg = /\bstyle\s*=\s*(["'])(\w*)\1/.exec(rawArgs)?.[2];
+    const style = styleArg ?? (named(fn === "big_text" ? 5 : 4, "style") === undefined ? "block" : null);
+    const y = numberOf(named(fn === "big_text" ? 2 : 1, "y"), consts.ints);
+    const per = style === null ? null : (screen.numbers.TEXT_HEIGHT?.[style] ?? (style === "block" ? screen.font : null));
+    if (y !== null && per !== null && y + per * scale > screen.height) {
+      const h = per * scale;
+      issues.push({ code: "C013", severity: "error", message: `Line ${line}: text at y = ${y} with scale ${scale}${style === "block" ? "" : ` (style "${style}")`} is ${h} pixels tall, so it ends at y = ${y + h}, below the ${screen.height}-pixel screen, and its bottom is cut off. The lowest y that fits is ${screen.height - h}.`, line });
+    }
+  }
+  // Width: every style is 8 x scale pixels per character.
+  const textArg = args[0]?.trim();
+  const literal = textArg ? (STRING_LITERAL.exec(rawArgs.split(",")[0]!.trim())?.[2] ?? consts.strings.get(textArg)) : undefined;
+  const x = fn === "big_text" ? numberOf(named(1, "x"), consts.ints) : 0;
+  if (literal === undefined || x === null) return issues;
+  const w = screen.font * scale;
+  const fits = Math.max(0, Math.floor((screen.width - x) / w));
+  if (literal.length <= fits) return issues;
+  const from = fn === "big_text" ? ` from x = ${x}` : "";
+  issues.push({ code: "C013", severity: "error", message: `Line ${line}: "${literal}" is ${literal.length} characters, but at scale ${scale} each letter is ${w} pixels wide, so only ${fits} fit${from}. Use a smaller scale or a shorter text.`, line });
+  return issues;
+}
+
+/**
+ * C013: names the driver must have: icon("name", …) from ICONS, style="…" of big_text/center_text from
+ * TEXT_STYLES and of bar from BAR_STYLES. A wrong name stops the program with an error on the Pico.
+ */
+function driverNameIssues(src: string, clean: string, screen: Display): CodeIssue[] {
+  const issues: CodeIssue[] = [];
+  const check = (name: string, list: string[] | undefined, what: string, index: number, other: string) => {
+    if (!list?.length || list.includes(name)) return;
+    const line = lineOf(clean, index);
+    issues.push({ code: "C013", severity: "error", message: `Line ${line} uses the ${what} "${name}", but ${screen.driver}.py has no ${what} with that name, so the program stops with an error. ${what[0]!.toUpperCase()}${what.slice(1)}s: ${list.join(", ")}.${other}`, line });
+  };
+  // Found in the blanked code (no matches inside comments or strings), the names read from the source.
+  for (const m of clean.matchAll(/\.(icon|big_text|center_text|bar)\s*\(/g)) {
+    const open = m.index! + m[0].length - 1;
+    let depth = 0;
+    let end = open;
+    for (; end < clean.length; end++) {
+      if (clean[end] === "(") depth++;
+      else if (clean[end] === ")" && --depth === 0) break;
+    }
+    const raw = src.slice(open + 1, end);
+    if (m[1] === "icon") {
+      const name = /^\s*(["'])(\w*)\1/.exec(raw)?.[2];
+      if (name !== undefined) check(name, screen.lists.ICONS, "icon", m.index!, ` For another picture, draw it with ${screen.var}.sprite(["..##..", ".####."], x, y).`);
+      continue;
+    }
+    const style = /\bstyle\s*=\s*(["'])(\w*)\1/.exec(raw)?.[2];
+    if (style !== undefined) check(style, m[1] === "bar" ? screen.lists.BAR_STYLES : screen.lists.TEXT_STYLES, m[1] === "bar" ? "bar style" : "text style", m.index!, "");
+  }
   return issues;
 }
 
@@ -796,7 +1142,16 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
   const clean = stripStringsAndComments(src);
   const issues: CodeIssue[] = syntaxIssues(src, clean);
   const used: Record<string, string> = {};
-  const err = (code: string, message: string, line?: number) => issues.push({ code, severity: "error", message, ...(line ? { line } : {}) });
+  const err = (code: string, message: string, line?: number, fix?: CodeIssue["fix"]) => issues.push({ code, severity: "error", message, ...(line ? { line } : {}), ...(fix ? { fix } : {}) });
+  const srcLines = src.split("\n");
+  /** The call's line with only that call replaced, or undefined when that can't be done cleanly. */
+  const lineFix = (call: Call, replacement: string | null): CodeIssue["fix"] => {
+    const text = src.slice(call.start, call.end + 1);
+    const own = srcLines[call.line - 1];
+    if (!replacement || text.includes("\n") || own === undefined || !own.includes(text)) return undefined;
+    // A pin given to ADC(...) or PWM(...) keeps that wrapper: only the pin is replaced.
+    return { line: call.line, write: own.replace(text, replacement) };
+  };
 
   // Names that stand for GPIO numbers. Each name maps to every value it can take, e.g.
   // LED_PIN = 16 · PINS = [16, 17] · PINS = {"red": 16} · for p in range(16, 20) · Pin(16 + i)
@@ -923,15 +1278,15 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
         // A pin wired as an analog input can only be read through ADC(...): a Pin object has no
         // read_u16(), whatever mode it was given (or none at all).
         if (mode === "adc" && wants === "unknown") {
-          err("C005", `${name} is wired as ${modeText("adc")}, but line ${call.line} sets it up as a digital Pin. Use ${constructorFor(gpio, mode, modes)}.`, call.line);
+          err("C005", `${name} is wired as ${modeText("adc")}, but line ${call.line} sets it up as a digital Pin. Use ${constructorFor(gpio, mode, modes)}.`, call.line, lineFix(call, codeFor(gpio, mode, call.fn)));
           continue;
         }
         if (wants === "unknown") continue;
         if (wants === "unclear" || wants === "other") {
-          err("C005", `Line ${call.line} gives ${name} a mode the checker can't confirm. It's wired as ${modeText(mode)}: use ${constructorFor(gpio, mode, modes)}.`, call.line);
+          err("C005", `Line ${call.line} gives ${name} a mode the checker can't confirm. It's wired as ${modeText(mode)}: use ${constructorFor(gpio, mode, modes)}.`, call.line, lineFix(call, codeFor(gpio, mode, call.fn)));
           continue;
         }
-        if (!modeFits(wants, mode)) err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} sets it up as ${modeText(wants)}. Use ${constructorFor(gpio, mode, modes)}.`, call.line);
+        if (!modeFits(wants, mode)) err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} sets it up as ${modeText(wants)}. Use ${constructorFor(gpio, mode, modes)}.`, call.line, lineFix(call, codeFor(gpio, mode, call.fn)));
       }
       continue;
     }
@@ -956,8 +1311,8 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
       const name = record(gpio, call.fn === "ADC" ? "adc" : "pwm", call.line);
       if (!name) continue;
       const mode = modes[name]!;
-      if (call.fn === "ADC" && mode !== "adc") err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} reads it with ADC. Use ${constructorFor(gpio, mode, modes)}.`, call.line);
-      if (call.fn === "PWM" && mode !== "out" && mode !== "pwm") err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} drives it with PWM. Use ${constructorFor(gpio, mode, modes)}.`, call.line);
+      if (call.fn === "ADC" && mode !== "adc") err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} reads it with ADC. Use ${constructorFor(gpio, mode, modes)}.`, call.line, lineFix(call, codeFor(gpio, mode, "Pin")));
+      if (call.fn === "PWM" && mode !== "out" && mode !== "pwm") err("C005", `${name} is wired as ${modeText(mode)}, but line ${call.line} drives it with PWM. Use ${constructorFor(gpio, mode, modes)}.`, call.line, lineFix(call, codeFor(gpio, mode, "Pin")));
     }
   }
 
@@ -993,10 +1348,12 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
     }
   }
 
-  issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean));
+  issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean), ...machineNameIssues(clean));
   const displays = displaysIn(build);
-  for (const d of displays) issues.push(...displayIssues(clean, d, modes));
-  if (displays[0]) issues.push(...displayTextIssues(src, clean, displays[0]));
+  const consts = moduleConstants(src, clean);
+  issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints));
+  for (const d of displays) issues.push(...displayIssues(clean, d, modes, consts.ints));
+  if (displays[0]) issues.push(...displayTextIssues(src, clean, displays[0], consts));
   // C011 only for names the import check didn't already explain (e.g. "time" used without "import time").
   const explained = new Set(issues.filter((i) => i.code === "C002").map((i) => /uses (\w+)/.exec(i.message)?.[1]));
   issues.push(...undefinedNameIssues(clean).filter((i) => !explained.has(/uses "(\w+)"/.exec(i.message)?.[1])));

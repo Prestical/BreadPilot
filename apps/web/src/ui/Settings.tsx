@@ -273,6 +273,7 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
     >
       <ModelDownloads local={view.local} />
       <LocalModels
+        warnSmall
         onSaved={(v) => {
           onChange(v);
           setForm(v.local);

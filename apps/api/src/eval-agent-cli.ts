@@ -4,24 +4,31 @@
 //     = the 50-idea model test (data/eval/models.jsonl: 20 easy, 20 medium, 10 hard), PLAN §13.2.
 //   --openai: run every idea on OpenAI's model (OPENAI_API_KEY, OPENAI_MODEL in .env) to compare with the local one.
 //   --think: override the model list's `think` value (only sent to models Ollama says can think).
+//   --max-swap-gb 2: stop the run when swap grew this much since the start (default 2).
+//   --keep-loaded: don't reload the model between ideas (to compare memory with and without it).
 // For a local model it also reports the memory the model used, as the local Ollama's /api/ps says.
+// Between ideas the model is unloaded and loaded again, outside the measured time, so its process
+// starts clean for each idea. After each idea it prints this test's memory, Ollama's processes and
+// swap, and the results so far are saved, so a stopped or cancelled run loses nothing.
 // Runs every idea in data/eval/agent.jsonl through the real pipeline (in-memory project store,
 // real LLM, real documentation search). Vague plans are auto-approved as-is.
 // Target: ≥ 90% of supported ideas end with a validated build (milestone gate). "Correct project"
 // is the stricter, user-level measure: right outcome, right parts, working code. Every result is
 // re-checked here with validateBuild + checkMicroPython instead of trusting the pipeline's verdicts.
 
+import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
+import { promisify } from "node:util";
 import { join } from "node:path";
 import { checkMicroPython, getBoard, validateBuild } from "@breadpilot/circuit-core";
 import { totalmem } from "node:os";
-import { byDifficulty, difficultyTable, mistakeReport, type Difficulty } from "./agent/eval-report";
+import { byDifficulty, difficultyTable, memoryLine, mistakeReport, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh, type Difficulty, type MemorySample } from "./agent/eval-report";
 import { ollamaModels, sameTag, thinkSetting } from "./local-models";
 import { loadConfig } from "./config";
 import { devKey, openDataDir } from "./datadir";
 import { createLlm } from "./agent/llm";
 import { approvePlan, createProject, type AgentDeps } from "./agent/pipeline";
-import { memoryStore, type Project } from "./agent/project";
+import { currentPlan, memoryStore, type Project } from "./agent/project";
 import { openAiEmbedder } from "./rag/embed";
 import { hybridSearch } from "./rag/search";
 
@@ -53,6 +60,37 @@ interface Result {
   /** Why the design had to be repaired. */
   designRetries: string[];
   note?: string;
+  /** Memory right after this idea. */
+  memory?: MemorySample;
+  /** What the plan said the project must do, and the final code: for reviewing whether it really does it. */
+  behaviors?: string[];
+  code?: string;
+}
+
+const run = promisify(execFile);
+
+async function usedSwap(): Promise<number | null> {
+  try {
+    if (process.platform === "darwin") return parseSwapUsage((await run("sysctl", ["-n", "vm.swapusage"])).stdout);
+    if (process.platform === "linux") return parseMeminfoSwap(await readFile("/proc/meminfo", "utf8"));
+  } catch {
+    /* not available here */
+  }
+  return null;
+}
+
+/** Never fails: a memory reading must not break a test (spawning can throw right away). */
+async function ollamaBytes(): Promise<number | null> {
+  if (process.platform === "win32") return null;
+  try {
+    return ollamaProcessBytes((await run("ps", ["-axo", "rss=,command="], { maxBuffer: 16 * 1024 * 1024 })).stdout);
+  } catch {
+    return null;
+  }
+}
+
+async function sampleMemory(): Promise<MemorySample> {
+  return { processBytes: process.memoryUsage().rss, ollamaBytes: await ollamaBytes(), swapBytes: await usedSwap() };
 }
 
 const arg = (name: string) => {
@@ -66,6 +104,9 @@ if (openai && !config.OPENAI_API_KEY.trim()) throw new Error("--openai needs OPE
 const model = arg("model") ?? (openai ? config.OPENAI_MODEL : config.LLM_MODEL);
 const limit = Number(arg("limit") ?? Infinity);
 const only = arg("only")?.split(",").map(Number);
+const maxSwapGb = Number(arg("max-swap-gb") ?? 2);
+if (!(maxSwapGb > 0)) throw new Error("--max-swap-gb takes a number above 0");
+const keepLoaded = process.argv.includes("--keep-loaded");
 const data = await openDataDir({ dir: config.DATA_DIR, key: await devKey(config.DATA_DIR) });
 const db = data.db;
 const embedder = openAiEmbedder(config.LLM_BASE_URL, config.EMBED_MODEL);
@@ -100,6 +141,12 @@ const sameCounts = (a: Record<string, number>, b: Record<string, number>) => {
 };
 
 try {
+  // Without the documentation index every project would run without its datasheet excerpts (or
+  // fail), and the results wouldn't say anything about the model.
+  const index = await db.query<{ exists: boolean }>("SELECT to_regclass('chunks') IS NOT NULL AS exists");
+  const vectors = index.rows[0]?.exists ? (await db.query<{ n: number }>("SELECT count(embedding)::int AS n FROM chunks")).rows[0]?.n : 0;
+  if (!vectors) throw new Error("The documentation index is empty. Open Ollama, then run: npm run ingest -w @breadpilot/api");
+
   const file = arg("file") ?? "data/eval/agent.jsonl";
   const cases = (await readFile(join(config.REPO_DIR, file), "utf8"))
     .split("\n")
@@ -109,8 +156,16 @@ try {
     .slice(0, limit);
   console.log(`Model: ${model} · ${file} · ${cases.length} ideas\n`);
 
+  const out = arg("json");
+  const startSwap = await usedSwap();
+  let stopped: string | null = null;
   const results: Result[] = [];
   for (const [i, c] of cases.entries()) {
+    // A clean model process for every idea, outside the measured time.
+    if (!openai && !keepLoaded) {
+      if (i > 0) await ollama.load(model, config.LLM_NUM_CTX, 0).catch(() => {});
+      await ollama.load(model, config.LLM_NUM_CTX, "15m").catch((err: Error) => console.log(`      couldn't load the model: ${err.message}`));
+    }
     const start = performance.now();
     let p = await createProject(deps, c.idea);
     if (p.state === "AWAIT_APPROVAL") p = await approvePlan(deps, p.id);
@@ -140,15 +195,24 @@ try {
       failedAttempts: (p.build?.codeHistory ?? []).filter((h) => !h.ok).map((h) => ({ attempt: h.attempt, issues: h.issues.filter((i) => i.severity === "error").map(({ code, message }) => ({ code, message })), code: h.code })),
       designRetries: p.events.filter((e) => e.stage === "design" && e.status !== "ok").map((e) => e.detail ?? ""),
       ...(p.failure ? { note: p.failure } : p.handoffReason && p.build ? { note: "code handoff" } : {}),
+      behaviors: currentPlan(p)?.behavior ?? [],
+      ...(p.build?.code ? { code: p.build.code } : {}),
     };
     results.push(r);
+    r.memory = await sampleMemory();
     const partsText = Object.entries(parts).map(([k, v]) => `${v}×${k}`).join(" ") || "-";
     console.log(
       `${String(i + 1).padStart(2)}. ${r.correct ? "✓" : "✗"} ${r.difficulty ? `[${r.difficulty}] ` : ""}${r.state.padEnd(14)} ` +
         `clarity ${r.clarity ?? "?"}${r.clarity === r.expectedClarity ? "" : ` (expected ${r.expectedClarity})`} · parts ${partsText}` +
         `${r.partsMatch === false ? " (≠ expected)" : ""} · code ${r.codeOk ? `ok after ${r.codeAttempts}` : r.codeAttempts ? "FAILED" : "-"} · ${r.seconds}s  ${c.idea}` +
-        `${r.note ? `\n      note: ${r.note}` : ""}`,
+        `${r.note ? `\n      note: ${r.note}` : ""}\n      ${memoryLine(r.memory)}`,
     );
+    if (out) await writeFile(out, JSON.stringify({ partial: true, model, results }, null, 2));
+    if (swapTooHigh(startSwap, r.memory.swapBytes, maxSwapGb)) {
+      stopped = `Stopped after ${results.length} of ${cases.length} ideas: swap grew more than ${maxSwapGb} GB since the start. Close other apps and run it again, or use a smaller model.`;
+      console.log(`\n${stopped}`);
+      break;
+    }
   }
 
   const expectsBuild = (r: Result) => r.expectedClarity !== "unsupported" && cases.find((c) => c.idea === r.idea)?.expect.outcome !== "handoff";
@@ -186,13 +250,13 @@ try {
     console.log(`\nMemory (local Ollama /api/ps): ${(memory.bytes / 1e9).toFixed(1)} GB at ${memory.contextLength ?? config.LLM_NUM_CTX} tokens of context · this computer ${Math.round(memory.computerBytes / 2 ** 30)} GB`);
   } else if (!openai) console.log("\nMemory: the model wasn't loaded at the end of the run, so Ollama couldn't report it.");
 
-  const out = arg("json");
   if (out) {
-    await writeFile(out, JSON.stringify({ summary, difficulty, memory, results }, null, 2));
+    await writeFile(out, JSON.stringify({ ...(stopped ? { stopped } : {}), summary, difficulty, memory, results }, null, 2));
     console.log(`\nDetails written to ${out}`);
   }
   console.log(mistakeReport(results));
-  if (built.length / Math.max(1, supported.length) < 0.9) process.exitCode = 1;
+  if (stopped) console.log(`\n${stopped}`);
+  if (stopped || built.length / Math.max(1, supported.length) < 0.9) process.exitCode = 1;
 } finally {
   await data.close();
 }

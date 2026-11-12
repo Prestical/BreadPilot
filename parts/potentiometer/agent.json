@@ -6,7 +6,8 @@
   },
   "names": { "label": ["a knob (potentiometer)", "knobs (potentiometers)"], "count": ["knob", "knobs"], "supports": "potentiometers (knobs)", "short": ["knob", "knobs"] },
   "code": {
-    "pinLine": "potentiometer (knob) {ref} on {gpio}: ADC({g}). read_u16() gives 0..65535 as the knob turns.",
+    "pinLine": "potentiometer (knob) {ref} on {gpio}: ADC({g}). read_u16() gives 0..65535 as the knob turns. Not Pin({g}): a Pin has no read_u16().",
+    "imports": ["from machine import ADC"],
     "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (read_u16(): 0-65535)` |"],
     "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
   }

@@ -4,9 +4,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PICO_2_W } from "../src/board";
 import { getComponent } from "../src/catalog";
-import { checkMicroPython } from "../src/codecheck";
+import { checkMicroPython, FRAMEBUF_METHODS } from "../src/codecheck";
 import { formatWire, parseConnections } from "../src/dsl";
 import { i2cPairs, layoutProject, LayoutError } from "../src/layout";
+import { driverLists, PACKS } from "../src/packs";
 import { buildSteps } from "../src/steps";
 import type { Build } from "../src/types";
 import { validateBuild } from "../src/validate";
@@ -159,6 +160,22 @@ describe("OLED code checks", () => {
     expect(msgs(prog().replace("    oled.show()\n", ""))).toContainEqual(expect.stringMatching(/C012 .*never calls oled.show\(\)/));
   });
 
+  it("C012 reads constants: a correct size through names is accepted (false alarm found in the model test, 07/11/2026)", () => {
+    const consts = (lines: string) => prog(undefined, "", `${lines}\noled = SH1106_I2C(DISPLAY_WIDTH, DISPLAY_HEIGHT, i2c)`);
+    expect(check(consts("DISPLAY_WIDTH = 128\nDISPLAY_HEIGHT = 64")).issues).toEqual([]);
+    expect(check(consts("DISPLAY_WIDTH = 64 * 2\nDISPLAY_HEIGHT = DISPLAY_WIDTH - 64")).issues).toEqual([]);
+  });
+
+  it("C012 through constants still catches a wrong size, and says what the name stands for", () => {
+    const consts = (lines: string) => msgs(prog(undefined, "", `${lines}\noled = SH1106_I2C(DISPLAY_WIDTH, DISPLAY_HEIGHT, i2c)`));
+    expect(consts("DISPLAY_WIDTH = 128\nDISPLAY_HEIGHT = 32")).toContainEqual(expect.stringMatching(/C012 .*size DISPLAY_WIDTH \(= 128\) x DISPLAY_HEIGHT \(= 32\); this screen is 128 x 64/));
+    // A name that changes isn't a constant: its value can't be known, so it isn't trusted.
+    expect(consts("DISPLAY_WIDTH = 128\nDISPLAY_HEIGHT = 64\nDISPLAY_HEIGHT += 1")).toContainEqual(expect.stringMatching(/C012 .*size DISPLAY_WIDTH \(= 128\) x DISPLAY_HEIGHT;/));
+    expect(consts("DISPLAY_WIDTH = 128\ndef f():\n    global DISPLAY_HEIGHT\n    DISPLAY_HEIGHT = 64")).toContainEqual(expect.stringMatching(/C012 /));
+    expect(consts("DISPLAY_WIDTH, DISPLAY_HEIGHT = 128, 64")).toContainEqual(expect.stringMatching(/C012 /));
+    expect(consts("DISPLAY_WIDTH = 128")).toContainEqual(expect.stringMatching(/C012 .*x DISPLAY_HEIGHT;/));
+  });
+
   it("C006: wired I2C pins the code never uses get the exact setup line", () => {
     const code = "from machine import Pin\nimport time\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\nwhile True:\n    time.sleep(1)\n";
     expect(msgs(code)).toContainEqual(expect.stringMatching(/C006 The build wires GP16 as the I2C0 data line \(SDA\).*I2C\(0, sda=Pin\(16\), scl=Pin\(17\), freq=400000\)/));
@@ -171,9 +188,21 @@ describe("C013: text on the OLED (user's Wi-Fi scanner, 20/10/2026)", () => {
   const issues = (code: string) => checkMicroPython(code, scanner, PICO_2_W).issues.filter((i) => i.code === "C013");
   const draw = (line: string) => `from machine import Pin, I2C\nfrom sh1106 import SH1106_I2C\nimport time\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\noled = SH1106_I2C(128, 64, i2c)\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\nwhile True:\n    oled.fill(0)\n${line}\n    oled.show()\n    time.sleep(1)\n`;
 
-  it("the model's real code: the █ bar (via a variable) is an error, the 10 + i*10 rows a warning", () => {
+  it("positions and text through constants are checked like numbers and literals", () => {
+    const withConsts = (consts: string, line: string) => issues(draw(line).replace("while True:", `${consts}\nwhile True:`));
+    expect(withConsts("ROW = 56", '    oled.text("ok", 0, ROW)')).toEqual([]);
+    expect(withConsts("ROW = 60", '    oled.text("ok", 0, ROW)').map((i) => i.message)).toContainEqual(expect.stringMatching(/y = ROW \(= 60\), below the screen/));
+    expect(withConsts('TITLE = "A very long title text"', "    oled.text(TITLE, 0, 0)").map((i) => i.message)).toContainEqual(expect.stringMatching(/"A very long title text" is 22 characters, but only 16 fit from x = 0/));
+    expect(withConsts('X = 64\nTITLE = "Hello there"', "    oled.text(TITLE, X, 0)").map((i) => i.message)).toContainEqual(expect.stringMatching(/only 8 fit from x = 64/));
+    expect(withConsts('TITLE = "Short"', "    oled.text(TITLE, 0, 0)")).toEqual([]);
+  });
+
+  it("the model's real code: the █ bar (via a variable) and a 17-character line are errors, the 10 + i*10 rows a warning", () => {
     const found = issues(fixture("wifi-scanner-llm.py"));
-    expect(found.filter((i) => i.severity === "error").map((i) => i.message)).toEqual([expect.stringMatching(/draws bar on the display, and line \d+ builds it with "█"/)]);
+    expect(found.filter((i) => i.severity === "error").map((i) => i.message)).toEqual([
+      expect.stringMatching(/draws bar on the display, and line \d+ builds it with "█"/),
+      expect.stringMatching(/"No networks found" is 17 characters, but only 16 fit from x = 0/), // cut off: an error since M8 8.5
+    ]);
     expect(found.filter((i) => i.severity === "warning").map((i) => i.message)).toContainEqual(expect.stringMatching(/y = 10 \+ i\*10.*only 5 rows fit/));
     expect(checkMicroPython(fixture("wifi-scanner-llm.py"), scanner, PICO_2_W).ok).toBe(false); // now sent back for repair
   });
@@ -200,7 +229,7 @@ describe("C013: text on the OLED (user's Wi-Fi scanner, 20/10/2026)", () => {
   it("non-ASCII directly in the text, a fixed y below the screen, a too-long literal", () => {
     expect(issues(draw('    oled.text("25°C ✓", 0, 0)'))[0]!.message).toMatch(/draws "° ✓".*plain ASCII/);
     expect(issues(draw('    oled.text("Hi", 0, 60)'))[0]).toMatchObject({ severity: "error", message: expect.stringMatching(/y = 60, below the screen.*last row is y = 56/) });
-    expect(issues(draw('    oled.text("Temperature is high", 0, 0)'))[0]).toMatchObject({ severity: "warning", message: expect.stringMatching(/19 characters, but only 16 fit from x = 0/) });
+    expect(issues(draw('    oled.text("Temperature is high", 0, 0)'))[0]).toMatchObject({ severity: "error", message: expect.stringMatching(/19 characters, but only 16 fit from x = 0/) });
     expect(issues(draw('    oled.text("Hello", 96, 0)'))[0]!.message).toMatch(/only 4 fit from x = 96/);
   });
 
@@ -209,5 +238,87 @@ describe("C013: text on the OLED (user's Wi-Fi scanner, 20/10/2026)", () => {
     expect(issues(draw('    oled.text("Hi", 0, 8 + i * 8)'))).toEqual([]);
     const blink = layoutProject([{ kind: "led" }]).build;
     expect(checkMicroPython('from machine import Pin\nimport time\nled = Pin(16, Pin.OUT)\nwhile True:\n    print("°")\n    led.toggle()\n    time.sleep(1)\n', blink, PICO_2_W).issues).toEqual([]);
+  });
+});
+
+describe("C013: the driver's drawing helpers (M8 8.6)", () => {
+  const build = layoutProject([{ kind: "oled" }], undefined, { power: "direct" }).build;
+  const draw = (line: string) => `from machine import Pin, I2C\nfrom sh1106 import SH1106_I2C\nimport time\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\noled = SH1106_I2C(128, 64, i2c)\nwhile True:\n    oled.fill(0)\n${line}\n    oled.show()\n    time.sleep(1)\n`;
+  const issues = (line: string) => checkMicroPython(draw(line), build, PICO_2_W).issues.filter((i) => i.code === "C013");
+  const messages = (line: string) => issues(line).map((i) => `${i.severity}: ${i.message}`);
+
+  it("icons and styles come from the driver's own tables, and the prompt lists exactly those", () => {
+    const pack = PACKS.find((p) => p.meta.id === "oled-sh1106-i2c")!;
+    const { ICONS, TEXT_STYLES, BAR_STYLES } = pack.driver!.lists;
+    expect(ICONS).toHaveLength(20);
+    expect(ICONS).toContain("heart");
+    expect(TEXT_STYLES).toEqual(["block", "dots", "seg"]);
+    expect(BAR_STYLES).toEqual(["solid", "blocks", "rounded", "slider"]);
+    const line = pack.agent!.code.pinLine;
+    expect(line).not.toMatch(/\{[A-Z_]+\}/); // every placeholder filled
+    expect(line).toContain(`icons: ${ICONS!.join(", ")}.`);
+    expect(line).toContain(`Text styles: block, dots, seg (`);
+    expect(line).toContain(`bar styles: solid, blocks, rounded, slider.`);
+  });
+
+  it("driverLists reads tuples and dict keys at the top level only; a new entry needs no other change", () => {
+    const src = 'X = 1\nSTYLES = ("a", "b")\nTABLE = {\n    "one": (".#",), "two": ("#.",),\n    "three": ("##",),\n}\nclass K:\n    INNER = ("no",)\n';
+    expect(driverLists(src)).toEqual({ STYLES: ["a", "b"], TABLE: ["one", "two", "three"] });
+  });
+
+  it("an icon the driver doesn't have is an error that lists the real ones; real icons and comments pass", () => {
+    expect(messages('    oled.icon("rocket", 0, 0, scale=2)')).toEqual([expect.stringMatching(/^error: Line 8 uses the icon "rocket", but sh1106\.py has no icon with that name.*Icons: heart, check.*oled\.sprite/)]);
+    expect(issues("    oled.icon('heart', 0, 0)\n    oled.icon(\"thermometer\", 20, 0, 2)")).toEqual([]);
+    expect(issues('    oled.text("ok", 0, 0)  # oled.icon("rocket", 0, 0)')).toEqual([]);
+    expect(issues("    oled.icon(name, 0, 0)")).toEqual([]); // a variable: not known before the program runs
+  });
+
+  it("a text or bar style the driver doesn't have is an error with the real styles; real ones pass", () => {
+    expect(messages('    oled.big_text("12", 0, 0, scale=3, style="digital")')).toEqual([expect.stringMatching(/^error: Line 8 uses the text style "digital", but sh1106\.py has no text style with that name.*Text styles: block, dots, seg\./)]);
+    expect(messages('    oled.bar(0, 50, 128, 10, 30, 100, style="round")')).toEqual([expect.stringMatching(/bar style "round".*Bar styles: solid, blocks, rounded, slider\./)]);
+    expect(issues('    oled.center_text("4:59", 20, scale=3, style="seg")\n    oled.bar(0, 54, 128, 10, 3, 10, style=\'blocks\')\n    oled.big_text("7", 0, 0, 3, 1, "dots")')).toEqual([]);
+  });
+
+  it("big text that can't fit across the screen is an error with the real limit", () => {
+    expect(messages('    oled.center_text("123456", 20, scale=3)')).toEqual([expect.stringMatching(/^error: Line 8: "123456" is 6 characters, but at scale 3 each letter is 24 pixels wide, so only 5 fit\./)]);
+    expect(messages('    oled.big_text("12345", 50, 20)')).toEqual([expect.stringMatching(/"12345" is 5 characters, but at scale 2 each letter is 16 pixels wide, so only 4 fit from x = 50/)]);
+    expect(messages('    oled.big_text("12345", 40, 20)')).toEqual([]); // 40 + 5 x 16 = 120: fits
+    expect(messages('    oled.big_text("Hello", 0, 0, 3)')).toEqual([]); // 5 x 24 = 120 pixels
+    expect(messages('    oled.center_text("Ready to go", 30)')).toEqual([]); // scale 1: 16 fit
+    expect(messages('    oled.title("A very long title text")')).toEqual([expect.stringMatching(/only 16 fit/)]);
+    expect(messages("    oled.center_text(str(level) + \"%\", 20, scale=3)")).toEqual([]); // not a plain literal: unknown length
+  });
+
+  it("characters the font doesn't have are errors in the helpers too", () => {
+    expect(messages('    oled.big_text("23°C", 0, 20)')).toEqual([expect.stringMatching(/^error: Line 8 draws "°" on the display/)]);
+    expect(messages('    oled.center_text("→ go", 20)')).toEqual([expect.stringMatching(/^error: Line 8 draws "→"/)]);
+  });
+
+  it("helper positions don't trigger text() row checks (big text isn't on the 8-pixel rows)", () => {
+    expect(issues('    oled.big_text("42", 0, 40)\n    oled.center_text("x", 50, scale=1)\n    oled.center_text("ok", 31, scale=3, style="seg")')).toEqual([]);
+  });
+
+  it("big text whose bottom is below the screen is an error with the lowest y that fits (heights from the driver)", () => {
+    // The model's #11 (08/11/2026): seg digits at scale 3 are 33 pixels tall, so y = 32 ends at 65.
+    expect(messages("    oled.center_text(f'{pot_value}', 32, scale=3, style='seg')")).toEqual([expect.stringMatching(/^error: Line 8: text at y = 32 with scale 3 \(style "seg"\) is 33 pixels tall, so it ends at y = 65, below the 64-pixel screen.*The lowest y that fits is 31\./)]);
+    expect(messages('    oled.big_text("42", 0, 60)')).toEqual([expect.stringMatching(/y = 60 with scale 2 is 16 pixels tall.*lowest y that fits is 48/)]);
+    expect(messages('    oled.big_text("42", 0, y=50, scale=2, style="dots")')).toEqual([expect.stringMatching(/style "dots"\) is 16 pixels tall/)]);
+    expect(messages("    oled.center_text(label, row, scale=3)")).toEqual([]); // y unknown before the program runs
+    const pack = PACKS.find((p) => p.meta.id === "oled-sh1106-i2c")!;
+    expect(pack.driver!.numbers.TEXT_HEIGHT).toEqual({ block: 8, dots: 8, seg: 11 });
+  });
+
+  it("a method the display doesn't have is an error with what to write instead (the model's oled.clear(), 08/11/2026)", () => {
+    expect(messages("    oled.clear()")).toEqual([expect.stringMatching(/^error: Line 8 calls oled\.clear\(\), but the display has no clear\(\) method, so the program stops with an error\. Write oled\.fill\(0\) instead\. Its methods: fill, fill_rect, .*show.*big_text/)]);
+    expect(messages('    oled.draw_rect(0, 0, 10, 10)')).toEqual([expect.stringMatching(/Write oled\.rect\(x, y, w, h, 1\) instead/)]);
+    expect(messages('    oled.sparkle(3)')).toEqual([expect.stringMatching(/no sparkle\(\) method, so the program stops with an error\. Its methods:/)]);
+    // framebuf's own methods, the driver's methods and helpers, other objects and comments pass
+    expect(issues('    oled.fill_rect(0, 0, 4, 4, 1)\n    oled.ellipse(64, 32, 10, 10, 1, True)\n    oled.scroll(1, 0)\n    oled.contrast(100)\n    oled.graph([1, 2], 0, 12, 128, 52)\n    i2c.scan()\n    # oled.clear()')).toEqual([]);
+  });
+
+  it("framebuf's method list is exactly the v1.29.0 firmware's method table", () => {
+    const c = readFileSync(new URL("../../../docs/software/micropython-v1.29.0/extmod__modframebuf.c", import.meta.url), "utf8");
+    const table = /framebuf_locals_dict_table\[\] = \{([\s\S]*?)\n\};/.exec(c)![1]!;
+    expect([...table.matchAll(/MP_QSTR_(\w+)/g)].map((m) => m[1])).toEqual(FRAMEBUF_METHODS);
   });
 });

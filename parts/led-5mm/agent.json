@@ -13,6 +13,7 @@
   "names": { "label": ["an LED", "LEDs"], "count": ["LED", "LEDs"], "supports": "LEDs", "short": ["LED", "LEDs"] },
   "code": {
     "pinLine": "{color} LED {ref} on {gpio}: Pin({g}, Pin.OUT) for on/off, or PWM(Pin({g})) with duty_u16(0..65535) for brightness. value(1) = on.",
+    "imports": ["from machine import Pin, PWM"],
     "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.OUT) or PWM(Pin({g}))` |"],
     "ragQuery": "GPIO output 3.3 V drive an LED"
   }

@@ -360,7 +360,8 @@ npm run eval:rag -w @breadpilot/api                                 # retrieval 
 npm run eval:agent -w @breadpilot/api -- [--model <name>] [--openai] [--json <file>]
 
 # Model test: 50 ideas (20 easy, 20 medium, 10 hard), results per difficulty + the model's memory
-npm run eval:models -w @breadpilot/api -- --model <ollama tag> [--json <file>] [--think on|off]
+# Reloads the model between ideas, prints memory after each, stops if swap grows more than 2 GB
+npm run eval:models -w @breadpilot/api -- --model <ollama tag> [--json <file>] [--think on|off] [--max-swap-gb <n>] [--keep-loaded]
 
 # Compare the built-in model sizes with ollama.com (--write updates them)
 npm run check:models -w @breadpilot/api [-- --write]

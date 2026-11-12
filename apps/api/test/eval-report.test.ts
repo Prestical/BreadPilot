@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byDifficulty, difficultyTable, mistakeReport } from "../src/agent/eval-report";
+import { byDifficulty, difficultyTable, memoryLine, mistakeReport, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh } from "../src/agent/eval-report";
 
 describe("mistakeReport", () => {
   it("summarizes failed attempts per check and per message", () => {
@@ -34,5 +34,45 @@ describe("byDifficulty (model tests)", () => {
     const rows = byDifficulty([r("medium", false, 0, 5, false), { correct: true, validatedBuild: true, codeOk: true, codeAttempts: 1, seconds: 1 }]);
     expect(rows).toEqual([{ difficulty: "medium", ideas: 1, correct: "0%", codeFirstTry: "n/a", codeFinal: "n/a", avgSeconds: 5 }]);
     expect(difficultyTable([])).toBe("");
+  });
+});
+
+describe("memory during a model test", () => {
+  it("reads macOS swap", () => {
+    expect(parseSwapUsage("total = 2048.00M  used = 1024.50M  free = 1023.50M  (encrypted)")).toBe(1024.5 * 1024 ** 2);
+    expect(parseSwapUsage("total = 4.00G  used = 1.50G  free = 2.50G")).toBe(1.5 * 1024 ** 3);
+    expect(parseSwapUsage("total = 0.00M  used = 0.00M  free = 0.00M")).toBe(0);
+    expect(parseSwapUsage("")).toBeNull();
+  });
+
+  it("reads Linux swap", () => {
+    expect(parseMeminfoSwap("MemTotal: 16 kB\nSwapTotal:       2048 kB\nSwapFree:        1024 kB\n")).toBe(1024 * 1024);
+    expect(parseMeminfoSwap("MemTotal: 16 kB\n")).toBeNull();
+  });
+
+  it("adds up only Ollama's processes, by program name", () => {
+    const ps = [
+      "  100000 /Applications/Ollama.app/Contents/Resources/ollama serve",
+      " 5000000 /Applications/Ollama.app/Contents/Resources/ollama runner --model /Users/x/.ollama/models/blobs/sha256-a",
+      "  200000 /opt/llama-server --port 1",
+      "  900000 node src/eval-agent-cli.ts --model ollama:thing",
+      "  300000 /usr/bin/tee .local/ollama.txt",
+      "garbage",
+    ].join("\n");
+    expect(ollamaProcessBytes(ps)).toBe((100000 + 5000000 + 200000) * 1024);
+    expect(ollamaProcessBytes("")).toBe(0);
+  });
+
+  it("prints one short line, and says when something can't be read", () => {
+    expect(memoryLine({ processBytes: 9e8, ollamaBytes: 5.3e9, swapBytes: 120e6 })).toBe("memory: this test 900 MB · Ollama 5.3 GB · swap 120 MB");
+    expect(memoryLine({ processBytes: 1.2e9, ollamaBytes: null, swapBytes: null })).toBe("memory: this test 1.2 GB · Ollama n/a · swap n/a");
+  });
+
+  it("stops only when swap grew more than the limit since the start", () => {
+    expect(swapTooHigh(1e9, 3e9, 2)).toBe(false);
+    expect(swapTooHigh(1e9, 3.1e9, 2)).toBe(true);
+    expect(swapTooHigh(5e9, 5e9, 2)).toBe(false); // swap already in use before the test isn't its fault
+    expect(swapTooHigh(null, 9e9, 2)).toBe(false);
+    expect(swapTooHigh(0, null, 2)).toBe(false);
   });
 });

@@ -74,6 +74,18 @@ export function optionText(m: LocalModel, numCtx: number): string {
 /** Asking before using a model this computer can't hold. */
 export const tooBigWarning = (m: LocalModel) => `${m.name} is probably too big for this computer: ${m.fit.reason} Use it anyway?`;
 
+/** The OpenAI model BreadPilot recommends instead of a small local model. */
+export const RECOMMENDED_OPENAI = "GPT-6 Luna";
+
+/**
+ * The warning for small local models (the model list's small group), shown only in Settings → Local
+ * AI. In BreadPilot's tests (08/11/2026) a 4B model's code passed the checks but often had logic
+ * mistakes, while OpenAI's model got the same projects right. The wiring is checked by BreadPilot
+ * itself whatever the model.
+ */
+export const smallModelWarning = (name?: string) =>
+  `${name ? `${name} is a small model` : "Small models"}: ${name ? "its" : "their"} code often has logic mistakes, even when it matches the wiring (BreadPilot checks the wiring itself). For better results, use OpenAI's ${RECOMMENDED_OPENAI}.`;
+
 /** The prompt bar's button: "Local · Qwen3 4B Instruct". */
 export function localLabel(options: LlmOptions | null): string {
   const name = options?.local.name ?? options?.local.model;

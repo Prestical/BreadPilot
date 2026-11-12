@@ -22,6 +22,7 @@ import {
   validateBuild,
   type BlockRequest,
   type Board,
+  type CodeIssue,
   type Layout,
   type PowerMode,
 } from "@breadpilot/circuit-core";
@@ -29,7 +30,8 @@ import { addUsage, LlmError, type LlmCallOptions, type LlmClient, type LlmResult
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { ProgressBus } from "./progress";
 import { currentPlan, type LlmChoice, type Project, type ProjectStore, type StageEvent } from "./project";
-import { codeMessages, intakeMessages, needsNetwork, pinTable, planMessages } from "./prompts";
+import { codeMessages, importBlock, intakeMessages, needsNetwork, pinTable, planMessages } from "./prompts";
+import { repairProblems } from "./repair";
 import { analyzeIdea, mergeRequirements, minimumParts, planProblems, unsupportedMessage, type Requirements } from "./requirements";
 import { CodeSchema, IntakeSchema, normalizeIntake, normalizePlan, PlanSchema, type Plan } from "./schemas";
 
@@ -557,8 +559,9 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
   const network = needsNetwork([p.idea, plan.goal, ...plan.behavior, ...p.plans.map((x) => x.feedback ?? "")].join(" "));
 
   let fix: { code: string; problems: string[] } | undefined;
+  let previous: CodeIssue[] = [];
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
-    const out = await run.llm("code", (o) => clientFor(deps, p).json(CodeSchema, codeMessages(plan, pins, refText, fix, network), { ...o, maxTokens: MAX_TOKENS.code }));
+    const out = await run.llm("code", (o) => clientFor(deps, p).json(CodeSchema, codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network)), { ...o, maxTokens: MAX_TOKENS.code }));
     const check = checkMicroPython(out.code, layout.build, board);
     pb.code = out.code;
     pb.codeExplanation = out.explanation;
@@ -571,7 +574,9 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
     }
     const problems = check.issues.filter((i) => i.severity === "error").map((i) => i.message);
     run.event("code", attempt < MAX_REPAIRS ? "retry" : "error", 0, problems.join(" | "));
-    fix = { code: out.code, problems };
+    // The model gets its own wrong lines, the corrected lines and imports, and which mistakes repeat.
+    fix = { code: out.code, problems: repairProblems(out.code, check.issues, previous) };
+    previous = check.issues;
   }
   handoff(p, `The wiring and build steps are ready and checked, but the local model couldn't write code that matches the wiring after ${MAX_REPAIRS + 1} tries.`);
 }

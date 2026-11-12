@@ -10,7 +10,8 @@ const build = layoutProject([{ kind: "oled" }, { kind: "button" }], undefined, {
 const head =
   "from machine import Pin, I2C\nimport machine\nimport time\nfrom sh1106 import SH1106_I2C\n" +
   "i2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\noled = SH1106_I2C(128, 64, i2c)\noled.show()\nbtn = Pin(18, Pin.IN, Pin.PULL_UP)\n";
-const loop = "while True:\n    time.sleep(1)\n";
+// The loop reads the button: a part that's set up but never used is its own error (C006, M8 8.5).
+const loop = "while True:\n    print(btn.value())\n    time.sleep(1)\n";
 const check = (code: string) => checkMicroPython(head + code + loop, build, PICO_2_W);
 const errorCodes = (code: string) => check(code).issues.filter((i) => i.severity === "error").map((i) => i.code);
 
@@ -44,9 +45,9 @@ describe("the pin check can't be talked around", () => {
 describe("normal code still passes", () => {
   it.each([
     ["re-stating the same mode", "btn.init(Pin.IN, Pin.PULL_UP)\n"],
-    ["the same mode by number", "x = Pin(18, 0, 1)\n"],
-    ["keyword arguments", "x = Pin(18, mode=Pin.IN, pull=Pin.PULL_UP)\n"],
-    ["machine.Pin constants", "x = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_UP)\n"],
+    ["the same mode by number", "x = Pin(18, 0, 1)\nprint(x.value())\n"],
+    ["keyword arguments", "x = Pin(18, mode=Pin.IN, pull=Pin.PULL_UP)\nprint(x.value())\n"],
+    ["machine.Pin constants", "x = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_UP)\nprint(x.value())\n"],
     ["a Timer's init(mode=...)", "from machine import Timer\nt = Timer()\nt.init(mode=Timer.PERIODIC, period=1000, callback=lambda t: None)\n"],
     ["the on-board LED by name", 'led = Pin("LED", Pin.OUT)\nled.toggle()\n'],
   ])("%s", (_name, code) => {

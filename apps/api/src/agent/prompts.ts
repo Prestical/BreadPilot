@@ -68,16 +68,42 @@ Example for "traffic light with a button":
   ];
 }
 
+/**
+ * The program's import lines, merged from every wired part's pack (agent.json code.imports): `Pin` is
+ * always there (the on-board LED needs it) and `import time` too (the rules ask for a sleeping main
+ * loop). One block in one place, because models copy what they see and drop what isn't there.
+ */
+export function importBlock(blocks: PlacedBlock[], network = false): string[] {
+  const from = new Map<string, string[]>([["machine", ["Pin"]]]);
+  const plain: string[] = [];
+  for (const kind of new Set(blocks.map((b) => b.kind))) {
+    for (const line of agentOf(kind).code.imports) {
+      const m = /^from (\S+) import (.+)$/.exec(line);
+      if (m) {
+        const names = from.get(m[1]!) ?? [];
+        for (const n of m[2]!.split(",").map((x) => x.trim())) if (!names.includes(n)) names.push(n);
+        from.set(m[1]!, names);
+      } else if (!plain.includes(line)) plain.push(line);
+    }
+  }
+  // Wi-Fi code always starts with network.WLAN(...) (see the network rules).
+  if (network && !plain.includes("import network")) plain.push("import network");
+  return [...[...from].map(([mod, names]) => `from ${mod} import ${names.join(", ")}`), ...plain.filter((l) => l !== "import time"), "import time"];
+}
+
+/** The Pico 2 W's own LED, in every pin table: it's always there, so the model never borrows a wired pin for it. */
+export const ONBOARD_LED_LINE = '- the Pico 2 W\'s own on-board LED (no wiring needed): Pin("LED", Pin.OUT). It is none of the pins above; use it only if the project asks for the built-in LED.';
+
 /** One line per wired part (agent.json code.pinLine). {n} numbers repeated parts of a kind: "", "2"… */
 export function pinTable(blocks: PlacedBlock[], colors: Record<string, string>): string {
   if (!blocks.length) return '- No parts are wired. Use only the Pico 2 W\'s on-board LED: Pin("LED", Pin.OUT). (It is NOT GP25, GP16 or GP2: those are other boards or other pins.)';
-  return blocks
-    .map((b) => {
-      const same = blocks.filter((x) => x.kind === b.kind);
-      const n = same.indexOf(b) === 0 ? "" : String(same.indexOf(b) + 1);
-      return `- ${fill(agentOf(b.kind).code.pinLine, blockVars(b, undefined, { n, color: colors[b.ref] ?? "red" }))}`;
-    })
-    .join("\n");
+  const wired = blocks.map((b) => {
+    const same = blocks.filter((x) => x.kind === b.kind);
+    const n = same.indexOf(b) === 0 ? "" : String(same.indexOf(b) + 1);
+    return `- ${fill(agentOf(b.kind).code.pinLine, blockVars(b, undefined, { n, color: colors[b.ref] ?? "red" }))}`;
+  });
+  // A board fact: the on-board LED needs no wiring and is none of the wired pins.
+  return [...wired, ONBOARD_LED_LINE].join("\n");
 }
 
 const NETWORK_RULES = `
@@ -92,7 +118,7 @@ export function needsNetwork(text: string): boolean {
   return /\b(wi-?fi|wlan|network|internet|online|ip|ping|https?|web|website|webpage|server|browser|phone|mqtt|api|cloud|email|ntp|bluetooth|ble)\b/i.test(text);
 }
 
-export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[] }, network = false): ChatMessage[] {
+export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[] }, network = false, imports: string[] = ["from machine import Pin", "import time"]): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -131,13 +157,16 @@ ${plan.behavior.map((b) => `- ${b}`).join("\n")}
 
 Pins (already wired, use exactly these):
 ${pins}
+
+Imports: start the program with these lines. Below them, add an import line for any other module you use (for example "import random").
+${imports.join("\n")}
 ${references ? `\nReference notes from the official documentation:\n${references}` : ""}`,
     },
   ];
   if (fix) {
     messages.push(
       { role: "assistant", content: JSON.stringify({ code: fix.code, explanation: "(previous attempt)" }) },
-      { role: "user", content: `That code has problems:\n${fix.problems.map((p) => `- ${p}`).join("\n")}\nReturn the corrected program.` },
+      { role: "user", content: `That code has problems:\n${fix.problems.map((p) => `- ${p}`).join("\n")}\nFix every problem: where a line is given, write it exactly like that. Keep the rest of the program as it is, and return the whole corrected program.` },
     );
   }
   return messages;

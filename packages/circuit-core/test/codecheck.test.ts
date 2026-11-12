@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PICO_2_W } from "../src/board";
-import { checkMicroPython, evalInts, stripStringsAndComments } from "../src/codecheck";
+import { checkMicroPython, evalInts, MACHINE_MODULE_NAMES, moduleConstants, stripStringsAndComments } from "../src/codecheck";
 import { layoutProject } from "../src/layout";
 
 // LED on GP16 (out), button on GP17 (in_pullup), pot on GP26 (adc)
@@ -84,7 +85,7 @@ describe("checkMicroPython", () => {
     const lb = layoutProject([{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP17" }]).build;
     const ok = (body: string) => checkMicroPython(head + body, lb, PICO_2_W).issues.filter((i) => i.severity === "error");
     expect(ok("x = 1\nif (btn.value() == 0 and\n        x == 1):\n    led.on()\n")).toEqual([]);
-    expect(ok("def blink(times,\n          delay):\n    for _ in range(times):\n        led.toggle()\n        time.sleep(delay)\n")).toEqual([]);
+    expect(ok("def blink(times,\n          delay):\n    for _ in range(times):\n        led.toggle()\n        time.sleep(delay)\nprint(btn.value())\n")).toEqual([]);
     expect(ok("if btn.value() == 0 and \\\n   True:\n    led.on()\n")).toEqual([]);
     expect(ok("if (btn.value() == 0 and\n        True)\n    led.on()\n").map((i) => i.code)).toEqual(["C001"]);
   });
@@ -175,7 +176,7 @@ describe("C011: names used but never defined", () => {
     expect(r.issues[0]!.message).toMatch(/uses "BLINK", which is never defined/);
   });
   it("suggests the closest name", () => {
-    expect(check(GOOD.replace("led.duty_u16(knob.read_u16())", "led.duty_u16(knb.read_u16())")).issues[0]!.message).toMatch(/Did you mean "knob"\?/);
+    expect(check(GOOD.replace("led.duty_u16(knob.read_u16())", "led.duty_u16(knb.read_u16())")).issues.find((i) => i.code === "C011")!.message).toMatch(/Did you mean "knob"\?/);
   });
   it.each([
     ["keyword arguments", "def cb(p):\n    pass\nbutton.irq(trigger=Pin.IRQ_FALLING, handler=cb)\n"],
@@ -276,5 +277,63 @@ describe("C011 knows MicroPython's built-in exceptions (false positive found 20/
     const blink = layoutProject([{ kind: "led" }]).build;
     const code = `from machine import Pin\nimport time\nled = Pin(16, Pin.OUT)\ntry:\n    x = b"a".decode()\nexcept ${name}:\n    x = "?"\nwhile True:\n    led.toggle()\n    time.sleep(1)\n`;
     expect(checkMicroPython(code, blink, PICO_2_W).issues).toEqual([]);
+  });
+});
+
+describe("moduleConstants: names assigned once at the top level", () => {
+  const consts = (src: string) => moduleConstants(src, stripStringsAndComments(src));
+  it("reads numbers (also from other constants) and plain text", () => {
+    const c = consts('W = 128\nH = W - 64\nTITLE = "Hello"\nNAME = r\'x\'\nAREA = W * H\n');
+    expect(Object.fromEntries(c.ints)).toEqual({ W: 128, H: 64, AREA: 8192 });
+    expect(Object.fromEntries(c.strings)).toEqual({ TITLE: "Hello", NAME: "x" });
+  });
+  it("leaves out anything whose value can change or isn't simple", () => {
+    const c = consts(
+      [
+        "A = 1", "A = 2", // assigned twice
+        "B = 5", "B += 1", // changed
+        "C = 3", "def f():", "    global C", "    C = 4", // changed in a function
+        "for D in range(3):", "    pass", "D = 1", // loop variable
+        "E, F = 1, 2", // tuple assignment
+        "    G = 7", // indented: not top level
+        "H = some_call()", "I = [1, 2]", 'J = "a" + "b"', "K = 'it''s'",
+        "L = 10", // the only real constant
+      ].join("\n"),
+    );
+    expect(Object.fromEntries(c.ints)).toEqual({ L: 10 });
+    expect([...c.strings.keys()]).toEqual([]);
+  });
+});
+
+describe("C015: names the machine module doesn't have (MicroPython v1.29.0, rp2)", () => {
+  const build = layoutProject([{ kind: "led" }], undefined, { power: "direct" }).build;
+  const c015 = (code: string) => checkMicroPython(code, build, PICO_2_W).issues.filter((i) => i.code === "C015").map((i) => i.message);
+  const led = 'led = Pin(16, Pin.OUT)\nled.on()\n';
+
+  it("the model's real mistakes (08/11/2026): from machine import machine, machine.temperature()", () => {
+    const found = c015(`from machine import Pin, I2C, machine\nimport time\n${led}t = machine.temperature() / 1000\n`);
+    expect(found).toEqual([
+      expect.stringMatching(/^Line 1 imports machine from machine, but MicroPython's machine module on the Pico has no machine, so the program stops with an error there\. The machine module has: .*ADC.*Pin.*Timer/),
+      expect.stringMatching(/^Line 5 uses machine\.temperature, but .* has no temperature/),
+    ]);
+    expect(c015(`import machine\nfrom machine import Pin\n${led}t = machine.temperature()\n`)).toEqual([expect.stringMatching(/^Line 5 uses machine\.temperature/)]);
+    expect(c015(`import machine as m\nfrom machine import Pin\n${led}m.reboot()\n`)).toEqual([expect.stringMatching(/uses m\.reboot.*has no reboot/)]);
+  });
+
+  it("real names pass: classes, functions, the rp2 extras, aliases, star imports, other modules", () => {
+    expect(c015(`from machine import Pin, ADC, PWM, I2C, SoftI2C, Timer, RTC, WDT, UART, SPI\nimport machine\n${led}machine.freq()\nmachine.unique_id()\nmachine.reset_cause() == machine.PWRON_RESET\nx = machine.Pin(2)\n`)).toEqual([]);
+    expect(c015(`from machine import Pin as P, ADC\nfrom machine import *\n${led}`)).toEqual([]);
+    expect(c015(`from machine import Pin\nimport time\n${led}time.temperature = 3\n# machine.temperature()\n`)).toEqual([]);
+  });
+
+  it("the list is exactly the names in the v1.29.0 module tables (extmod + the rp2 port's extras)", () => {
+    const dir = new URL("../../../docs/software/micropython-v1.29.0/", import.meta.url);
+    const common = readFileSync(new URL("extmod__modmachine.c", dir), "utf8");
+    const rp2 = readFileSync(new URL("ports__rp2__modmachine.c", dir), "utf8");
+    const table = /machine_module_globals_table\[\] = \{([\s\S]*?)\n\};/.exec(common)![1]!;
+    const extras = /#define MICROPY_PY_MACHINE_EXTRA_GLOBALS \\\n([\s\S]*?)\n\n/.exec(rp2)![1]!;
+    // Each entry is { key, value }: only the key is a name (the __name__ entry's value is "machine").
+    const names = [...`${table}\n${extras}`.matchAll(/\{\s*MP_ROM_QSTR\(MP_QSTR_(\w+)\)/g)].map((m) => m[1]!).filter((n) => n !== "__name__");
+    expect([...names].sort()).toEqual([...MACHINE_MODULE_NAMES].sort());
   });
 });

@@ -64,6 +64,8 @@ describe("pack checks refuse bad packs with the exact field", () => {
   it("a driver that isn't plain ASCII", () => refuse((p) => (p.driver!.source += "# ünïcode\n"), /plain ASCII/));
   it("a missing driver", () => refuse((p) => delete p.driver, /missing driver file/));
   it("control characters in text", () => refuse((p) => (p.files["part.json"].name = "OLED\u0007"), /control characters/));
+  it("an import line that is code, not an import", () => refuse((p) => (p.files["agent.json"].code.imports = ["import os; os.remove('main.py')"]), /code\.imports\[0\]: not an import line/));
+  it("missing import lines", () => refuse((p) => delete p.files["agent.json"].code.imports, /code\.imports/));
   it("an unknown pack file", () => refuse((p) => (p.files["extra.json"] = {}), /unknown pack file/));
   const refuseAll = (edit: (files: Record<string, any>) => void, msg: RegExp, dir = "led-5mm") => {
     const all = readPacks() as (PackSource & { files: Record<string, any> })[];
