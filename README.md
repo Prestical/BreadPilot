@@ -363,6 +363,9 @@ npm run eval:agent -w @breadpilot/api -- [--model <name>] [--openai] [--json <fi
 # Reloads the model between ideas, prints memory after each, stops if swap grows more than 2 GB
 npm run eval:models -w @breadpilot/api -- --model <ollama tag> [--json <file>] [--think on|off] [--max-swap-gb <n>] [--keep-loaded]
 
+# Change test: builds 5 projects, asks for one change each, checks the parts that stay didn't move
+npm run eval:changes -w @breadpilot/api -- [--openai] [--model <ollama tag>] [--only 1,3] [--json <file>]
+
 # Compare the built-in model sizes with ollama.com (--write updates them)
 npm run check:models -w @breadpilot/api [-- --write]
 ```

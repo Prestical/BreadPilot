@@ -2,22 +2,26 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { handoffMarkdown } from "./handoff";
 import { POWER_MODES, type PowerMode } from "@breadpilot/circuit-core";
-import { AgentError, approvePlan, createProject, deleteProject, isRunning, retryProject, setPower, stopProject, type AgentDeps } from "./pipeline";
+import { AgentError, approvePlan, cancelChange, createProject, deleteProject, isRunning, restoreProjectVersion, retryProject, reviseProject, setPower, stopProject, type AgentDeps } from "./pipeline";
 import { progressBus, type ProgressEvent } from "./progress";
 import { LLM_CHOICES, type Project } from "./project";
+import { ensureVersions } from "./versions";
 import { catalogEntry } from "../models";
 
 const Power = z.enum(POWER_MODES as [PowerMode, ...PowerMode[]]);
 const CreateBody = z.object({ idea: z.string(), board: z.string().max(64).optional(), power: Power.optional(), llm: z.enum(LLM_CHOICES).optional() });
 const PowerBody = z.object({ power: Power });
 const ApproveBody = z.object({ feedback: z.string().max(1000).optional() });
+/** M9: a change to a finished project; `llm` = the prompt bar's model, `baseCode` = the user's edits. */
+const ReviseBody = z.object({ request: z.string().max(2000), llm: z.enum(LLM_CHOICES).optional(), baseCode: z.string().max(20_000).optional() });
 /** `?async=1`: answer 202 at once and run in the background (progress via the events stream). */
 const AsyncQuery = z.object({ async: z.enum(["1", "true", "0", "false"]).optional() });
 
 /** SSE keep-alive: a comment line every 15 s keeps the event stream open while the AI works. */
 export const SSE_HEARTBEAT_MS = 15_000;
 
-const withRunning = (p: Project) => ({ ...p, running: isRunning(p.id) });
+// Projects made before M9 get their version 1 here, when they're read (saved with the next change).
+const withRunning = (p: Project) => ({ ...ensureVersions(p), running: isRunning(p.id) });
 
 function fail(reply: FastifyReply, err: unknown) {
   if (err instanceof AgentError) {
@@ -83,6 +87,28 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentDeps) {
     }
   });
 
+  // M9: change a finished project. Code-only changes are made now; changes that need other parts
+  // answer with the new plan waiting for approval (approve builds it, /revise/cancel drops it).
+  app.post<{ Params: { id: string } }>("/api/projects/:id/revise", async (req, reply) => {
+    const body = ReviseBody.safeParse(req.body ?? {});
+    if (!body.success) return reply.status(400).send({ code: "BAD_REQUEST", message: 'Send {"request": "what to change"}', details: body.error.issues });
+    const bg = background(req);
+    try {
+      const p = await reviseProject(deps, req.params.id, body.data.request, { background: bg, ...(body.data.llm ? { llm: body.data.llm } : {}), ...(body.data.baseCode !== undefined ? { baseCode: body.data.baseCode } : {}) });
+      return reply.status(bg ? 202 : 200).send(withRunning(p));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
+  app.post<{ Params: { id: string } }>("/api/projects/:id/revise/cancel", async (req, reply) => {
+    try {
+      return withRunning(await cancelChange(deps, req.params.id));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
   app.post<{ Params: { id: string } }>("/api/projects/:id/retry", async (req, reply) => {
     const bg = background(req);
     try {
@@ -108,6 +134,17 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentDeps) {
     if (!body.success) return reply.status(400).send({ code: "BAD_REQUEST", message: 'Send {"power": "rails"} or {"power": "direct"}', details: body.error.issues });
     try {
       return withRunning(await setPower(deps, req.params.id, body.data.power));
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
+  /** M9: brings back an older version as a new version (nothing is deleted). */
+  app.post<{ Params: { id: string; n: string } }>("/api/projects/:id/versions/:n/restore", async (req, reply) => {
+    const n = Number(req.params.n);
+    if (!Number.isInteger(n) || n < 1) return reply.status(400).send({ code: "BAD_REQUEST", message: "The version must be a number from 1." });
+    try {
+      return withRunning(await restoreProjectVersion(deps, req.params.id, n));
     } catch (err) {
       return fail(reply, err);
     }
@@ -174,7 +211,7 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentDeps) {
     };
 
     const current = runningAtStart ? deps.progress?.latest(id) : undefined;
-    send("snapshot", { ...p, running: runningAtStart, ...(current ? { current } : {}) });
+    send("snapshot", { ...ensureVersions(p), running: runningAtStart, ...(current ? { current } : {}) });
     ready = true;
     for (const e of queue.splice(0)) write(e);
     // Not running when we subscribed → no "done" will ever come: the snapshot is final.

@@ -118,7 +118,19 @@ export function needsNetwork(text: string): boolean {
   return /\b(wi-?fi|wlan|network|internet|online|ip|ping|https?|web|website|webpage|server|browser|phone|mqtt|api|cloud|email|ntp|bluetooth|ble)\b/i.test(text);
 }
 
-export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[] }, network = false, imports: string[] = ["from machine import Pin", "import time"]): ChatMessage[] {
+/**
+ * `change` (M9): the program as it is now and what the user wants changed. The model gets the
+ * current program as its own earlier answer and is asked to change it, not to write a new one, so
+ * what already works stays the same. `rewired`: the parts or pins changed (the pin list above is
+ * the new one).
+ */
+export interface CodeChange {
+  code: string;
+  request: string;
+  rewired: boolean;
+}
+
+export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[] }, network = false, imports: string[] = ["from machine import Pin", "import time"], change?: CodeChange): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -163,6 +175,16 @@ ${imports.join("\n")}
 ${references ? `\nReference notes from the official documentation:\n${references}` : ""}`,
     },
   ];
+  if (change) {
+    messages.push(
+      { role: "assistant", content: JSON.stringify({ code: change.code, explanation: "(the program as it is now)" }) },
+      {
+        role: "user",
+        content: `The user wants this change: ${change.request}
+Change the program above for it. Keep everything that isn't part of the change the same: the same names, settings and structure. Change only what is needed, then return the whole program.${change.rewired ? "\nThe parts or pins changed: use exactly the pins listed above, set up any new part, and remove the code for parts that are no longer listed." : ""}`,
+      },
+    );
+  }
   if (fix) {
     messages.push(
       { role: "assistant", content: JSON.stringify({ code: fix.code, explanation: "(previous attempt)" }) },

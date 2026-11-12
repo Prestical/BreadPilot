@@ -2,6 +2,7 @@ import type { Db } from "../db";
 import type { Build, BuildStep, CodeCheckReport, CodeIssue, PlacedBlock, PowerMode } from "@breadpilot/circuit-core";
 import type { Intake, Plan } from "./schemas";
 import type { TokenUsage } from "./llm";
+import type { ProjectVersion } from "./versions";
 
 export const LLM_CHOICES = ["local", "openai"] as const;
 export type LlmChoice = (typeof LLM_CHOICES)[number];
@@ -20,6 +21,13 @@ export interface ProjectBuild {
   build: Build;
   blocks: PlacedBlock[];
   steps: BuildStep[];
+  /**
+   * M9: after a change, the steps from the previous version's board to this one (only what changes);
+   * [] = the wiring didn't change, only the code. Missing for a project's first build.
+   */
+  changeSteps?: BuildStep[];
+  /** M9: the board before that change, so the 3D view can show the parts and wires being taken out. */
+  changeFrom?: Build;
   code?: string;
   codeExplanation?: string;
   codeCheck?: CodeCheckReport;
@@ -50,6 +58,23 @@ export interface Project {
   build?: ProjectBuild;
   /** Why the project needs the handoff bundle (unsupported parts, code that kept failing). */
   handoffReason?: string;
+  /** M9: every finished state of the project, oldest first; the fields above hold the latest one. */
+  versions?: ProjectVersion[];
+  /** M9: the version shown now (after a restore it's an older one); missing = the newest. */
+  currentVersion?: number;
+  /**
+   * M9: a change that needs other parts, waiting for the user's approval of its plan. `planCount`:
+   * plans before the change (cancel goes back to them); `before`: the finished state to return to.
+   */
+  pendingChange?: {
+    request: string;
+    /** The code the change starts from: the user's own edits, or missing for the generated code. */
+    baseCode?: string;
+    planCount: number;
+    before: { state: "READY" | "HANDOFF"; title: string; handoffReason?: string };
+  };
+  /** M9: the last change that couldn't be made; the project was left as it was. */
+  changeError?: { request: string; message: string; at: string };
   /** Last failure (e.g. the LLM was unreachable); the project can be retried. */
   failure?: string;
   /** The stage to resume from on retry. */

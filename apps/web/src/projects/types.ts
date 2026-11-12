@@ -47,6 +47,23 @@ export interface PlanVersion {
   autoFix?: string;
 }
 
+/** M9: one finished state of a project (the engine's ProjectVersion). */
+export interface ProjectVersion {
+  n: number;
+  /** The change asked for; missing for version 1. */
+  request?: string;
+  /** The version it was changed from. */
+  parent?: number;
+  /** Old data: versions once made by a restore. */
+  restoredFrom?: number;
+  llm: AiChoice;
+  model?: string;
+  planVersion: number;
+  state: "READY" | "HANDOFF";
+  build?: NonNullable<ApiProject["build"]>;
+  createdAt: string;
+}
+
 export interface ApiProject {
   id: string;
   idea: string;
@@ -63,6 +80,10 @@ export interface ApiProject {
   build?: {
     build: Build;
     steps: BuildStep[];
+    /** M9: after a change, only what changes on the breadboard ([] = only the code changed). */
+    changeSteps?: BuildStep[];
+    /** M9: the board before that change (the 3D view shows the parts and wires being taken out). */
+    changeFrom?: Build;
     code?: string;
     codeExplanation?: string;
     codeCheck?: CodeCheckReport;
@@ -70,6 +91,14 @@ export interface ApiProject {
     citations: string[];
   };
   handoffReason?: string;
+  /** M9: every finished state of the project, oldest first (the fields above are the latest). */
+  versions?: ProjectVersion[];
+  /** M9: the version shown now (after a restore, an older one); missing = the newest. */
+  currentVersion?: number;
+  /** M9: a change that needs other parts, waiting for approval (its plan is the newest plan). */
+  pendingChange?: { request: string; baseCode?: string; planCount: number; before: { state: "READY" | "HANDOFF"; title: string } };
+  /** M9: the last change that couldn't be made; the project was left as it was. */
+  changeError?: { request: string; message: string; at: string };
   failure?: string;
   resumeFrom?: "intake" | "plan" | "build";
   events: StageEvent[];

@@ -48,6 +48,11 @@ export interface Requirements {
   parts: Record<PartKind, PartNeed>;
   /** Parts the text explicitly excludes ("no button", "remove the knob"). */
   removed: PartKind[];
+  /**
+   * One of several parts taken away ("remove the green LED", "drop the second button", "remove one
+   * LED"): the count goes down by that many; the kind isn't banned (M9, 11/11/2026).
+   */
+  fewer?: Partial<Record<PartKind, number>>;
   /** GPIOs the text asks for explicitly ("GP15", "GPIO 15"). */
   pins: string[];
   /** The text is about the Pico's own LED (a project with no external parts is fine). */
@@ -338,9 +343,24 @@ function colorsBefore(t: Text, i: number): string[] {
   return colors;
 }
 
-function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; onboard: boolean; named: PartKind[] } {
+/** Words that make a negation a swap ("instead of the red LED", "rather than the green one"): no count changes. */
+const SWAPS = new Set(["instead", "rather", "replace", "replacing", "swap", "swapping", "except"]);
+
+/**
+ * The negated noun picks out one part of several: a colour ("the green LED"), an ordinal ("the second
+ * button", "the other knob") or "one" ("remove one LED", "remove one of the LEDs").
+ */
+function oneOfSeveral(t: Text, i: number, colors: boolean): boolean {
+  if (colors && colorsBefore(t, i).length > 0) return true;
+  if (ordinalBefore(t, i) > 0) return true;
+  const near = before(t, i, 4);
+  return near.includes("one") || near.includes("other") || near.includes("1");
+}
+
+function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; fewer: Partial<Record<PartKind, number>>; onboard: boolean; named: PartKind[] } {
   const parts: Requirements["parts"] = {};
   const removed = new Set<PartKind>();
+  const fewer: Partial<Record<PartKind, number>> = {};
   const named = new Set<PartKind>();
   const impliedOnly: { kind: PartKind; unlessNamed: string[] }[] = [];
   let onboard = false;
@@ -368,6 +388,12 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
         if (!nounContext(t, i) || (ctx.notAfterComputer && before(t, i, 3).some((x) => COMPUTER.test(x))) || other) continue;
       }
       if (negated(t, i)) {
+        // "remove the green LED": one fewer, not "no LEDs at all". A swap ("instead of the red LED")
+        // changes no count; "remove the button" / "no screen" still means none of that kind.
+        if (oneOfSeveral(t, i, !!w.colors)) {
+          if (!before(t, i, 5).some((x) => SWAPS.has(x))) fewer[kind] = (fewer[kind] ?? 0) + 1;
+          continue;
+        }
         removed.add(kind);
         continue;
       }
@@ -403,7 +429,7 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
   }
   // Implied parts: "the display blinks" describes the named display, not an LED (principle 10).
   for (const { kind, unlessNamed } of impliedOnly) if (!unlessNamed.some((k) => named.has(k))) parts[kind] = { min: 1 };
-  return { parts, removed: [...removed], onboard, named: [...named] };
+  return { parts, removed: [...removed], fewer, onboard, named: [...named] };
 }
 
 /** Common English function words: an idea with none of them is treated as another language. */
@@ -434,16 +460,24 @@ function pinsOf(t: Text, board: Board): { pins: string[]; ambiguous: string[] } 
 export function analyzeIdea(text: string, board?: Board): Requirements {
   const t = tokenize(text);
   const { unsupported, ambiguous } = unsupportedParts(t);
-  const { parts, removed, onboard, named } = partsOf(t);
+  const { parts, removed, fewer, onboard, named } = partsOf(t);
   const pins = board ? pinsOf(t, board) : { pins: [], ambiguous: [] };
   const words = t.tokens.filter((w) => !PUNCT.has(w)).length;
-  return { unsupported, ambiguous: [...ambiguous, ...pins.ambiguous], parts, removed, pins: pins.pins, onboard, tooShort: words < 3, named, english: looksEnglish(t) };
+  return { unsupported, ambiguous: [...ambiguous, ...pins.ambiguous], parts, removed, ...(Object.keys(fewer).length ? { fewer } : {}), pins: pins.pins, onboard, tooShort: words < 3, named, english: looksEnglish(t) };
 }
 
 /** Later text (feedback) overrides earlier text (the idea) part by part (principle 7). */
 export function mergeRequirements(base: Requirements, later: Requirements): Requirements {
   const parts = { ...base.parts };
   for (const k of later.removed) delete parts[k];
+  // "remove the green LED": the earlier count goes down; none left → the kind is no longer asked for.
+  for (const [k, n] of Object.entries(later.fewer ?? {}) as [PartKind, number][]) {
+    const need = parts[k];
+    if (!need || later.parts[k]) continue;
+    const min = Math.max(0, need.min - n);
+    if (min === 0) delete parts[k];
+    else parts[k] = { min, ...(need.max !== undefined ? { max: Math.max(min, need.max - n) } : {}), ...(need.exact !== undefined ? { exact: Math.max(min, need.exact - n) } : {}) };
+  }
   Object.assign(parts, later.parts);
   return {
     unsupported: [...new Set([...base.unsupported, ...later.unsupported])],

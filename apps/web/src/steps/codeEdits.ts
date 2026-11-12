@@ -1,9 +1,19 @@
 // The user's own edits to a project's main.py (pure helpers, unit-tested). Edits stay in this
-// browser (localStorage, one entry per project) and are re-checked with the same checker the
-// agent's code had to pass, so the user sees at once whether the code still matches the wiring.
+// browser (localStorage, one entry per project version) and are re-checked with the same checker
+// the agent's code had to pass, so the user sees at once whether the code still matches the wiring.
 import { checkMicroPython, getBoard, type Build, type CodeCheckReport } from "@breadpilot/circuit-core";
 
 const key = (projectId: string) => `breadpilot.code.${projectId}`;
+
+/**
+ * Where a project's edits are kept: per version (M9), so the edits made on version 2 never show up
+ * on top of version 3's new code. Version 1 (and projects made before versions) keep the plain
+ * project id, so edits saved before M9 are still found.
+ */
+export function editKey(p: { id: string; versions?: { n: number }[]; currentVersion?: number }): string {
+  const n = p.currentVersion ?? p.versions?.at(-1)?.n ?? 1;
+  return n > 1 ? `${p.id}@v${n}` : p.id;
+}
 
 /** The saved edit for a project, or null when the user hasn't changed the generated code. */
 export function loadEdit(projectId: string, generated: string): string | null {

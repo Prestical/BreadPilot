@@ -8,6 +8,7 @@ import { loadProject } from "./demos";
 import * as api from "./projects/api";
 import type { AiChoice, ApiProject, LlmOptions, ProgressEvent, ProjectSummary } from "./projects/types";
 import { projectView, type BuildView } from "./projects/view";
+import { editKey, loadEdit } from "./steps/codeEdits";
 
 export type Mode = "tutorial" | "build";
 /** What the Build tab shows: a built-in example or a project made by the agent. */
@@ -43,6 +44,10 @@ interface AppState {
   hover: HoverInfo | null;
   source: Source;
   stepIndex: number;
+  /** M9: after a change, show all build steps instead of only the changes. */
+  allSteps: boolean;
+  /** M9: an older version shown read-only (its 3D board and steps); null = the current version. */
+  viewVersion: number | null;
   /** The right-hand Code panel (shown when the open project has code). */
   codeOpen: boolean;
   /** Narrow screens: the project sidebar is a drawer. */
@@ -70,6 +75,7 @@ interface AppState {
   setHover(h: HoverInfo | null): void;
   openDemo(id: string): void;
   setStep(i: number): void;
+  setAllSteps(all: boolean): void;
   setCodeOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
@@ -86,6 +92,13 @@ interface AppState {
   startIdea(idea: string): Promise<void>;
   openProject(id: string): Promise<void>;
   approve(feedback?: string): Promise<void>;
+  /** M9: a change to the open finished project (the prompt bar inside a project), with the model chosen now. */
+  revise(request: string, useEdits: boolean): Promise<void>;
+  /** M9: drops a change that waits for approval. */
+  cancelChange(): Promise<void>;
+  /** M9: brings back an older version as a new version. */
+  restoreVersion(n: number): Promise<void>;
+  setViewVersion(n: number | null): void;
   retry(): Promise<void>;
   /** Stops the running project at its current model call. */
   stop(): Promise<void>;
@@ -144,12 +157,24 @@ export function currentPower(s: Pick<AppState, "source" | "agent" | "power">): P
 }
 
 /** The build the 3D view and step player show right now (null: nothing to build yet). */
-export function activeBuild(s: Pick<AppState, "source" | "agent" | "power">): BuildView | null {
+export function activeBuild(s: Pick<AppState, "source" | "agent" | "power"> & { allSteps?: boolean; viewVersion?: number | null }): BuildView | null {
   if (s.source.kind === "demo") return loadProject(s.source.id, s.power);
   const p = s.agent.project;
   if (!p || p.id !== s.source.id) return null;
-  const v = projectView(p);
+  // M9: an older version, read-only: its own board and steps.
+  const old = viewedVersion(p, s.viewVersion ?? null);
+  const v = old ? projectView({ id: `${p.id}@v${old.n}`, updatedAt: old.createdAt, build: old.build }, s.allSteps) : projectView(p, s.allSteps);
   return v.kind === "build" ? v.view : null;
+}
+
+/** The version the project shows now: the one restored last, else the newest. */
+export const currentVersionOf = (p: Pick<ApiProject, "versions" | "currentVersion">) => p.currentVersion ?? p.versions?.at(-1)?.n;
+
+/** The other version being viewed, if it exists, has a build and isn't the current one. */
+export function viewedVersion(p: ApiProject, n: number | null) {
+  if (n === null) return null;
+  const v = p.versions?.find((x) => x.n === n);
+  return v?.build && v.n !== currentVersionOf(p) ? v : null;
 }
 
 let stopWatching: (() => void) | null = null;
@@ -185,6 +210,8 @@ export const useApp = create<AppState>((set, get) => {
     set((s) => ({
       source: { kind: "agent", id: p.id },
       stepIndex: keepStep ? s.stepIndex : 0,
+      allSteps: keepStep ? s.allSteps : false,
+      viewVersion: keepStep ? s.viewVersion : null,
       agent: { ...s.agent, project: p, busy: p.running, error: null, ...(fresh ? { events: [], startedAt: p.running ? Date.now() : null } : {}) },
     }));
     remember(p.id);
@@ -204,7 +231,7 @@ export const useApp = create<AppState>((set, get) => {
         stopWatching = null;
         if (get().agent.project?.id !== p.id) return;
         // The Code panel stays closed: open, it covers the step pop-ups. The last step leads to it.
-        set((s) => ({ stepIndex: 0, agent: { ...s.agent, project: final, busy: false, startedAt: null } }));
+        set((s) => ({ stepIndex: 0, allSteps: false, viewVersion: null, agent: { ...s.agent, project: final, busy: false, startedAt: null } }));
         void get().refreshList();
       },
       error: (message) => {
@@ -235,6 +262,8 @@ export const useApp = create<AppState>((set, get) => {
   // Start on the new-idea form; the examples are one click away in the project pane.
   source: { kind: "agent", id: "" },
   stepIndex: 0,
+  allSteps: false,
+  viewVersion: null,
   codeOpen: false,
   sidebarOpen: false,
   settingsOpen: false,
@@ -264,6 +293,7 @@ export const useApp = create<AppState>((set, get) => {
     // it lands on the circuit. "</> Code" or the last step's "Put it on your Pico" open it again.
     set((s) => ({ stepIndex, codeOpen: stepIndex === s.stepIndex ? s.codeOpen : false }));
   },
+  setAllSteps: (all) => set({ allSteps: all, stepIndex: 0 }),
   setCodeOpen: (codeOpen) => set({ codeOpen }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen, sidebarOpen: false }),
@@ -330,6 +360,24 @@ export const useApp = create<AppState>((set, get) => {
     const id = get().agent.project?.id;
     if (id) await act(() => api.approveProject(id, feedback));
   },
+  revise: async (request, useEdits) => {
+    const p = get().agent.project;
+    if (!p?.build) return;
+    // "Start from my edited code": the edits saved for the version that is current now.
+    const edited = useEdits ? loadEdit(editKey(p), p.build.code ?? "") : null;
+    set({ viewVersion: null });
+    await act(() => api.reviseProject(p.id, request, get().ai, edited ?? undefined));
+  },
+  cancelChange: async () => {
+    const id = get().agent.project?.id;
+    if (id) await act(() => api.cancelChange(id));
+  },
+  restoreVersion: async (n) => {
+    const id = get().agent.project?.id;
+    set({ viewVersion: null });
+    if (id) await act(() => api.restoreVersion(id, n));
+  },
+  setViewVersion: (n) => set({ viewVersion: n, stepIndex: 0, allSteps: false }),
   stop: async () => {
     const id = get().agent.project?.id;
     if (!id) return;

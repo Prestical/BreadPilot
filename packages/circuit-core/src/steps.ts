@@ -11,7 +11,8 @@ import { PACKS, packOfPart, type TextTemplates } from "./packs";
 import { validateBuild } from "./validate";
 import type { Build, Issue, RailId } from "./types";
 
-export type StepKind = "intro" | "place-pico" | "place-part" | "wire" | "usb";
+/** "unplug", "remove-wire", "remove-part": only in the steps for a change to a project (M9 changeSteps). */
+export type StepKind = "intro" | "place-pico" | "place-part" | "wire" | "usb" | "unplug" | "remove-wire" | "remove-part";
 export type WireRole = "ground" | "signal" | "power";
 
 export interface BuildStep {
@@ -28,6 +29,8 @@ export interface BuildStep {
   dsl?: string;
   partRef?: string;
   wireIndex?: number;
+  /** M9 remove-wire steps: the wire's index in the board before the change. */
+  removedWire?: number;
   wireRole?: WireRole;
   /** Holes ("27g") and rails the camera should frame and the scene should highlight. */
   focus: { holes: string[]; rails: RailId[] };
@@ -316,4 +319,104 @@ export function buildSteps(build: Build): BuildStep[] {
 
 export function defaultColor(role: WireRole): string {
   return role === "ground" ? "black" : role === "power" ? "red" : "yellow";
+}
+
+/**
+ * JSON with object keys sorted, so equal data gives equal text whatever order its keys are in.
+ * Stored projects come back from Postgres JSONB with their keys re-ordered (11/11/2026: a stored
+ * display and knob looked "changed" and the power switch refused every stored project).
+ */
+export function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
+  if (v && typeof v === "object") return `{${Object.keys(v as object).sort().filter((k) => (v as Record<string, unknown>)[k] !== undefined).map((k) => `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`).join(",")}}`;
+  return JSON.stringify(v) ?? "null";
+}
+
+const partKey = (p: Build["parts"][number]) => canonicalJson([p.ref, p.type, p.legs, p.props ?? {}]);
+const wireKey = (w: Build["wires"][number]) => `${formatWire(w)} ${w.color ?? ""}`;
+
+/**
+ * M9: the steps for changing a built project from `before` to `after`, so the user only redoes what
+ * changed: unplug USB, take out the wires and parts that go (or move), place the new or changed
+ * parts, plug in the new wires, then USB. Parts and wires that stay the same get no step. The place
+ * and wire steps are the same ones buildSteps writes for `after`; the removal steps describe
+ * `before`'s holes. An empty list means the wiring didn't change (only the code did).
+ */
+export function changeSteps(before: Build, after: Build): BuildStep[] {
+  const oldParts = new Set(before.parts.map(partKey));
+  const newParts = new Set(after.parts.map(partKey));
+  const oldWires = new Set(before.wires.map(wireKey));
+  const newWires = new Set(after.wires.map(wireKey));
+  const goneParts = before.parts.filter((p) => !newParts.has(partKey(p)));
+  const goneWires = before.wires.map((w, i) => ({ w, i })).filter(({ w }) => !newWires.has(wireKey(w)));
+  const addedParts = new Set(after.parts.filter((p) => !oldParts.has(partKey(p))).map((p) => p.ref));
+  const addedWires = new Set(after.wires.map((w, i) => ({ w, i })).filter(({ w }) => !oldWires.has(wireKey(w))).map(({ i }) => i));
+  if (!goneParts.length && !goneWires.length && !addedParts.size && !addedWires.size) return [];
+
+  const { resolved: old } = resolveBuild(before);
+  if (!old) throw new StepsError(validateBuild(before).issues);
+  const full = buildSteps(after);
+  const stillThere = new Set(after.parts.map((p) => p.ref));
+  const steps: Omit<BuildStep, "index">[] = [];
+  steps.push({
+    kind: "unplug",
+    title: "Unplug the USB cable",
+    text: "Unplug the USB cable from the Pico before you change anything on the breadboard.",
+    why: "With the power off, a wire in the wrong hole for a moment can't cause a short.",
+    focus: { holes: ["1c", "1h"], rails: [] },
+  });
+
+  // Wires first (a part with wires still in it is hard to pull out), then the parts.
+  const rowOf = (e: ResolvedEnd) => (e.kind === "hole" ? e.hole.row : e.row);
+  for (const { i } of goneWires) {
+    const rw = old.wires.find((x) => x.index === i);
+    if (!rw) continue;
+    const wire = before.wires[i]!;
+    const role = wireRole(old, rw.ends);
+    const color = wire.color ?? defaultColor(role);
+    const [a, b] = rw.ends;
+    // The part whose leg shares a row strip with the wire's end (wires go next to a leg, not into it).
+    const owner = rw.ends.flatMap((e) => (e.kind === "hole" ? old.parts.filter((p) => Object.values(p.legs).some((h) => stripOfHole(h) === stripOfHole(e.hole))).map((p) => p.ref) : []))[0];
+    steps.push({
+      kind: "remove-wire",
+      title: `Remove the ${color} wire`,
+      text: `Unplug the ${color} wire that goes from ${describeEnd(old, a, rowOf(b))} to ${describeEnd(old, b, rowOf(a))}, and put it aside.`,
+      why: owner && !stillThere.has(owner) ? `It belonged to ${owner}, which the changed project doesn't use any more.` : "The changed project doesn't need this connection; a new wire goes where it's needed.",
+      dsl: formatWire(wire),
+      removedWire: i,
+      wireRole: role,
+      focus: { holes: rw.ends.flatMap((e) => (e.kind === "hole" ? [holeKey(e.hole)] : [])), rails: rw.ends.flatMap((e) => (e.kind === "rail" ? [e.rail] : [])) },
+    });
+  }
+  for (const part of goneParts) {
+    const rp = old.parts.find((x) => x.ref === part.ref);
+    if (!rp) continue;
+    const holes = Object.values(rp.legs).map(holeKey);
+    const moves = stillThere.has(part.ref);
+    steps.push({
+      kind: "remove-part",
+      title: `Take out ${part.ref} (${rp.def.name})`,
+      text: `Pull ${rp.def.name} ${part.ref} out of hole${holes.length > 1 ? "s" : ""} ${holes.join(", ")}.`,
+      why: moves ? `${part.ref} changes: the next steps put it back in its new form or place.` : `The changed project doesn't use ${part.ref} any more.`,
+      partRef: part.ref,
+      focus: { holes, rails: [] },
+    });
+  }
+
+  for (const st of full) {
+    if (st.kind === "place-part" && st.partRef && addedParts.has(st.partRef)) steps.push(st);
+  }
+  for (const st of full) {
+    if (st.kind === "wire" && st.wireIndex !== undefined && addedWires.has(st.wireIndex)) steps.push(st);
+  }
+  steps.push({
+    kind: "usb",
+    title: "Check, then plug in USB",
+    text: "Compare your board with the 3D view. If every part and wire matches, plug the USB cable back in.",
+    why: "Power goes in last, so a misplaced wire can't cause a short while you're still changing the board.",
+    tip: "If anything gets hot or smells, unplug the USB cable right away.",
+    focus: { holes: ["1c", "1h"], rails: [] },
+  });
+  // Steps copied from buildSteps(after) carry their old position; number them for this list.
+  return steps.map((st, index) => ({ ...st, index }));
 }

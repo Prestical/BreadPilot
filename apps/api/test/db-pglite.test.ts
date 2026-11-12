@@ -177,3 +177,55 @@ describe("RAG store and hybrid search on PGlite", () => {
     expect(await chunkCount(db)).toBe(1);
   });
 });
+
+describe("project changes on a real database (M9, the user's report 11/11/2026)", () => {
+  it("adding an LED to a stored display + knob project only adds the LED (JSONB reorders object keys)", async () => {
+    const { changeSteps, layoutProject, stableRequests } = await import("@breadpilot/circuit-core");
+    const store = dbStore(db);
+    const before = layoutProject([{ kind: "oled" }, { kind: "pot" }]);
+    const p = {
+      id: "22222222-2222-4222-8222-222222222222",
+      idea: "display and knob",
+      board: "pico-2-w",
+      title: "t",
+      state: "READY",
+      plans: [],
+      events: [],
+      build: { build: before.build, blocks: before.blocks, steps: [], codeAttempts: 1, citations: [] },
+      createdAt: "2026-11-11T10:00:00.000Z",
+      updatedAt: "2026-11-11T10:00:00.000Z",
+    } as unknown as Project;
+    await store.create(p);
+    const stored = (await store.get(p.id))!.build!;
+    const old = { build: stored.build, blocks: stored.blocks };
+    const after = layoutProject(stableRequests(old, [{ kind: "oled" }, { kind: "pot" }, { kind: "led" }]), undefined, { reservedRefs: old.build.parts.map((x) => x.ref) });
+    const steps = changeSteps(old.build, after.build);
+    expect(steps.map((s) => s.kind + (s.partRef ? `:${s.partRef}` : ""))).toEqual(["unplug", "place-part:R1", "place-part:LED1", "wire", "wire", "usb"]);
+  });
+});
+
+describe("power switch on a real database (found with the M9 bug, 11/11/2026)", () => {
+  it("a stored project can switch rails → direct (its stored blocks compare equal despite JSONB key order)", async () => {
+    const { layoutProject } = await import("@breadpilot/circuit-core");
+    const { setPower, planToRequests } = await import("../src/agent/pipeline");
+    const plan = { title: "t", goal: "g", behavior: ["b"], parts: [{ kind: "led", purpose: "light", color: "red" }, { kind: "button", purpose: "switch" }], questions: [], version: 1, approved: true };
+    const l = layoutProject(planToRequests(plan as never));
+    const store = dbStore(db);
+    const p = {
+      id: "33333333-3333-4333-8333-333333333333",
+      idea: "led and button",
+      board: "pico-2-w",
+      title: "t",
+      state: "READY",
+      plans: [plan],
+      events: [],
+      build: { build: l.build, blocks: l.blocks, steps: [], codeAttempts: 1, citations: [] },
+      createdAt: "2026-11-11T10:00:00.000Z",
+      updatedAt: "2026-11-11T10:00:00.000Z",
+    } as unknown as Project;
+    await store.create(p);
+    const llm = { model: "fake", json: async () => { throw new Error("no LLM in a power switch"); } };
+    const switched = await setPower({ llm, store } as never, p.id, "direct");
+    expect(switched.power).toBe("direct");
+  });
+});

@@ -34,6 +34,19 @@ export interface BlockRequest {
   pin?: string;
   /** Values the template asks for (layout.json `props.*.request`), e.g. an LED's color. */
   props?: Record<string, string | number>;
+  /**
+   * A part kept from an earlier version of the project (M9): it stays exactly where it was, so the
+   * user doesn't touch it. Needs `pin` (its old GPIO; a display's SDA). See stableRequests().
+   */
+  place?: BlockPlace;
+}
+
+/** Where a kept part sits: its half, rows, part names (main first, as PlacedBlock.refs) and signal wire colour. */
+export interface BlockPlace {
+  side: Side;
+  rows: [number, number];
+  refs: string[];
+  color?: string;
 }
 
 export interface PlacedBlock {
@@ -66,6 +79,8 @@ export const POWER_MODES: readonly PowerMode[] = ["rails", "direct"];
 export interface LayoutOptions {
   /** Where parts take GND and 3V3 from (default "rails"). */
   power?: PowerMode;
+  /** M9: the old version's part names. New parts never reuse them (a removed LED1 isn't replaced by a different LED1). */
+  reservedRefs?: string[];
 }
 
 /** Free breadboard holes next to each Pico pin (columns a-b or i-j; c-h are under the Pico). */
@@ -305,7 +320,23 @@ function plan(requests: BlockRequest[], board: Board): Plan {
 
   const next: Record<Side, number> = { L: FIRST_PART_ROW, R: FIRST_PART_ROW };
   let leftOpen = false;
-  const parts: PartPlan[] = requests.map((_, i) => {
+  // Kept parts (M9) are fixed first: new parts go below them on their half; a removed part's rows
+  // stay empty, so nothing that stays has to move.
+  requests.forEach((r, i) => {
+    if (!r.place) return;
+    if (!explicit[i]) throw new LayoutError(`A kept ${needs[i]!.t.name} needs its old pin.`);
+    const { side, rows } = r.place;
+    if (rows[1] > BREADBOARD.rows || rows[0] < FIRST_PART_ROW) throw new LayoutError(`The kept ${needs[i]!.t.name} doesn't fit on the breadboard any more.`);
+    const after = rows[1] + 1 + BLOCK_GAP;
+    if (geometry(needs[i]!.t).spans) next.L = next.R = Math.max(next.L, next.R, after);
+    else next[side] = Math.max(next[side], after);
+    if (side === "L" && !leftOpen) {
+      leftOpen = true;
+      crowd.add(topGround(board, "L"));
+    }
+  });
+  const parts: PartPlan[] = requests.map((r, i) => {
+    if (r.place) return { choice: explicit[i]!, side: r.place.side, rows: r.place.rows };
     const { t } = needs[i]!;
     const geo = geometry(t);
     let best: (PartPlan & { cost: number }) | null = null;
@@ -396,7 +427,30 @@ export function layoutProject(requests: BlockRequest[], board: Board = PICO_2_W,
   const blocks: PlacedBlock[] = [];
   const gpioModes: Build["gpioModes"] = {};
   const counters: Record<string, number> = {};
-  const nextRef = (prefix: string) => `${prefix}${(counters[prefix] = (counters[prefix] ?? 0) + 1)}`;
+  // Kept parts keep their names (LED2 stays LED2); new parts are numbered after the highest kept one.
+  const keptRefs = new Set([...requests.flatMap((r) => r.place?.refs ?? []), ...(opts.reservedRefs ?? [])]);
+  for (const ref of keptRefs) {
+    const m = /^([A-Za-z]+)(\d+)$/.exec(ref);
+    if (m) counters[m[1]!] = Math.max(counters[m[1]!] ?? 0, Number(m[2]));
+  }
+  const nextRef = (prefix: string) => {
+    let ref: string;
+    do ref = `${prefix}${(counters[prefix] = (counters[prefix] ?? 0) + 1)}`;
+    while (keptRefs.has(ref));
+    return ref;
+  };
+  // Signal wire colours: kept parts keep theirs; a new part takes the first colour not in use. During a
+  // change, colours a part file fixes (a display's SDA/SCL) count as in use too; a new project keeps
+  // today's colour order.
+  const usedColors = new Set(requests.flatMap((r) => (r.place?.color ? [r.place.color] : [])));
+  if (requests.some((r) => r.place)) for (const r of requests) for (const w of templateOf(r.kind).t.wires) if ("pin" in w && w.color) usedColors.add(w.color);
+  const signalColor = (req: BlockRequest): string => {
+    if (req.place?.color) return req.place.color;
+    const free = WIRE_COLORS.signals.find((c) => !usedColors.has(c));
+    const c = free ?? WIRE_COLORS.signals[blocks.length % WIRE_COLORS.signals.length]!;
+    usedColors.add(c);
+    return c;
+  };
   // Takes a BoardPin, not a name: several pins share a name (eight are called GND).
   const pico = (p: BoardPin): Endpoint => ({ kind: "pico", phys: p.phys, label: p.name });
   const gpioPin = (name: string) => board.pins.find((x) => x.type === "gpio" && x.name === name)!;
@@ -437,12 +491,19 @@ export function layoutProject(requests: BlockRequest[], board: Board = PICO_2_W,
     const [r, end] = rows;
     // The template is drawn for the right half; on the left half every column is mirrored.
     const col = (c: Column) => (side === "L" ? MIRROR[c] : c);
-    const color = WIRE_COLORS.signals[blocks.length % WIRE_COLORS.signals.length]!;
+    const color = signalColor(req);
 
-    // Parts, each with the next free designator for its prefix (LED1, R1, ...).
+    // Parts, each with the next free designator for its prefix (LED1, R1, ...); a kept part's own names.
     const refOf = new Map<string, string>();
+    if (req.place) {
+      // place.refs = [main, then the other parts in template order], as PlacedBlock.refs.
+      const order = [t.main, ...t.parts.filter((p) => p.ref !== t.main).map((p) => p.ref)];
+      order.forEach((tref, k) => {
+        if (req.place!.refs[k]) refOf.set(tref, req.place!.refs[k]!);
+      });
+    }
     for (const tp of t.parts) {
-      const ref = nextRef(tp.ref);
+      const ref = refOf.get(tp.ref) ?? nextRef(tp.ref);
       refOf.set(tp.ref, ref);
       const part: Part = { ref, type: tp.type === "self" ? templateOf(req.kind).pack.part.id : tp.type, legs: Object.fromEntries(Object.entries(tp.legs).map(([leg, [dr, c]]) => [leg, hole(r + dr, col(c))])) };
       if (tp.props) part.props = Object.fromEntries(Object.entries(tp.props).map(([k, v]) => [k, (v.request !== undefined ? req.props?.[v.request] : undefined) ?? v.default]));
@@ -476,4 +537,47 @@ export function layoutProject(requests: BlockRequest[], board: Board = PICO_2_W,
   });
 
   return { build: { boardId: board.id, parts, wires, gpioModes }, blocks };
+}
+
+/**
+ * M9 (project changes): marks which parts of a new plan are parts of the old layout, so they stay
+ * exactly where they were (pins, holes, names, wire colour). A request matches an old block of the
+ * same kind: first one on the pin the request names, then one with the same settings (an LED's
+ * colour), then the others of that kind in their old order.
+ * A request that names a different pin than every old block of its kind is placed fresh (the user
+ * asked to move it). Old blocks nobody matches are the removed parts.
+ */
+export function stableRequests(old: Layout, requests: BlockRequest[]): BlockRequest[] {
+  const taken = new Set<number>();
+  // A block's settings as the layout made them: its parts' props, e.g. { color: "red" }.
+  const propsOf = (b: PlacedBlock) => JSON.stringify(Object.fromEntries(old.build.parts.filter((x) => b.refs.includes(x.ref)).flatMap((x) => Object.entries(x.props ?? {})).sort()));
+  const sameProps = (req: BlockRequest, b: PlacedBlock) => !req.props || JSON.stringify(Object.entries(req.props).sort()) === JSON.stringify(Object.entries(JSON.parse(propsOf(b)) as Record<string, unknown>).filter(([k]) => k in req.props!).sort());
+  const colorOf = (b: PlacedBlock): string | undefined =>
+    old.build.wires.find((w) => w.from.kind === "pico" && w.from.label === b.gpio && w.to.kind === "hole" && b.refs.some((r) => w.to.kind === "hole" && w.to.label?.startsWith(`${r}.`)))?.color;
+  const keep = (req: BlockRequest, i: number): BlockRequest => {
+    taken.add(i);
+    const b = old.blocks[i]!;
+    const color = colorOf(b);
+    return { ...req, pin: b.gpio, place: { side: b.side, rows: b.rows, refs: b.refs, ...(color ? { color } : {}) } };
+  };
+  const out: (BlockRequest | null)[] = requests.map(() => null);
+  // Pass 1: same kind on the pin the request names.
+  requests.forEach((req, k) => {
+    if (!req.pin) return;
+    const i = old.blocks.findIndex((b, j) => !taken.has(j) && b.kind === req.kind && b.gpio === req.pin!.toUpperCase());
+    if (i >= 0) out[k] = keep(req, i);
+  });
+  // Pass 2: requests without a pin, on a block of their kind with the same settings.
+  requests.forEach((req, k) => {
+    if (out[k] || req.pin || !req.props) return;
+    const i = old.blocks.findIndex((b, j) => !taken.has(j) && b.kind === req.kind && sameProps(req, b));
+    if (i >= 0) out[k] = keep(req, i);
+  });
+  // Pass 3: requests without a pin take the remaining old blocks of their kind, in old order.
+  requests.forEach((req, k) => {
+    if (out[k] || req.pin) return;
+    const i = old.blocks.findIndex((b, j) => !taken.has(j) && b.kind === req.kind);
+    if (i >= 0) out[k] = keep(req, i);
+  });
+  return requests.map((req, k) => out[k] ?? req);
 }

@@ -341,3 +341,40 @@ describe("10. words that imply a part don't when a named part is what they descr
   });
 });
 
+
+describe("taking away one of several parts (M9 change test, 11/11/2026)", () => {
+  const idea = "A red LED and a green LED that blink one after the other, and a button that stops and starts the blinking";
+  it("'remove the green LED' means one LED fewer, not no LEDs (both models failed this change)", () => {
+    const change = a("Remove the green LED: only the red one should blink");
+    expect(change.removed).toEqual([]);
+    expect(change.fewer).toEqual({ led: 1 });
+    const req = mergeRequirements(a(idea), change);
+    expect(req.parts.led).toEqual({ min: 1 });
+    expect(req.parts.button).toEqual({ min: 1 });
+    expect(req.removed).toEqual([]);
+    const plan = (parts: Plan["parts"]): Plan => ({ title: "t", goal: "g", behavior: ["b"], parts, questions: [] });
+    expect(planProblems(plan([{ kind: "led", purpose: "red", color: "red" }, { kind: "button", purpose: "stop" }]), req)).toEqual([]);
+  });
+
+  it("an ordinal or 'one' picks one of several too; plain 'remove the X' / 'no X' still means none", () => {
+    expect(a("remove the second button").fewer).toEqual({ button: 1 });
+    expect(a("remove one of the LEDs").fewer).toEqual({ led: 1 });
+    expect(a("take out the other knob").removed).toEqual([]); // "take out" isn't a negation word: nothing changes
+    expect(a("remove the button").removed).toEqual(["button"]);
+    expect(a("remove the button").fewer).toBeUndefined();
+    expect(a("no buzzer, without a screen").removed.length).toBeGreaterThan(0);
+  });
+
+  it("a swap changes no count: 'instead of the red LED, use a blue one'", () => {
+    const swap = a("instead of the red LED, use a blue one");
+    expect(swap.removed).toEqual([]);
+    expect(swap.fewer).toBeUndefined();
+    expect(mergeRequirements(a("A red LED that turns on while I hold a button"), swap).parts.led).toEqual({ min: 1 });
+  });
+
+  it("taking away the last one of a kind leaves none asked for", () => {
+    const req = mergeRequirements(a("A red LED that turns on while I hold a button"), a("remove the red LED"));
+    expect(req.parts.led).toBeUndefined();
+    expect(req.removed).toEqual([]);
+  });
+});

@@ -12,6 +12,7 @@
     "eval:rag": "tsx --env-file-if-exists=../../.env src/eval-rag-cli.ts",
     "eval:agent": "tsx --env-file-if-exists=../../.env src/eval-agent-cli.ts",
     "eval:models": "tsx --env-file-if-exists=../../.env src/eval-agent-cli.ts --file data/eval/models.jsonl",
+    "eval:changes": "tsx --env-file-if-exists=../../.env src/eval-changes-cli.ts",
     "template": "node --import tsx src/template-cli.ts",
     "check:models": "node --import tsx src/check-models-cli.mts",
     "typecheck": "tsc -p tsconfig.json",

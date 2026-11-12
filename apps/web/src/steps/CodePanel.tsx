@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { driversFor, type CodeIssue } from "@breadpilot/circuit-core";
 import { handoffUrl } from "../projects/api";
 import type { ApiProject } from "../projects/types";
-import { checkDraft, insertIndent, loadEdit, saveEdit } from "./codeEdits";
+import { checkDraft, editKey, insertIndent, loadEdit, saveEdit } from "./codeEdits";
 import { PlanView } from "../ui/StageOverlay";
 import { PicoBuild } from "./PicoBuild";
 
@@ -42,18 +42,20 @@ export function CodePanel({ p }: { p: ApiProject }) {
   const drivers = driversFor(b.build.parts.map((x) => x.type));
   const generated = b.code ?? "";
   const [view, setView] = useState<View>("preview");
-  const [draft, setDraft] = useState(() => loadEdit(p.id, generated) ?? generated);
+  // Edits belong to this version of the project (M9: a change starts a fresh draft).
+  const ek = editKey(p);
+  const [draft, setDraft] = useState(() => loadEdit(ek, generated) ?? generated);
   const [copied, setCopied] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const edited = draft !== generated;
 
   // Another project (or a regenerated one) → show its own code and edits.
   useEffect(() => {
-    setDraft(loadEdit(p.id, generated) ?? generated);
+    setDraft(loadEdit(ek, generated) ?? generated);
     setView("preview");
-  }, [p.id, generated]);
+  }, [ek, generated]);
 
-  useEffect(() => saveEdit(p.id, generated, draft), [p.id, generated, draft]);
+  useEffect(() => saveEdit(ek, generated, draft), [ek, generated, draft]);
 
   // The code is always re-checked in the browser with the CURRENT checker (edited or not): a result
   // stored when the project was generated can be out of date once the checks get stricter, and the

@@ -15,6 +15,7 @@ import { Tour } from "./ui/Tour";
 import { Sidebar } from "./ui/Sidebar";
 import { StageOverlay } from "./ui/StageOverlay";
 import { StepCard, StepStrip } from "./ui/StepCard";
+import { VersionMenu } from "./ui/VersionMenu";
 
 // three.js is big: load the 3D view separately so the page shell paints first.
 const Workbench = lazy(() => import("./scene/Workbench"));
@@ -56,15 +57,18 @@ export function App() {
   const narrow = useNarrow();
   const popupRef = useRef<HTMLDivElement>(null);
   const [sceneReady, setSceneReady] = useState(false);
-  const view = mode === "build" ? activeBuild({ source, agent, power }) : null;
+  const allSteps = useApp((s) => s.allSteps);
+  const viewVersion = useApp((s) => s.viewVersion);
+  const view = mode === "build" ? activeBuild({ source, agent, power, allSteps, viewVersion }) : null;
   const project = source.kind === "agent" && agent.project?.id === source.id ? agent.project : null;
-  const hasCode = mode === "build" && !!project?.build?.code && !agent.busy;
+  // An older version (M9) is only looked at: its code isn't opened in the Code panel.
+  const hasCode = mode === "build" && !!project?.build?.code && !agent.busy && viewVersion === null;
   const showCode = hasCode && codeOpen;
 
   const { model, resolved } = useMemo(() => {
     if (mode === "tutorial") return tutorialScene(tut, showLabels);
     if (!view) return { model: buildScene(emptyResolved(), [], [], 0, showLabels), resolved: emptyResolved() };
-    return { model: buildScene(view.resolved, view.build.wires, view.steps, stepIndex, showLabels), resolved: view.resolved };
+    return { model: buildScene(view.resolved, view.build.wires, view.steps, stepIndex, showLabels, view.removed), resolved: view.resolved };
   }, [mode, tut, showLabels, view, stepIndex]);
 
   // Reopen the last project after a reload, and load the project list and the model options.
@@ -92,7 +96,8 @@ export function App() {
   // While a run is in progress or a plan waits, the overlay card has the stage, not the step.
   const showSteps = !!view && !agent.busy && project?.state !== "AWAIT_APPROVAL";
   const need = useMemo(() => (view ? partsNeeded(view.build) : undefined), [view]);
-  const stepCard = showSteps ? <StepCard steps={view.steps} docked={narrow} need={need} hasCode={hasCode} /> : null;
+  // After a change, "what you need" would list the whole board: the change steps say what to add.
+  const stepCard = showSteps ? <StepCard steps={view.steps} docked={narrow} need={view.change?.showing === "changes" ? undefined : need} hasCode={hasCode} change={view.change} /> : null;
   // What's open, so the 3D view isn't anonymous: the project's title and goal, or the example's.
   const demo = source.kind === "demo" ? DEMOS.find((d) => d.id === source.id) : undefined;
   const head = mode !== "build" ? null : project ? { title: project.title, goal: project.plans.at(-1)?.goal } : demo ? { title: demo.title, goal: demo.description } : null;
@@ -151,6 +156,7 @@ export function App() {
           {head && (
             <div className="project-head">
               <h1>{head.title}</h1>
+              {project && <VersionMenu p={project} />}
               {head.goal && <p>{head.goal}</p>}
             </div>
           )}

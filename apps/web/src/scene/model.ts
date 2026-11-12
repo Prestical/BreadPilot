@@ -12,6 +12,8 @@ export interface SceneWire {
 }
 
 export interface ScenePart {
+  /** React key; defaults to the part's ref (a part being removed and its new form share a ref). */
+  key?: string;
   part: ResolvedPart;
   state: ItemState;
   lit?: boolean;
@@ -58,25 +60,44 @@ export function keyPos(key: string): Vec3 | null {
   return null;
 }
 
-/** Guided build: steps up to the current one are shown, later ones are hidden. */
-export function buildScene(resolved: Resolved, wires: Wire[], steps: BuildStep[], current: number, showLabels: boolean): SceneModel {
+/**
+ * Guided build: steps up to the current one are shown, later ones are hidden. `removed` (M9 change
+ * steps): the board before the change; its parts and wires with a removal step are drawn until that
+ * step (highlighted at it) and gone after it.
+ */
+export function buildScene(resolved: Resolved, wires: Wire[], steps: BuildStep[], current: number, showLabels: boolean, removed?: { resolved: Resolved; wires: Wire[] }): SceneModel {
   const step = steps[current];
-  const stepOfPart = new Map(steps.filter((s) => s.partRef).map((s) => [s.partRef!, s.index]));
+  // Only steps that put a part on the board (a removal step names the part it takes out).
+  const stepOfPart = new Map(steps.filter((s) => s.kind === "place-part" && s.partRef).map((s) => [s.partRef!, s.index]));
   const stepOfWire = new Map(steps.filter((s) => s.wireIndex !== undefined).map((s) => [s.wireIndex!, s.index]));
   const picoStep = steps.find((s) => s.kind === "place-pico")?.index ?? 0;
-  const stateAt = (i: number | undefined): ItemState | null => (i === undefined || i > current ? null : i === current ? "current" : "done");
+  // M9 change steps (they start with "unplug"): parts and wires that stay have no step and are
+  // already on the board, so they're shown as done.
+  const changing = steps[0]?.kind === "unplug";
+  const stateAt = (i: number | undefined): ItemState | null => (i === undefined ? (changing ? "done" : null) : i > current ? null : i === current ? "current" : "done");
 
-  const parts = resolved.parts.flatMap((part) => {
+  const parts: ScenePart[] = resolved.parts.flatMap((part) => {
     const s = stateAt(stepOfPart.get(part.ref));
     return s ? [{ part, state: s }] : [];
   });
   const sceneWires = resolvedWires(resolved, wires, (i) => stateAt(stepOfWire.get(i)));
+  if (removed) {
+    // Until it's taken out: on the board; at its step: highlighted; after: gone.
+    const untilRemoved = (i: number | undefined): ItemState | null => (i === undefined || i < current ? null : i === current ? "current" : "done");
+    const removeOfPart = new Map(steps.filter((s) => s.kind === "remove-part" && s.partRef).map((s) => [s.partRef!, s.index]));
+    const removeOfWire = new Map(steps.filter((s) => s.kind === "remove-wire" && s.removedWire !== undefined).map((s) => [s.removedWire!, s.index]));
+    for (const part of removed.resolved.parts) {
+      const s = untilRemoved(removeOfPart.get(part.ref));
+      if (s) parts.push({ key: `old-${part.ref}`, part, state: s });
+    }
+    for (const w of resolvedWires(removed.resolved, removed.wires, (i) => untilRemoved(removeOfWire.get(i)))) sceneWires.push({ ...w, id: `old-${w.id}` });
+  }
 
   let focus: Vec3[] | null = null;
   const highlights: string[] = [];
   if (step) {
     // Intro/Pico/USB steps only move the camera; part and wire steps also light up their holes.
-    if (step.kind === "place-part" || step.kind === "wire") highlights.push(...step.focus.holes);
+    if (step.kind === "place-part" || step.kind === "wire" || step.kind === "remove-part" || step.kind === "remove-wire") highlights.push(...step.focus.holes);
     const pts = step.focus.holes.map((k) => keyPos(k)).filter((p): p is Vec3 => !!p);
     const current = sceneWires.find((w) => w.id === `w${step.wireIndex}`);
     if (current) pts.push(current.from, current.to);

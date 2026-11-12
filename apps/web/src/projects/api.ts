@@ -35,6 +35,13 @@ export const approveProject = (id: string, feedback?: string) => call<ApiProject
 /** Stops a running project (202); the events stream then reports it as failed and retryable. */
 export const stopProject = (id: string) => call<{ stopping: boolean }>("POST", `/api/projects/${id}/stop`);
 export const retryProject = (id: string) => call<ApiProject>("POST", `/api/projects/${id}/retry?async=1`);
+/** M9: a change to a finished project, with the model to use and optionally the user's edited code. */
+export const reviseProject = (id: string, request: string, llm: AiChoice, baseCode?: string) =>
+  call<ApiProject>("POST", `/api/projects/${id}/revise?async=1`, { request, llm, ...(baseCode !== undefined ? { baseCode } : {}) });
+/** M9: drops a change that waits for approval (answers right away). */
+export const cancelChange = (id: string) => call<ApiProject>("POST", `/api/projects/${id}/revise/cancel`);
+/** M9: brings back version n as a new version (answers right away, no AI). */
+export const restoreVersion = (id: string, n: number) => call<ApiProject>("POST", `/api/projects/${id}/versions/${n}/restore`);
 export const getProject = (id: string) => call<ApiProject>("GET", `/api/projects/${id}`);
 export const listProjects = () => call<ProjectSummary[]>("GET", "/api/projects");
 /** Removes a project for good (204, no body). */

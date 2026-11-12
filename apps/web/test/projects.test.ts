@@ -1,7 +1,7 @@
 // Milestone 5: progress timeline, browser-side safety re-check, and the store's project flow
 // (fetch and EventSource are faked; no DOM needed).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildSteps, layoutProject, parseConnections, type Build } from "@breadpilot/circuit-core";
+import { buildSteps, changeSteps, layoutProject, parseConnections, stableRequests, type Build } from "@breadpilot/circuit-core";
 import { describeEvent, timeline } from "../src/projects/progress";
 import type { ApiProject, ProgressEvent } from "../src/projects/types";
 import { emptyResolved, projectView } from "../src/projects/view";
@@ -71,6 +71,24 @@ describe("browser-side safety check", () => {
     const v = projectView(project({ id: "p2", build: { ...project().build!, build: shorted } }));
     expect(v.kind).toBe("unsafe");
     expect(v.kind === "unsafe" && v.message).toMatch(/Short circuit/);
+  });
+
+  it("after a change (M9): only the change steps first, all steps on request; a code-only change says so", () => {
+    const before = layoutProject([{ kind: "led" }]);
+    const after = layoutProject(stableRequests(before, [{ kind: "led" }, { kind: "button" }]), undefined, { reservedRefs: before.build.parts.map((x) => x.ref) });
+    const changes = changeSteps(before.build, after.build);
+    const p = project({ id: "c1", build: { build: after.build, steps: buildSteps(after.build), changeSteps: changes, codeAttempts: 1, citations: [] } });
+    const v = projectView(p);
+    expect(v.kind === "build" && v.view.steps).toEqual(changes);
+    expect(v.kind === "build" && v.view.change).toEqual({ count: changes.length, total: buildSteps(after.build).length, showing: "changes" });
+    const all = projectView(p, true);
+    expect(all.kind === "build" && all.view.steps).toEqual(buildSteps(after.build));
+    expect(all.kind === "build" && all.view.change!.showing).toBe("all");
+    const codeOnly = projectView(project({ id: "c2", build: { ...project().build!, changeSteps: [] } }));
+    expect(codeOnly.kind === "build" && [codeOnly.view.steps.length > 5, codeOnly.view.change]).toEqual([true, { count: 0, total: buildSteps(safeBuild).length, showing: "all" }]);
+    const first = projectView(project({ id: "c3" })); // a project's first build: no change info
+    expect(first.kind).toBe("build");
+    expect(first.kind === "build" ? first.view.change : "not a build").toBeUndefined();
   });
 
   it("no build yet → nothing to show; the empty bench still resolves", () => {

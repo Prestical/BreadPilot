@@ -4,7 +4,9 @@ import type * as z from "zod/v4";
 import { buildApp } from "../src/app";
 import { handoffMarkdown } from "../src/agent/handoff";
 import { createLlm, dropNulls, LlmError, REASONING_HEADROOM, strictSchema, type ChatMessage, type LlmClient } from "../src/agent/llm";
-import { approvePlan, createProject, retryProject, stopProject, STOPPED_MESSAGE, type AgentDeps } from "../src/agent/pipeline";
+import { approvePlan, cancelChange, createProject, restoreProjectVersion, retryProject, reviseProject, setPower, stopProject, STOPPED_MESSAGE, type AgentDeps } from "../src/agent/pipeline";
+import { addVersion } from "../src/agent/versions";
+import { changeTable, keptParts, runChangeCase } from "../src/agent/change-eval";
 import { memoryStore } from "../src/agent/project";
 import { CodeSchema, IntakeSchema, PlanSchema, type Intake, type Plan } from "../src/agent/schemas";
 
@@ -669,5 +671,347 @@ describe("project API routes", () => {
     expect((await app.inject({ method: "GET", url: "/api/projects/nope" })).statusCode).toBe(404);
     const id = (await app.inject({ method: "POST", url: "/api/projects", payload: { idea: "LED and button" } })).json().id;
     expect((await app.inject({ method: "POST", url: `/api/projects/${id}/approve`, payload: {} })).json()).toMatchObject({ code: "CONFLICT" });
+  });
+});
+
+describe("project versions (M9 9.1)", () => {
+  const ready = async () => {
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] }).llm);
+    return { d, p: await createProject(d, "LED on while I hold a button") };
+  };
+  /** A second version as a change (9.3) will make it: other code, a new plan, saved as version 2. */
+  const changed = async (d: AgentDeps, id: string) => {
+    const p = (await d.store.get(id))!;
+    p.plans.push({ ...p.plans.at(-1)!, version: p.plans.length + 1, title: "Blinking button LED", feedback: "blink faster" });
+    p.title = "Blinking button LED";
+    p.build!.code = GOOD_CODE.code.replace("time.sleep(0.01)", "time.sleep(0.1)");
+    addVersion(p, "2026-10-18T11:00:00Z", { request: "blink faster", model: "fake" });
+    await d.store.save(p);
+    return p;
+  };
+
+  it("a project's first finished build becomes version 1 (without the repair history)", async () => {
+    const { p } = await ready();
+    expect(p.versions).toHaveLength(1);
+    const { build, ...v } = p.versions![0]!;
+    expect(v).toEqual({ n: 1, llm: "local", model: "fake", planVersion: 1, state: "READY", createdAt: "2026-10-18T10:00:00.000Z" });
+    const { codeHistory, ...current } = p.build!;
+    expect(codeHistory).toHaveLength(1);
+    expect(build).toEqual(current);
+  });
+
+  it("a plan waiting for approval has no version yet; it gets version 1 when it's built", async () => {
+    const d = deps(fakeLlm({ intake: [intake("vague")], plan: [LED_BUTTON], code: [GOOD_CODE] }).llm);
+    const p = await createProject(d, "something with a light");
+    expect(p.state).toBe("AWAIT_APPROVAL");
+    expect(p.versions).toBeUndefined();
+    const built = await approvePlan(d, p.id);
+    expect(built.versions!.map((v) => v.n)).toEqual([1]);
+  });
+
+  it("restore makes an old version current again: no new version, its full steps; nothing is deleted", async () => {
+    const { d, p } = await ready();
+    await changed(d, p.id);
+    const r = await restoreProjectVersion(d, p.id, 1);
+    expect(r.versions!.map((v) => [v.n, v.request ?? null])).toEqual([
+      [1, null],
+      [2, "blink faster"],
+    ]);
+    expect(r.currentVersion).toBe(1);
+    expect(r.build!.code).toBe(GOOD_CODE.code); // version 1's code is current again
+    expect(r.build!.changeSteps).toBeUndefined(); // its own full steps, not "remove version 2's parts"
+    expect(r.title).toBe("Button LED");
+    expect(r.plans.map((x) => x.version)).toEqual([1, 2, 3]); // the old plan comes back as the newest plan
+    expect(r.plans.at(-1)!.title).toBe("Button LED");
+    expect((await d.store.get(p.id))!.currentVersion).toBe(1); // saved
+    // and back to version 2 the same way
+    const again = await restoreProjectVersion(d, p.id, 2);
+    expect([again.currentVersion, again.versions!.length, again.build!.code]).toEqual([2, 2, GOOD_CODE.code.replace("time.sleep(0.01)", "time.sleep(0.1)")]);
+  });
+
+  it("restore refuses the current version, a missing one, and an unfinished project", async () => {
+    const { d, p } = await ready();
+    await expect(restoreProjectVersion(d, p.id, 1)).rejects.toMatchObject({ status: 409, message: "Version 1 is already the current one." });
+    await changed(d, p.id);
+    await restoreProjectVersion(d, p.id, 1);
+    await expect(restoreProjectVersion(d, p.id, 1)).rejects.toMatchObject({ status: 409, message: "Version 1 is already the current one." });
+    await expect(restoreProjectVersion(d, p.id, 9)).rejects.toMatchObject({ status: 404, message: "This project has no version 9." });
+    const vague = deps(fakeLlm({ intake: [intake("vague")], plan: [LED_BUTTON] }).llm);
+    const waiting = await createProject(vague, "something with a light");
+    await expect(restoreProjectVersion(vague, waiting.id, 1)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("switching the power wiring updates the current version (it's the same version, wired differently)", async () => {
+    const { d, p } = await ready();
+    const after = await setPower(d, p.id, "direct");
+    expect(after.versions).toHaveLength(1);
+    expect(after.versions![0]!.build!.build).toEqual(after.build!.build);
+    expect(after.versions![0]!.build!.build).not.toEqual(p.build!.build);
+  });
+
+  it("projects made before versions get version 1 when they're read (API) and keep it when saved", async () => {
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] }).llm);
+    const p = await createProject(d, "LED on while I hold a button");
+    const old = (await d.store.get(p.id))!;
+    delete old.versions; // as stored before M9
+    await d.store.save(old);
+    const app = buildApp({ agent: d, health: { checkDb: async () => ({ status: "ok", detail: "" }), listModels: async () => [], llmModel: "m", embedModel: "e" } });
+    const got = (await app.inject({ method: "GET", url: `/api/projects/${p.id}` })).json();
+    expect(got.versions.map((v: { n: number; state: string }) => [v.n, v.state])).toEqual([[1, "READY"]]);
+    // The restore route: 400 for a bad number, 409 when there's nothing older
+    expect((await app.inject({ method: "POST", url: `/api/projects/${p.id}/versions/abc/restore` })).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: `/api/projects/${p.id}/versions/1/restore` })).statusCode).toBe(409);
+    await app.close();
+  });
+});
+
+describe("changing a finished project (M9 9.3)", () => {
+  const BLINK_PLAN = plan(LED_BUTTON.parts, { title: "Blinking button LED", behavior: ["Pressing the button makes the LED blink."] });
+  const BLINK_CODE = { code: GOOD_CODE.code.replace("led.value(1 if button.value() == 0 else 0)", "if button.value() == 0:\n        led.toggle()").replace("time.sleep(0.01)", "time.sleep(0.2)"), explanation: "The LED blinks while you hold the button." };
+  const KNOB_PLAN = plan([...LED_BUTTON.parts, { kind: "pot", purpose: "blink speed" }], { title: "Button LED with speed knob" });
+  /** Code for whatever pins the prompt lists (the knob's GPIO comes from the stable layout). */
+  const knobCode = (m: ChatMessage[]) => {
+    const pot = /POT1 on GP(\d+)/.exec(m[1]!.content)![1];
+    return { code: `from machine import Pin, ADC\nimport time\n\nled = Pin(16, Pin.OUT)\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\nknob = ADC(${pot})\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01 + knob.read_u16() / 65535)\n`, explanation: "The knob sets the speed." };
+  };
+  const wrongPin = { ...GOOD_CODE, code: GOOD_CODE.code.replace("Pin(16, Pin.OUT)", "Pin(5, Pin.OUT)") };
+  const start = async (script: Partial<Record<Stage, Reply[]>>, extra: Partial<AgentDeps> = {}) => {
+    const fake = fakeLlm({ intake: [intake("clear")], ...script });
+    const d = deps(fake.llm, extra);
+    const p = await createProject(d, "LED on while I hold a button");
+    expect(p.state).toBe("READY");
+    return { d, p, calls: fake.calls };
+  };
+
+  it("same parts: only the code changes, starting from the current program; a new version", async () => {
+    const { d, p, calls } = await start({ plan: [LED_BUTTON, BLINK_PLAN], code: [GOOD_CODE, BLINK_CODE] });
+    const r = await reviseProject(d, p.id, "make the LED blink while I hold the button");
+    expect(r.state).toBe("READY");
+    expect(r.build!.code).toBe(BLINK_CODE.code);
+    expect(r.build!.blocks).toEqual(p.build!.blocks); // wiring untouched
+    expect(r.build!.build).toEqual(p.build!.build);
+    expect(r.build!.changeSteps).toEqual([]); // nothing to redo on the breadboard
+    expect(p.build!.changeSteps).toBeUndefined(); // a first build has the full steps only
+    expect(r.title).toBe("Blinking button LED");
+    expect(r.plans.map((x) => [x.version, x.approved, x.feedback ?? null])).toEqual([[1, true, null], [2, true, "make the LED blink while I hold the button"]]);
+    expect(r.versions!.map((v) => [v.n, v.request ?? null, v.planVersion])).toEqual([[1, null, 1], [2, "make the LED blink while I hold the button", 2]]);
+    // The plan call saw the old plan and the request; the code call got the program as it is now.
+    const planCall = calls.filter((c) => c.stage === "plan")[1]!.messages.at(-1)!.content;
+    expect(planCall).toContain("The user wants these changes: make the LED blink while I hold the button");
+    const code = calls.filter((c) => c.stage === "code")[1]!.messages;
+    expect(code.at(-2)!.content).toContain(JSON.stringify(GOOD_CODE.code).slice(1, 40));
+    expect(code.at(-1)!.content).toMatch(/^The user wants this change: make the LED blink while I hold the button\nChange the program above for it\. Keep everything that isn't part of the change the same/);
+    expect(code.at(-1)!.content).not.toContain("The parts or pins changed");
+    expect(r.events.some((e) => e.detail === "same parts and wiring: only the code changes")).toBe(true);
+  });
+
+  it("starts from the user's edited code when asked", async () => {
+    const { d, p, calls } = await start({ plan: [LED_BUTTON, BLINK_PLAN], code: [GOOD_CODE, BLINK_CODE] });
+    const edited = GOOD_CODE.code.replace("# LED on GP16", "# my own comment");
+    await reviseProject(d, p.id, "make the LED blink", { baseCode: edited });
+    expect(calls.filter((c) => c.stage === "code")[1]!.messages.at(-2)!.content).toContain("my own comment");
+  });
+
+  it("a code change that never passes the checks leaves the project exactly as it was", async () => {
+    const { d, p, calls } = await start({ plan: [LED_BUTTON, BLINK_PLAN], code: [GOOD_CODE, wrongPin] });
+    const before = (await d.store.get(p.id))!;
+    const r = await reviseProject(d, p.id, "make the LED blink");
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(5); // 1 for the project + 4 tries
+    expect(r.state).toBe("READY");
+    expect(r.build).toEqual(before.build);
+    expect(r.plans).toEqual(before.plans);
+    expect(r.title).toBe(before.title);
+    expect(r.versions!.map((v) => v.n)).toEqual([1]);
+    expect(r.changeError).toEqual({ request: "make the LED blink", message: "BreadPilot couldn't write code for this change that passes the checks after 4 tries, so your project was left as it was.", at: expect.any(String) });
+  });
+
+  it("other parts: the new plan waits for approval; approving builds it on the old layout (kept parts don't move)", async () => {
+    const { d, p, calls } = await start({ plan: [LED_BUTTON, KNOB_PLAN], code: [GOOD_CODE, knobCode] });
+    const waiting = await reviseProject(d, p.id, "add a knob that sets the blink speed");
+    expect(waiting.state).toBe("AWAIT_APPROVAL");
+    expect(waiting.plans.at(-1)).toMatchObject({ version: 2, approved: false, feedback: "add a knob that sets the blink speed" });
+    expect(waiting.pendingChange).toEqual({ request: "add a knob that sets the blink speed", planCount: 1, before: { state: "READY", title: "Button LED" } });
+    expect(waiting.build).toEqual(p.build); // the old build is still shown until it's approved
+    expect(waiting.versions!.map((v) => v.n)).toEqual([1]);
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(1);
+
+    const done = await approvePlan(d, p.id);
+    expect(done.state).toBe("READY");
+    expect(done.pendingChange).toBeUndefined();
+    const kept = (ref: string) => done.build!.blocks.find((b) => b.ref === ref);
+    expect(kept("LED1")).toEqual(p.build!.blocks.find((b) => b.ref === "LED1"));
+    expect(kept("BTN1")).toEqual(p.build!.blocks.find((b) => b.ref === "BTN1"));
+    expect(kept("POT1")!.mode).toBe("adc");
+    // The kept parts' wires are exactly the old ones.
+    const wiresOf = (build: typeof done.build, refs: string[]) => build!.build.wires.filter((w) => refs.some((r) => w.to.label?.startsWith(`${r}.`) || w.from.label?.startsWith(`${r}.`)));
+    expect(wiresOf(done.build, ["LED1", "R1", "BTN1"])).toEqual(wiresOf(p.build, ["LED1", "R1", "BTN1"]));
+    const code = calls.filter((c) => c.stage === "code")[1]!.messages.at(-1)!.content;
+    expect(code).toContain("The parts or pins changed: use exactly the pins listed above");
+    expect(done.versions!.map((v) => [v.n, v.request ?? null])).toEqual([[1, null], [2, "add a knob that sets the blink speed"]]);
+    // Steps for the change: only the knob; the full list is still there.
+    const steps = done.build!.changeSteps!;
+    expect(steps[0]!.kind).toBe("unplug");
+    expect(steps.filter((s) => s.kind === "place-part").map((s) => s.partRef)).toEqual(["POT1"]);
+    expect(steps.some((s) => s.kind.startsWith("remove"))).toBe(false);
+    expect(done.build!.steps.filter((s) => s.kind === "place-part").map((s) => s.partRef)).toEqual(["R1", "LED1", "BTN1", "POT1"]);
+    expect(done.build!.changeFrom).toEqual(p.build!.build); // the 3D view can show what's taken out
+    expect(done.versions![1]!.parent).toBe(1);
+    // Back to version 1 (it becomes current, no new number), then a change again: version 3, made
+    // from version 1, with steps from version 1's board (the user's report, 11/11/2026).
+    const back = await restoreProjectVersion(d, p.id, 1);
+    expect([back.currentVersion, back.versions!.length, back.build!.changeSteps]).toEqual([1, 2, undefined]);
+    await reviseProject(d, p.id, "add a knob that sets the blink speed");
+    const third = await approvePlan(d, p.id);
+    expect(third.versions!.map((v) => [v.n, v.parent ?? null])).toEqual([[1, null], [2, 1], [3, 1]]);
+    expect(third.currentVersion).toBe(3);
+    expect(third.build!.changeSteps!.filter((s) => s.kind === "place-part").map((s) => s.partRef)).toEqual(["POT1"]);
+    expect(third.build!.changeSteps!.some((s) => s.kind.startsWith("remove"))).toBe(false);
+  });
+
+  it("a waiting change can be adjusted with feedback, or cancelled: the project goes back to how it was", async () => {
+    const { d, p } = await start({ plan: [LED_BUTTON, KNOB_PLAN, KNOB_PLAN], code: [GOOD_CODE] });
+    await reviseProject(d, p.id, "add a knob");
+    const adjusted = await approvePlan(d, p.id, "use a knob on the left");
+    expect(adjusted.state).toBe("AWAIT_APPROVAL");
+    expect(adjusted.plans).toHaveLength(3);
+    const back = await cancelChange(d, p.id);
+    expect(back.state).toBe("READY");
+    expect(back.plans).toEqual(p.plans);
+    expect(back.title).toBe(p.title);
+    expect(back.pendingChange).toBeUndefined();
+    await expect(cancelChange(d, p.id)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("refuses unsupported parts, unfinished projects and OpenAI without a key; the request is checked by the rules first", async () => {
+    const { d, p, calls } = await start({ plan: [LED_BUTTON], code: [GOOD_CODE] });
+    await expect(reviseProject(d, p.id, "add a servo motor")).rejects.toMatchObject({ status: 400 });
+    await expect(reviseProject(d, p.id, "x")).rejects.toMatchObject({ status: 400 });
+    await expect(reviseProject(d, p.id, "make it blink", { llm: "openai" })).rejects.toMatchObject({ status: 400 });
+    expect(calls.filter((c) => c.stage === "plan")).toHaveLength(1); // no LLM call for refused requests
+    const vague = deps(fakeLlm({ intake: [intake("vague")], plan: [LED_BUTTON] }).llm);
+    const waiting = await createProject(vague, "something with a light");
+    await expect(reviseProject(vague, waiting.id, "make it blink")).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("the change uses the model chosen now (the prompt bar's), and its version records it", async () => {
+    const local = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] });
+    const cloud = fakeLlm({ plan: [BLINK_PLAN], code: [BLINK_CODE] });
+    const d = deps(local.llm, { cloudLlm: { ...cloud.llm, model: "gpt-6-luna" } });
+    const p = await createProject(d, "LED on while I hold a button");
+    const r = await reviseProject(d, p.id, "make the LED blink", { llm: "openai" });
+    expect(r.llm).toBe("openai");
+    expect(cloud.calls.map((c) => c.stage)).toEqual(["plan", "code"]);
+    expect(r.versions!.map((v) => [v.llm, v.model])).toEqual([["local", "fake"], ["openai", "gpt-6-luna"]]);
+  });
+
+  it("a change cut short (the model is unreachable) leaves the project as it was, with the reason", async () => {
+    let down = false;
+    const fake = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] });
+    const flaky: LlmClient = { model: "fake", json: async (s, m, o) => (down ? Promise.reject(new Error("Ollama isn't answering")) : fake.llm.json(s, m, o)) };
+    const d = deps(flaky);
+    const p = await createProject(d, "LED on while I hold a button");
+    down = true;
+    const r = await reviseProject(d, p.id, "make the LED blink");
+    expect(r.state).toBe("READY");
+    expect(r.build).toEqual(p.build);
+    expect(r.changeError!.message).toBe("The change was stopped: Ollama isn't answering");
+  });
+
+  it("adjusting a waiting change when the model is unreachable goes back to how it was (not FAILED)", async () => {
+    let down = false;
+    const fake = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON, KNOB_PLAN], code: [GOOD_CODE] });
+    const flaky: LlmClient = { model: "fake", json: async (s, m, o) => (down ? Promise.reject(new Error("Ollama isn't answering")) : fake.llm.json(s, m, o)) };
+    const d = deps(flaky);
+    const p = await createProject(d, "LED on while I hold a button");
+    await reviseProject(d, p.id, "add a knob");
+    down = true;
+    const r = await approvePlan(d, p.id, "put the knob on the left");
+    expect(r.state).toBe("READY");
+    expect(r.plans).toEqual(p.plans);
+    expect(r.pendingChange).toBeUndefined();
+    expect(r.changeError).toMatchObject({ request: "add a knob", message: "The change was stopped: Ollama isn't answering" });
+  });
+
+  it("routes: /revise checks the body and answers with the project; /revise/cancel with nothing waiting is 409", async () => {
+    const { d, p } = await start({ plan: [LED_BUTTON, BLINK_PLAN], code: [GOOD_CODE, BLINK_CODE] });
+    const app = buildApp({ agent: d, health: { checkDb: async () => ({ status: "ok", detail: "" }), listModels: async () => [], llmModel: "m", embedModel: "e" } });
+    expect((await app.inject({ method: "POST", url: `/api/projects/${p.id}/revise`, payload: {} })).statusCode).toBe(400);
+    const ok = await app.inject({ method: "POST", url: `/api/projects/${p.id}/revise`, payload: { request: "make the LED blink" } });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().versions).toHaveLength(2);
+    expect((await app.inject({ method: "POST", url: `/api/projects/${p.id}/revise/cancel` })).statusCode).toBe(409);
+    await app.close();
+  });
+});
+
+describe("the change test (M9 9.6)", () => {
+  const blinkPlan = plan(LED_BUTTON.parts, { title: "Blinking button LED" });
+  const blinkCode = { code: GOOD_CODE.code.replace("time.sleep(0.01)", "time.sleep(0.2)"), explanation: "Blinks." };
+  const knobPlan = plan([...LED_BUTTON.parts, { kind: "pot", purpose: "speed" }]);
+  const knobCode = (m: ChatMessage[]) => {
+    const pot = /POT1 on GP(\d+)/.exec(m[1]!.content)![1];
+    return { code: `from machine import Pin, ADC\nimport time\n\nled = Pin(16, Pin.OUT)\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\nknob = ADC(${pot})\n\nwhile True:\n    led.value(1 if button.value() == 0 else 0)\n    time.sleep(0.01 + knob.read_u16() / 65535)\n`, explanation: "Knob." };
+  };
+
+  it("'Remove the green LED' (failed on both models): only the green LED, its resistor and wires come out", async () => {
+    const twoLeds = plan([{ kind: "led", purpose: "red", color: "red" }, { kind: "led", purpose: "green", color: "green" }, { kind: "button", purpose: "stop" }], { title: "Two LEDs" });
+    const redOnly = plan([{ kind: "led", purpose: "red", color: "red" }, { kind: "button", purpose: "stop" }], { title: "One LED" });
+    const codeFor = (m: ChatMessage[]) => {
+      const pin = (ref: string) => new RegExp(`${ref} on GP(\\d+)`).exec(m[1]!.content)?.[1];
+      const leds = ["LED1", "LED2"].filter((r) => pin(r));
+      return {
+        code: `from machine import Pin\nimport time\n\n${leds.map((r) => `${r.toLowerCase()} = Pin(${pin(r)}, Pin.OUT)`).join("\n")}\nbutton = Pin(${pin("BTN1")}, Pin.IN, Pin.PULL_UP)\n\nwhile True:\n    if button.value() == 0:\n${leds.map((r) => `        ${r.toLowerCase()}.toggle()`).join("\n")}\n    time.sleep(0.3)\n`,
+        explanation: "Blinks.",
+      };
+    };
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [twoLeds, redOnly], code: [codeFor] }).llm);
+    const r = await runChangeCase(d, { idea: "A red LED and a green LED that blink one after the other, and a button that stops and starts the blinking", change: "Remove the green LED: only the red one should blink", expect: { kind: "wiring", parts: { led: 1, button: 1 } } });
+    expect(r).toMatchObject({ kind: "wiring", made: true, partsMatch: true, moved: [], codeOk: true, correct: true });
+    expect(r.changeSteps.filter((x) => x.startsWith("remove-part")).sort()).toEqual(["remove-part LED2", "remove-part R2"]);
+    expect(r.changeSteps.some((x) => x.startsWith("place-part"))).toBe(false);
+  });
+
+  it("a code-only change: right kind, made, parts kept, code passes → correct", async () => {
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON, blinkPlan], code: [GOOD_CODE, blinkCode] }).llm);
+    const r = await runChangeCase(d, { idea: "LED while I hold a button", change: "make it blink", expect: { kind: "code", parts: { led: 1, button: 1 } } });
+    expect(r).toMatchObject({ built: true, kind: "code", made: true, partsMatch: true, kept: 2, moved: [], codeOk: true, correct: true, changeSteps: [] });
+    expect(r.codeBefore).toBe(GOOD_CODE.code);
+    expect(r.codeAfter).toBe(blinkCode.code);
+    expect(r.llmCallsChange).toBe(2); // plan + code
+  });
+
+  it("a wiring change is approved as it is and measured; a wrong expected kind or part count isn't correct", async () => {
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON, knobPlan], code: [GOOD_CODE, knobCode] }).llm);
+    const r = await runChangeCase(d, { idea: "LED while I hold a button", change: "add a knob", expect: { kind: "wiring", parts: { led: 1, button: 1, pot: 1 } } });
+    expect(r).toMatchObject({ kind: "wiring", made: true, partsMatch: true, kept: 2, moved: [], codeOk: true, correct: true });
+    expect(r.changeSteps).toContain("place-part POT1");
+    const d2 = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON, knobPlan], code: [GOOD_CODE, knobCode] }).llm);
+    const wrong = await runChangeCase(d2, { idea: "LED while I hold a button", change: "add a knob", expect: { kind: "code", parts: { led: 1, button: 1 } } });
+    expect(wrong).toMatchObject({ made: true, partsMatch: false, correct: false });
+  });
+
+  it("a change that couldn't be made is reported with the reason; the idea not building is reported too", async () => {
+    const bad = { ...GOOD_CODE, code: GOOD_CODE.code.replace("Pin(16, Pin.OUT)", "Pin(5, Pin.OUT)") };
+    const d = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON, blinkPlan], code: [GOOD_CODE, bad] }).llm);
+    const r = await runChangeCase(d, { idea: "LED while I hold a button", change: "make it blink", expect: { kind: "code", parts: { led: 1, button: 1 } } });
+    expect(r).toMatchObject({ built: true, made: false, correct: false });
+    expect(r.changeError).toMatch(/couldn't write code for this change/);
+    const never = deps(fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [bad] }).llm);
+    const n = await runChangeCase(never, { idea: "LED while I hold a button", change: "make it blink", expect: { kind: "code", parts: { led: 1, button: 1 } } });
+    expect(n).toMatchObject({ built: false, correct: false });
+    expect(n.note).toMatch(/^the project from the idea ended HANDOFF/);
+  });
+
+  it("keptParts finds a part that moved; the table sums it up", () => {
+    const led = { kind: "led", ref: "LED1", refs: ["LED1", "R1"], gpio: "GP16", mode: "out", rows: [24, 27], side: "R" };
+    const a = [led] as never[];
+    const b = [{ ...led, gpio: "GP2" }] as never[];
+    expect(keptParts(a, a)).toEqual({ kept: 1, moved: [] });
+    expect(keptParts(a, b)).toEqual({ kept: 0, moved: ["LED1"] });
+    const row = changeTable("m", [
+      { built: true, kind: "code", expectedKind: "code", made: true, partsMatch: true, kept: 2, moved: [], codeOk: true, correct: true, secondsChange: 4 } as never,
+      { built: true, kind: "wiring", expectedKind: "wiring", made: false, partsMatch: false, kept: 1, moved: ["LED1"], codeOk: false, correct: false, secondsChange: 6 } as never,
+    ]).split("\n")[2];
+    expect(row).toBe("| m | 50% | 100% | 100% | 50% | 50% | 3/4 | 50% | 5.0 |");
   });
 });

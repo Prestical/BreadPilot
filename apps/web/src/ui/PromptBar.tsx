@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useApp } from "../store";
+import { editKey, loadEdit } from "../steps/codeEdits";
 import { aiLabel, ModelMenu } from "./AiPicker";
 import { usageText } from "./labels";
 
 /**
  * The one text box, at the bottom of the 3D stage. While a plan waits for approval it sends a
- * change to that plan; otherwise it starts a new project.
+ * change to that plan. Inside an open finished project it sends a change to that project (M9: no
+ * extra button; a new project starts from "New project" in the sidebar). Otherwise it starts a new
+ * project.
  */
 export function PromptBar() {
   const source = useApp((s) => s.source);
@@ -16,6 +19,8 @@ export function PromptBar() {
   const options = useApp((s) => s.aiOptions);
   const [stopping, setStopping] = useState(false);
   const approve = useApp((s) => s.approve);
+  const revise = useApp((s) => s.revise);
+  const [useEdits, setUseEdits] = useState(true);
   const draft = useApp((s) => s.draft);
   const setDraft = useApp((s) => s.setDraft);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -23,6 +28,9 @@ export function PromptBar() {
 
   const revising = project?.state === "AWAIT_APPROVAL" && project.id === source.id;
   const open = project && project.id === source.id ? project : null;
+  // M9: typed inside a finished project, it's a change to that project.
+  const changing = !revising && !!open?.build && (open.state === "READY" || open.state === "HANDOFF");
+  const hasEdits = changing && !!open && loadEdit(editKey(open), open.build?.code ?? "") !== null;
   // The open project is being worked on: the send button becomes Stop.
   const canStop = busy && !!open?.running;
   useEffect(() => {
@@ -30,7 +38,9 @@ export function PromptBar() {
   }, [busy]);
   const placeholder = revising
     ? "Describe a change to the plan, e.g. “use a green LED”…"
-    : project || source.kind === "demo"
+    : changing
+      ? "Describe a change to this project, e.g. “make the LED blink faster”…"
+      : project || source.kind === "demo"
       ? "Next idea? Describe a new project…"
       : "Describe what you want to build, e.g. “light an LED while I hold a button”…";
 
@@ -66,7 +76,7 @@ export function PromptBar() {
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     if (busy || text.length < 3) return;
-    void (revising ? approve(text) : startIdea(text));
+    void (revising ? approve(text) : changing ? revise(text, hasEdits && useEdits) : startIdea(text));
     setDraft("");
   };
 
@@ -77,7 +87,12 @@ export function PromptBar() {
         {aiLabel(open.llm, options)} · {usageText(open.usage)}
       </p>
     )}
-    <form className={`prompt${focused ? " focused" : ""}`} data-tour="prompt" onSubmit={submit} aria-label={revising ? "Change the plan" : "New project idea"}>
+    {hasEdits && (
+      <label className="edits-choice">
+        <input type="checkbox" checked={useEdits} onChange={(e) => setUseEdits(e.target.checked)} /> Start from my edited code
+      </label>
+    )}
+    <form className={`prompt${focused ? " focused" : ""}`} data-tour="prompt" onSubmit={submit} aria-label={revising ? "Change the plan" : changing ? "Change this project" : "New project idea"}>
       <textarea
         ref={ref}
         rows={1}
@@ -113,7 +128,7 @@ export function PromptBar() {
           ■
         </button>
       ) : (
-        <button type="submit" className="send" disabled={busy || text.length < 3} aria-label={revising ? "Send the change" : "Make a plan"}>
+        <button type="submit" className="send" disabled={busy || text.length < 3} aria-label={revising || changing ? "Send the change" : "Make a plan"}>
           ↑
         </button>
       )}

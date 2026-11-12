@@ -19,6 +19,9 @@ import {
   layoutProject,
   LayoutError,
   packByKind,
+  stableRequests,
+  changeSteps,
+  canonicalJson,
   validateBuild,
   type BlockRequest,
   type Board,
@@ -29,9 +32,10 @@ import {
 import { addUsage, LlmError, type LlmCallOptions, type LlmClient, type LlmResult, type TokenUsage } from "./llm";
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { ProgressBus } from "./progress";
-import { currentPlan, type LlmChoice, type Project, type ProjectStore, type StageEvent } from "./project";
-import { codeMessages, importBlock, intakeMessages, needsNetwork, pinTable, planMessages } from "./prompts";
+import { currentPlan, type LlmChoice, type Project, type ProjectBuild, type ProjectStore, type StageEvent } from "./project";
+import { codeMessages, importBlock, intakeMessages, needsNetwork, pinTable, planMessages, type CodeChange } from "./prompts";
 import { repairProblems } from "./repair";
+import { addVersion, currentVersionOf, ensureVersions, restoreVersion, RestoreError, syncCurrent } from "./versions";
 import { analyzeIdea, mergeRequirements, minimumParts, planProblems, unsupportedMessage, type Requirements } from "./requirements";
 import { CodeSchema, IntakeSchema, normalizeIntake, normalizePlan, PlanSchema, type Plan } from "./schemas";
 
@@ -161,11 +165,11 @@ class Run {
   /** LLM calls per stage in this run, so the UI can say "attempt 2". */
   private calls: Partial<Record<Stage, number>> = {};
   constructor(
-    private deps: AgentDeps,
+    readonly deps: AgentDeps,
     public p: Project,
   ) {}
 
-  private now = () => (this.deps.now?.() ?? new Date()).toISOString();
+  readonly now = () => (this.deps.now?.() ?? new Date()).toISOString();
 
   event(stage: Stage, status: StageEvent["status"], ms: number, detail?: string) {
     const at = this.now();
@@ -276,6 +280,8 @@ export async function approvePlan(deps: AgentDeps, id: string, feedback?: string
       const board = getBoard(p.board)!;
       const change = feedback?.trim();
       if (!change) {
+        // M9: the plan of a change that needs other parts: build it on top of the old layout.
+        if (p.pendingChange) return { project: p, run: () => applyChange(deps, p) };
         currentPlan(p)!.approved = true;
         return { project: p, run: () => runFrom(deps, p, "build") };
       }
@@ -294,6 +300,12 @@ export async function approvePlan(deps: AgentDeps, id: string, feedback?: string
           p.state = "AWAIT_APPROVAL";
           return finish(run);
         } catch (err) {
+          // M9: adjusting a waiting change that fails leaves the project as it was before the change.
+          const pc = p.pendingChange;
+          if (pc) {
+            revertChange(run, { plans: p.plans.slice(0, pc.planCount), build: p.build, ...pc.before }, pc.request, `The change was stopped: ${(err as Error).message}`);
+            return finish(run);
+          }
           return fail(run, err, "plan");
         }
       };
@@ -351,7 +363,8 @@ export async function setPower(deps: AgentDeps, id: string, power: PowerMode): P
           throw err;
         }
         // The code was written for these GPIOs; a different allocation would invalidate it.
-        if (JSON.stringify(layout.blocks) !== JSON.stringify(pb.blocks)) throw new AgentError("Switching the power wiring would change the parts' pins, so it was not applied.", 409);
+        // Key order doesn't count: stored blocks come back from JSONB with their keys re-ordered.
+        if (canonicalJson(layout.blocks) !== canonicalJson(pb.blocks)) throw new AgentError("Switching the power wiring would change the parts' pins, so it was not applied.", 409);
         const report = validateBuild(layout.build);
         if (!report.ok) throw new Error(`Internal error: the ${power} layout failed validation (${report.issues[0]?.message}).`);
         const check = pb.code ? checkMicroPython(pb.code, layout.build, board) : undefined;
@@ -359,6 +372,7 @@ export async function setPower(deps: AgentDeps, id: string, power: PowerMode): P
         pb.build = layout.build;
         pb.steps = buildSteps(layout.build);
         if (check) pb.codeCheck = check;
+        syncCurrent(p); // the same version, wired for the other power mode
         run.event("design", "ok", Math.round(performance.now() - start), power === "direct" ? "power wires moved straight to the Pico's pins" : "power wires moved to the breadboard rails");
       }
       p.power = power;
@@ -368,6 +382,172 @@ export async function setPower(deps: AgentDeps, id: string, power: PowerMode): P
     // Layout problems must fail the request itself (400), so the switch runs in `prepare`.
     const updated = await relayout();
     return { project: updated, run: async () => updated };
+  });
+}
+
+// ---------------------------------------------------------------- M9: changing a finished project
+
+export interface ReviseOptions extends RunOptions {
+  /** The model for this change (the prompt bar's choice at the time); the project keeps it afterwards. */
+  llm?: LlmChoice;
+  /** The user's own edited code to start from ("Start from my edited code"); else the generated code. */
+  baseCode?: string;
+}
+
+/** What a plan asks the layout for (kind, pin, settings), order ignored: equal = the same parts. */
+const partsKey = (plan: Plan) => JSON.stringify(planToRequests(plan).map((r) => canonicalJson(r)).sort());
+
+/** The finished state a change starts from, to go back to when the change can't be made. */
+interface Before {
+  plans: Project["plans"];
+  build?: ProjectBuild;
+  state: "READY" | "HANDOFF";
+  title: string;
+  handoffReason?: string;
+}
+
+const HANDOFF_TAIL = / The handoff bundle describes the project for a stronger assistant\.$/;
+
+/** A change that couldn't be made leaves the project exactly as it was, with the reason. */
+function revertChange(run: Run, before: Before, request: string, message: string) {
+  const p = run.p;
+  p.plans = before.plans;
+  p.build = before.build;
+  p.state = before.state;
+  p.title = before.title;
+  if (before.handoffReason) p.handoffReason = before.handoffReason;
+  else delete p.handoffReason;
+  delete p.pendingChange;
+  p.changeError = { request, message: message.replace(HANDOFF_TAIL, ""), at: run.now() };
+  run.event("code", "error", 0, `change not made: ${p.changeError.message}`);
+}
+
+/** A change that worked becomes the project's new version, made from the version that was current. */
+function keepChange(run: Run, request: string) {
+  delete run.p.changeError;
+  delete run.p.pendingChange;
+  const parent = currentVersionOf(run.p);
+  addVersion(run.p, run.now(), { request, model: clientFor(run.deps, run.p).model, ...(parent ? { parent } : {}) });
+}
+
+const CODE_CHANGE_FAILED = `BreadPilot couldn't write code for this change that passes the checks after ${MAX_REPAIRS + 1} tries, so your project was left as it was.`;
+
+/**
+ * M9: a change to a finished project ("make it blink faster", "add a buzzer"). The rules check the
+ * request; one plan call turns the old plan + the request into the new plan. The same parts → the
+ * code is changed now (a new version). Other parts → the new plan waits for the user's approval
+ * (AWAIT_APPROVAL; approvePlan builds it on the old layout, cancelChange drops it). A change that
+ * can't be made leaves the project as it was (changeError says why).
+ */
+export async function reviseProject(deps: AgentDeps, id: string, request: string, opts: ReviseOptions = {}): Promise<Project> {
+  return schedule(
+    deps,
+    id,
+    async () => {
+      const p = await load(deps, id);
+      if (p.state !== "READY" && p.state !== "HANDOFF") throw new AgentError(`Only a finished project can be changed (this one is ${p.state === "AWAIT_APPROVAL" ? "waiting for its plan to be approved" : p.state}).`, 409);
+      const plan = currentPlan(p);
+      if (!plan || !p.build || !p.intake) throw new AgentError("This project has no build to change yet. Start a new project instead.", 409);
+      const change = request.trim();
+      if (change.length < 3) throw new AgentError("Describe the change in a few words.", 400);
+      if (change.length > 2000) throw new AgentError("Please keep the change under 2000 characters.", 400);
+      if (opts.baseCode !== undefined && opts.baseCode.length > 20_000) throw new AgentError("The edited code is too long to start from.", 400);
+      const board = getBoard(p.board)!;
+      const found = analyzeIdea(change, board).unsupported;
+      if (found.length) throw new AgentError(unsupportedMessage(found), 400);
+      if (opts.llm === "openai" && !deps.cloudLlm) throw new AgentError(OPENAI_MISSING, 400);
+      if (opts.llm) p.llm = opts.llm;
+      const base = opts.baseCode?.trim() ? opts.baseCode : p.build.code;
+      const state = p.state;
+      const before: Before = structuredClone({ plans: p.plans, build: p.build, state, title: p.title, ...(p.handoffReason ? { handoffReason: p.handoffReason } : {}) });
+      const run = async () => {
+        const r = new Run(deps, p);
+        try {
+          const req = mergeRequirements(requirementsOf(p, board), analyzeIdea(change, board));
+          const next = normalizePlan(await r.llm("plan", (o) => clientFor(deps, p).json(PlanSchema, planMessages(p.idea, p.intake!, { feedback: change, previous: plan }), { ...o, maxTokens: MAX_TOKENS.plan })), req.pins);
+          const planCount = p.plans.length;
+          const sameParts = partsKey(next) === partsKey(plan);
+          p.plans.push({ ...next, version: planCount + 1, approved: sameParts, feedback: change });
+          if (!sameParts) {
+            p.pendingChange = { request: change, ...(opts.baseCode?.trim() ? { baseCode: opts.baseCode } : {}), planCount, before: { state, title: p.title, ...(p.handoffReason ? { handoffReason: p.handoffReason } : {}) } };
+            p.title = next.title;
+            p.state = "AWAIT_APPROVAL";
+            r.event("design", "ok", 0, "the change needs other parts: waiting for your approval");
+            return finish(r);
+          }
+          p.title = next.title;
+          r.event("design", "ok", 0, "same parts and wiring: only the code changes");
+          const pb = p.build!;
+          pb.changeSteps = []; // nothing to rebuild on the breadboard
+          delete pb.changeFrom;
+          await generateCode(r, deps, { build: pb.build, blocks: pb.blocks }, board, base ? { code: base, request: change, rewired: false } : undefined);
+          if (p.state === "READY") keepChange(r, change);
+          else revertChange(r, before, change, CODE_CHANGE_FAILED);
+        } catch (err) {
+          revertChange(r, before, change, `The change was stopped: ${(err as Error).message}`);
+        }
+        return finish(r);
+      };
+      return { project: p, run };
+    },
+    opts,
+  );
+}
+
+/** M9: the approved plan of a change: built on the old layout (kept parts stay), then the code changed. */
+async function applyChange(deps: AgentDeps, p: Project): Promise<Project> {
+  const run = new Run(deps, p);
+  const board = getBoard(p.board)!;
+  const pc = p.pendingChange!;
+  const before: Before = { plans: structuredClone(p.plans.slice(0, pc.planCount)), build: structuredClone(p.build), ...pc.before };
+  try {
+    currentPlan(p)!.approved = true;
+    const old: Layout | undefined = p.build ? { build: p.build.build, blocks: p.build.blocks } : undefined;
+    const base = pc.baseCode ?? p.build?.code;
+    if (!old) throw new Error("this project has no earlier build to change");
+    await build(run, deps, board, { stable: old, ...(base ? { code: { code: base, request: pc.request, rewired: true } } : {}) });
+    if (p.state === "READY") {
+      p.build!.changeSteps = changeSteps(old.build, p.build!.build); // only what changes on the breadboard
+      p.build!.changeFrom = old.build; // the 3D view shows what's taken out
+      keepChange(run, pc.request);
+    }
+    else revertChange(run, before, pc.request, p.handoffReason ? p.handoffReason : CODE_CHANGE_FAILED);
+  } catch (err) {
+    revertChange(run, before, pc.request, `The change was stopped: ${(err as Error).message}`);
+  }
+  return finish(run);
+}
+
+/** M9: drops a change that waits for approval; the project goes back to how it was. */
+export async function cancelChange(deps: AgentDeps, id: string): Promise<Project> {
+  return schedule(deps, id, async () => {
+    const p = await load(deps, id);
+    const pc = p.pendingChange;
+    if (p.state !== "AWAIT_APPROVAL" || !pc) throw new AgentError("There's no change waiting for approval.", 409);
+    p.plans = p.plans.slice(0, pc.planCount);
+    p.state = pc.before.state;
+    p.title = pc.before.title;
+    if (pc.before.handoffReason) p.handoffReason = pc.before.handoffReason;
+    else delete p.handoffReason;
+    delete p.pendingChange;
+    p.updatedAt = (deps.now?.() ?? new Date()).toISOString();
+    await deps.store.save(p);
+    return { project: p, run: async () => p };
+  });
+}
+
+/** M9: brings back version n as a new version. Code only, no LLM; refused while the project runs. */
+export async function restoreProjectVersion(deps: AgentDeps, id: string, n: number): Promise<Project> {
+  return schedule(deps, id, async () => {
+    const p = await load(deps, id);
+    try {
+      restoreVersion(p, n, (deps.now?.() ?? new Date()).toISOString());
+    } catch (err) {
+      if (err instanceof RestoreError) throw new AgentError(err.message, err.status);
+      throw err;
+    }
+    await deps.store.save(p);
+    return { project: p, run: async () => p };
   });
 }
 
@@ -383,12 +563,14 @@ export async function deleteProject(deps: AgentDeps, id: string): Promise<void> 
 async function load(deps: AgentDeps, id: string): Promise<Project> {
   const p = await deps.store.get(id);
   if (!p) throw new AgentError("Project not found.", 404);
-  return p;
+  return ensureVersions(p); // projects made before M9 get their version 1
 }
 
 async function finish(run: Run): Promise<Project> {
   delete run.p.failure;
   delete run.p.resumeFrom;
+  // A project's first finished build becomes version 1 (M9).
+  ensureVersions(run.p, clientFor(run.deps, run.p).model, run.now());
   await run.save();
   return run.p;
 }
@@ -480,7 +662,13 @@ export function planToRequests(plan: Plan): BlockRequest[] {
   }));
 }
 
-async function build(run: Run, deps: AgentDeps, board: Board): Promise<void> {
+/** M9: build on top of an old layout (kept parts stay where they are) and change its code. */
+interface BuildChange {
+  stable: Layout;
+  code?: CodeChange;
+}
+
+async function build(run: Run, deps: AgentDeps, board: Board, change?: BuildChange): Promise<void> {
   const p = run.p;
   const req = requirementsOf(p, board);
   const impossible = impossibleRequest(req, board, powerOf(p));
@@ -495,7 +683,9 @@ async function build(run: Run, deps: AgentDeps, board: Board): Promise<void> {
     let problem = planProblems(plan, req).join(" ");
     if (!problem) {
       try {
-        layout = layoutProject(planToRequests(plan), board, { power: powerOf(p) });
+        layout = change
+          ? layoutProject(stableRequests(change.stable, planToRequests(plan)), board, { power: powerOf(p), reservedRefs: change.stable.build.parts.map((x) => x.ref) })
+          : layoutProject(planToRequests(plan), board, { power: powerOf(p) });
       } catch (err) {
         if (!(err instanceof LayoutError)) throw err;
         problem = err.message;
@@ -524,7 +714,7 @@ async function build(run: Run, deps: AgentDeps, board: Board): Promise<void> {
   run.event("steps", "ok", 0, `${steps.length} steps`);
   p.build = { build: layout.build, blocks: layout.blocks, steps, codeAttempts: 0, citations: [] };
 
-  await generateCode(run, deps, layout, board);
+  await generateCode(run, deps, layout, board, change?.code);
 }
 
 async function references(deps: AgentDeps, layout: Layout): Promise<Reference[]> {
@@ -546,7 +736,7 @@ async function references(deps: AgentDeps, layout: Layout): Promise<Reference[]>
   return refs;
 }
 
-async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Board): Promise<void> {
+async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Board, change?: CodeChange): Promise<void> {
   const p = run.p;
   const pb = p.build!;
   const plan = currentPlan(p)!;
@@ -561,7 +751,7 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
   let fix: { code: string; problems: string[] } | undefined;
   let previous: CodeIssue[] = [];
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
-    const out = await run.llm("code", (o) => clientFor(deps, p).json(CodeSchema, codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network)), { ...o, maxTokens: MAX_TOKENS.code }));
+    const out = await run.llm("code", (o) => clientFor(deps, p).json(CodeSchema, codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network), change), { ...o, maxTokens: MAX_TOKENS.code }));
     const check = checkMicroPython(out.code, layout.build, board);
     pb.code = out.code;
     pb.codeExplanation = out.explanation;

@@ -1,0 +1,5 @@
+{"idea": "Light an LED while I hold a button", "change": "Make the LED blink quickly while I hold the button, instead of staying on", "expect": {"kind": "code", "parts": {"led": 1, "button": 1}}}
+{"idea": "Show the knob's position as a number on an OLED", "change": "Add a red LED that gets brighter as I turn the knob up", "expect": {"kind": "wiring", "parts": {"pot": 1, "oled": 1, "led": 1}}}
+{"idea": "A red LED and a green LED that blink one after the other, and a button that stops and starts the blinking", "change": "Remove the green LED: only the red one should blink", "expect": {"kind": "wiring", "parts": {"led": 1, "button": 1}}}
+{"idea": "A red LED that turns on while I hold a button", "change": "Use a blue LED instead of the red one", "expect": {"kind": "wiring", "parts": {"led": 1, "button": 1}}}
+{"idea": "A counter on an OLED with two buttons: the first adds one, the second takes one away", "change": "Show the number much bigger and add a title at the top", "expect": {"kind": "code", "parts": {"oled": 1, "button": 2}}}

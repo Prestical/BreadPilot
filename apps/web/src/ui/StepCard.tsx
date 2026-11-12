@@ -2,6 +2,7 @@
 // above the prompt on narrow screens), plus a strip with one segment per step.
 import { useState } from "react";
 import type { BuildStep } from "@breadpilot/circuit-core";
+import type { BuildView } from "../projects/view";
 import type { NeedItem } from "../projects/parts";
 import { useApp } from "../store";
 
@@ -13,9 +14,25 @@ interface Props {
   need?: NeedItem[];
   /** The project has code: the last step leads on to putting it on the Pico. */
   hasCode?: boolean;
+  /** M9: this version is a change: the steps can be only the changes or all of them. */
+  change?: BuildView["change"];
 }
 
-export function StepCard({ steps, docked = false, need, hasCode = false }: Props) {
+/** M9: which steps are shown after a change, with the switch to the other list. */
+function ChangeNote({ change }: { change: NonNullable<BuildView["change"]> }) {
+  const setAllSteps = useApp((s) => s.setAllSteps);
+  if (change.count === 0) return <p className="change-note small">Only the code changed in this version: nothing to change on the breadboard.</p>;
+  return (
+    <p className="change-note small">
+      {change.showing === "changes" ? `Only the changes: ${change.count} of ${change.total} steps.` : `All ${change.total} steps of the whole build.`}{" "}
+      <button type="button" className="link-btn" onClick={() => setAllSteps(change.showing === "changes")}>
+        {change.showing === "changes" ? "Show all steps" : "Show only the changes"}
+      </button>
+    </p>
+  );
+}
+
+export function StepCard({ steps, docked = false, need, hasCode = false, change }: Props) {
   const stepIndex = useApp((s) => s.stepIndex);
   const setStep = useApp((s) => s.setStep);
   const setCodeOpen = useApp((s) => s.setCodeOpen);
@@ -27,8 +44,9 @@ export function StepCard({ steps, docked = false, need, hasCode = false }: Props
     <section className={`step-pop${docked ? " docked" : ""}${step.index === 0 && need ? " with-need" : ""}`} aria-live="polite" aria-labelledby="step-title">
       {!docked && <span className="step-pointer" aria-hidden="true" />}
       <p className="eyebrow">
-        Step {step.index + 1} of {steps.length}
+        {change?.showing === "changes" ? "Change step" : "Step"} {step.index + 1} of {steps.length}
       </p>
+      {change && step.index === 0 && <ChangeNote change={change} />}
       <h2 id="step-title">{step.title}</h2>
       {full && <p>{step.text}</p>}
       {step.dsl && <code className="dsl">{step.dsl}</code>}

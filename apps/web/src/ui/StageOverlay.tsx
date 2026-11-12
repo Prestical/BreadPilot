@@ -4,9 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { fillTemplate, packByKind, PACKS } from "@breadpilot/circuit-core";
 import { handoffUrl } from "../projects/api";
 import { timeline, typicalWait, type Tone } from "../projects/progress";
-import type { PlanPart, PlanVersion } from "../projects/types";
+import { partsChange } from "../projects/changes";
+import type { ApiProject, PlanPart, PlanVersion } from "../projects/types";
 import { projectView } from "../projects/view";
-import { useApp } from "../store";
+import { useApp, viewedVersion } from "../store";
 import { aiLabel } from "./AiPicker";
 
 // One per kind of project the app can build: a first LED, a game on the display, Wi-Fi, a puzzle.
@@ -121,6 +122,62 @@ export function PlanView({ plan }: { plan: PlanVersion }) {
   );
 }
 
+/** M9: a change that needs other parts: what it adds, removes and changes, before anything is built. */
+function ChangeApproval({ p, plan }: { p: ApiProject; plan: PlanVersion }) {
+  const approve = useApp((s) => s.approve);
+  const cancel = useApp((s) => s.cancelChange);
+  const busy = useApp((s) => s.agent.busy);
+  const pc = p.pendingChange!;
+  const before = p.plans[pc.planCount - 1];
+  const diff = before ? partsChange(before, plan, (x) => planPartName(x).name) : null;
+  const list = (label: string, items: string[]) =>
+    items.length > 0 && (
+      <p>
+        <strong>{label}:</strong> {items.join(", ")}
+      </p>
+    );
+  return (
+    <section className="float-card approval" aria-labelledby="approval-title">
+      <p className="eyebrow" id="approval-title">
+        Check the change
+      </p>
+      <p>
+        You asked: “{pc.request}”
+      </p>
+      {diff && (
+        <div className="feedback info">
+          {list("Adds", diff.added)}
+          {list("Removes", diff.removed)}
+          {list("Changes", diff.changed)}
+          <p className="small">
+            {diff.kept > 0 ? `${diff.kept} part${diff.kept > 1 ? "s stay" : " stays"} where ${diff.kept > 1 ? "they are" : "it is"}: you won't need to touch ${diff.kept > 1 ? "them" : "it"}.` : "No part stays as it is."}
+          </p>
+        </div>
+      )}
+      {plan.questions.length > 0 && (
+        <ul className="small">
+          {plan.questions.map((q, i) => (
+            <li key={i}>{q}</li>
+          ))}
+        </ul>
+      )}
+      <details className="small">
+        <summary>The whole new plan</summary>
+        <PlanView plan={plan} />
+      </details>
+      <div className="card-actions">
+        <button type="button" className="btn primary" disabled={busy} onClick={() => void approve()}>
+          Build this change
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={() => void cancel()}>
+          Cancel the change
+        </button>
+        <span className="muted small">Or type an adjustment below.</span>
+      </div>
+    </section>
+  );
+}
+
 function Approval({ plan }: { plan: PlanVersion }) {
   const approve = useApp((s) => s.approve);
   const busy = useApp((s) => s.agent.busy);
@@ -157,6 +214,9 @@ export function StageOverlay() {
   const agent = useApp((s) => s.agent);
   const retry = useApp((s) => s.retry);
   const dismissError = useApp((s) => s.dismissError);
+  const viewVersion = useApp((s) => s.viewVersion);
+  const setViewVersion = useApp((s) => s.setViewVersion);
+  const restoreVersion = useApp((s) => s.restoreVersion);
   const [hidden, setHidden] = useState<string | null>(null);
   const p = source.kind === "agent" && agent.project?.id === source.id ? agent.project : null;
   const view = p ? projectView(p) : null;
@@ -167,7 +227,26 @@ export function StageOverlay() {
   let card: ReactNode = null;
   if (agent.busy) card = <Progress />;
   else if (source.kind === "agent" && !source.id) card = <Greeting />;
-  else if (p?.state === "AWAIT_APPROVAL" && plan) card = <Approval plan={plan} />;
+  else if (p?.state === "AWAIT_APPROVAL" && plan) card = p.pendingChange ? <ChangeApproval p={p} plan={plan} /> : <Approval plan={plan} />;
+  else if (p && viewedVersion(p, viewVersion)) {
+    // M9: an older version, read-only.
+    const v = viewedVersion(p, viewVersion)!;
+    card = (
+      <section className="float-card banner info" role="status">
+        <p>
+          <strong>Version {v.n}</strong> ({v.request ? `“${v.request}”` : v.restoredFrom ? `restored from version ${v.restoredFrom}` : "the first version"}): you're looking at it, nothing is changed.
+        </p>
+        <div className="card-actions">
+          <button type="button" className="btn primary" disabled={agent.busy} onClick={() => void restoreVersion(v.n)}>
+            Restore this version
+          </button>
+          <button type="button" className="btn" onClick={() => setViewVersion(null)}>
+            Back to the current version
+          </button>
+        </div>
+      </section>
+    );
+  }
   else if (p && hidden !== bannerKey && (p.state === "FAILED" || p.state === "HANDOFF" || view?.kind === "unsafe")) {
     card = (
       <section className={`float-card banner ${p.state === "HANDOFF" ? "warn" : "bad"}`} role="status">
@@ -205,6 +284,19 @@ export function StageOverlay() {
             </a>
           </>
         )}
+      </section>
+    );
+  } else if (p?.changeError && hidden !== `change@${p.changeError.at}`) {
+    // M9: a change that couldn't be made; the project is as it was.
+    card = (
+      <section className="float-card banner warn" role="status">
+        <button type="button" className="icon-btn banner-close" aria-label="Hide this message" onClick={() => setHidden(`change@${p.changeError!.at}`)}>
+          ✕
+        </button>
+        <p>
+          <strong>Couldn't make the change</strong> “{p.changeError.request}”: {p.changeError.message}
+        </p>
+        <p className="small">Your project is exactly as it was. You can try again with other words, or with another model.</p>
       </section>
     );
   }

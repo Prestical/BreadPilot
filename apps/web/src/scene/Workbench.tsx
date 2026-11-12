@@ -142,7 +142,7 @@ export default function Workbench({ model, resolved, resetSignal, onHover, onTar
         <Pico showLabels={model.showLabels} highlights={model.highlights} ghost={model.pico === "ghost"} onHover={hoverTarget} onClick={onTarget} />
       )}
       {model.parts.map((p) => (
-        <PartView key={p.part.ref} part={p.part} state={p.state} lit={p.lit ?? false} onHover={hoverPart} />
+        <PartView key={p.key ?? p.part.ref} part={p.part} state={p.state} lit={p.lit ?? false} onHover={hoverPart} />
       ))}
       {model.wires.map((w) => (
         <Jumper key={w.id} from={w.from} to={w.to} color={w.color} state={w.state} />

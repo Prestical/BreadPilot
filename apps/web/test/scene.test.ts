@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadProject } from "../src/demos";
 import { buildScene, clampPopup, keyPos, popupAnchor, POPUP } from "../src/scene/model";
+import { changeSteps, layoutProject, resolveBuild, stableRequests } from "@breadpilot/circuit-core";
 import { BOARD, holePos, PICO } from "../src/scene/coords";
 
 describe("guided build scene", () => {
@@ -70,5 +71,44 @@ describe("step pop-up stays inside the stage", () => {
   });
   it("never returns NaN (camera not ready yet)", () => {
     expect(clampPopup(NaN, NaN, size).every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe("change steps in the 3D view (M9)", () => {
+  it("parts and wires that stay are on the board from the start; the new part appears at its step", () => {
+    const before = layoutProject([{ kind: "led" }]);
+    const after = layoutProject(stableRequests(before, [{ kind: "led" }, { kind: "button" }]), undefined, { reservedRefs: before.build.parts.map((x) => x.ref) });
+    const steps = changeSteps(before.build, after.build);
+    const resolved = resolveBuild(after.build).resolved!;
+    const at = (i: number) => buildScene(resolved, after.build.wires, steps, i, false);
+    const refs = (i: number) => at(i).parts.map((x) => `${x.part.ref}:${x.state}`).sort();
+    expect(refs(0)).toEqual(["LED1:done", "R1:done"]); // unplug step: the old board as it is
+    const place = steps.findIndex((s) => s.kind === "place-part" && s.partRef === "BTN1");
+    expect(refs(place)).toEqual(["BTN1:current", "LED1:done", "R1:done"]);
+    expect(at(place).highlights.length).toBeGreaterThan(0);
+    expect(at(0).pico).toBe("done");
+  });
+});
+
+describe("parts and wires being removed in the 3D view (M9, the user's report 11/11/2026)", () => {
+  it("are drawn from the old board until their removal step, highlighted at it, gone after it", () => {
+    const before = layoutProject([{ kind: "led" }, { kind: "button" }]);
+    const after = layoutProject(stableRequests(before, [{ kind: "button" }]), undefined, { reservedRefs: before.build.parts.map((x) => x.ref) });
+    const steps = changeSteps(before.build, after.build);
+    const resolved = resolveBuild(after.build).resolved!;
+    const removed = { resolved: resolveBuild(before.build).resolved!, wires: before.build.wires };
+    const at = (i: number) => buildScene(resolved, after.build.wires, steps, i, false, removed);
+    const parts = (i: number) => at(i).parts.map((x) => `${x.key ?? x.part.ref}:${x.state}`).sort();
+    const led = steps.findIndex((s) => s.kind === "remove-part" && s.partRef === "LED1");
+    expect(parts(0)).toEqual(["BTN1:done", "old-LED1:done", "old-R1:done"]); // the board as it is
+    expect(parts(led)).toContain("old-LED1:current");
+    expect(parts(steps.length - 1)).toEqual(["BTN1:done"]); // taken out
+    const firstWire = steps.findIndex((s) => s.kind === "remove-wire");
+    const oldWires = (i: number) => at(i).wires.filter((w) => w.id.startsWith("old-")).length;
+    expect(oldWires(0)).toBe(steps.filter((s) => s.kind === "remove-wire").length);
+    expect(at(firstWire).wires.some((w) => w.id.startsWith("old-") && w.state === "current")).toBe(true);
+    expect(oldWires(steps.length - 1)).toBe(0);
+    // Without the old board (all steps view) nothing extra is drawn.
+    expect(buildScene(resolved, after.build.wires, steps, 0, false).parts.map((x) => x.part.ref)).toEqual(["BTN1"]);
   });
 });
