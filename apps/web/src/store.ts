@@ -6,6 +6,10 @@ import { CHAPTERS } from "./tutorial/chapters";
 import { checkClick, checkWire, type Feedback } from "./tutorial/engine";
 import { loadProject } from "./demos";
 import * as api from "./projects/api";
+import type { SettingsTab } from "./ui/settingsTabs";
+
+/** The same limit as the API's (apps/api/src/agent/transfer.ts). */
+const IMPORT_LIMIT_BYTES = 5 * 1024 * 1024;
 import type { AiChoice, ApiProject, LlmOptions, ProgressEvent, ProjectSummary } from "./projects/types";
 import { projectView, type BuildView } from "./projects/view";
 import { editKey, loadEdit } from "./steps/codeEdits";
@@ -56,6 +60,8 @@ interface AppState {
   sidebarOpen: boolean;
   /** The Settings dialog. */
   settingsOpen: boolean;
+  /** The Settings tab shown when it opens. */
+  settingsTab: SettingsTab;
   /** M11: the "Supported parts" list. */
   partsOpen: boolean;
   /** The first-run setup (shown until it's finished or skipped). */
@@ -82,7 +88,9 @@ interface AppState {
   setAllSteps(all: boolean): void;
   setCodeOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
-  setSettingsOpen(open: boolean): void;
+  /** `tab`: open on that tab (e.g. OpenAI from the model menu's 🔒); else the last one. */
+  setSettingsOpen(open: boolean, tab?: SettingsTab): void;
+  setSettingsTab(tab: SettingsTab): void;
   setPartsOpen(open: boolean): void;
   setSetupOpen(open: boolean): void;
   setTourOpen(open: boolean): void;
@@ -110,6 +118,8 @@ interface AppState {
   refreshList(): Promise<void>;
   /** Deletes a project for good; if it's the open one, the new-idea screen is shown. */
   removeProject(id: string): Promise<void>;
+  /** M11: opens an exported project file as a new project. */
+  importProjectFile(file: File): Promise<void>;
   newProject(): void;
   tutGo(chapter: number): void;
   tutNext(): void;
@@ -272,6 +282,7 @@ export const useApp = create<AppState>((set, get) => {
   codeOpen: false,
   sidebarOpen: false,
   settingsOpen: false,
+  settingsTab: "local",
   partsOpen: false,
   setupOpen: false,
   tourOpen: false,
@@ -302,7 +313,8 @@ export const useApp = create<AppState>((set, get) => {
   setAllSteps: (all) => set({ allSteps: all, stepIndex: 0 }),
   setCodeOpen: (codeOpen) => set({ codeOpen }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen, sidebarOpen: false }),
+  setSettingsOpen: (settingsOpen, tab) => set({ settingsOpen, sidebarOpen: false, ...(tab ? { settingsTab: tab } : {}) }),
+  setSettingsTab: (settingsTab) => set({ settingsTab }),
   setPartsOpen: (partsOpen) => set({ partsOpen, sidebarOpen: false }),
   setSetupOpen: (setupOpen) => set({ setupOpen }),
   // The tour points at the build screen's parts, so it starts there with the sidebar visible.
@@ -422,6 +434,25 @@ export const useApp = create<AppState>((set, get) => {
     else if (rememberedProject() === id) remember(null);
     patchAgent({ list: get().agent.list.filter((x) => x.id !== id) });
     void get().refreshList();
+  },
+  importProjectFile: async (file) => {
+    patchAgent({ error: null });
+    try {
+      if (file.size > IMPORT_LIMIT_BYTES) throw new Error(`“${file.name}” is too big to be a BreadPilot project file.`);
+      let data: unknown;
+      try {
+        data = JSON.parse(await file.text());
+      } catch {
+        throw new Error(`“${file.name}” isn't a BreadPilot project file (export one with Export in a project).`);
+      }
+      const p = await api.importProject(data);
+      get().setMode("build");
+      get().setSidebarOpen(false);
+      await get().openProject(p.id);
+      void get().refreshList();
+    } catch (err) {
+      patchAgent({ error: `Couldn't open the project file: ${(err as Error).message}` });
+    }
   },
   refreshList: async () => {
     try {

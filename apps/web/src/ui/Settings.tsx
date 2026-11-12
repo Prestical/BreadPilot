@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { setThemeChoice, useThemeChoice, type ThemeChoice } from "./theme";
 import * as api from "../projects/api";
 import type { KeyCheck, ReasoningEffort, SettingsView } from "../projects/types";
@@ -6,6 +6,7 @@ import { useApp } from "../store";
 import { LocalModels } from "./LocalModels";
 import { ModelDownloads } from "./ModelDownloads";
 import { dataKeysText } from "./dataKeys";
+import { SETTINGS_TABS, tabForKey, type SettingsTab } from "./settingsTabs";
 
 const EFFORTS: { id: ReasoningEffort; label: string }[] = [
   { id: "none", label: "None (fastest)" },
@@ -35,13 +36,16 @@ function Section({ title, intro, children }: { title: string; intro?: ReactNode;
   );
 }
 
-/** The ⚙ Settings dialog: OpenAI key, local AI, Browser access. Everything is saved encrypted on this computer. */
+/** The ⚙ Settings dialog: a tab per subject (settingsTabs.ts). Everything is saved encrypted on this computer. */
 export function SettingsDialog() {
   const open = useApp((s) => s.settingsOpen);
   const setOpen = useApp((s) => s.setSettingsOpen);
+  const tab = useApp((s) => s.settingsTab);
+  const setTab = useApp((s) => s.setSettingsTab);
   const loadAiOptions = useApp((s) => s.loadAiOptions);
   const setTourOpen = useApp((s) => s.setTourOpen);
   const ref = useRef<HTMLDialogElement>(null);
+  const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({});
   const [view, setView] = useState<SettingsView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -63,34 +67,101 @@ export function SettingsDialog() {
     setView(v);
     void loadAiOptions();
   };
+  const current = SETTINGS_TABS.find((t) => t.id === tab)!;
+  const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
+    const next = tabForKey(tab, e.key);
+    if (!next) return;
+    e.preventDefault();
+    setTab(next);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
-    <dialog ref={ref} className="settings" aria-labelledby="settings-title" onClose={() => setOpen(false)}>
+    <dialog ref={ref} className="settings settings-tabs" aria-labelledby="settings-title" onClose={() => setOpen(false)}>
       <header className="settings-head">
         <h2 id="settings-title">Settings</h2>
         <button type="button" className="icon-btn" aria-label="Close settings" onClick={() => setOpen(false)}>
           ✕
         </button>
       </header>
-      <div className="settings-body">
-        {loadError && <p className="settings-note note-bad">{loadError}</p>}
-        {!view && !loadError && <p className="muted">Loading…</p>}
-        {view && (
-          <>
-            <OpenAiSection view={view} onChange={changed} />
-            <LocalAiSection view={view} onChange={changed} />
-            <BrowserSection view={view} onChange={changed} />
-            <DataSection dataHome={view.dataHome} />
-            <AppearanceSection />
-            <Section title="Help" intro="A short walk through the app, one part at a time.">
-              <button type="button" className="btn small-btn tour-again" onClick={() => setTourOpen(true)}>
-                Show the tour again
-              </button>
-            </Section>
-          </>
-        )}
+      <div className="settings-frame">
+        <div className="settings-nav" role="tablist" aria-label="Settings" aria-orientation="vertical">
+          {SETTINGS_TABS.map((t) => (
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[t.id] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`settings-tab-${t.id}`}
+              aria-selected={t.id === tab}
+              aria-controls="settings-panel"
+              tabIndex={t.id === tab ? 0 : -1}
+              className="settings-tab"
+              onClick={() => setTab(t.id)}
+              onKeyDown={onTabKey}
+            >
+              <span aria-hidden="true">{t.icon}</span> {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="settings-body" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${tab}`}>
+          <p className="settings-intro">{current.intro}</p>
+          {loadError && <p className="settings-note note-bad">{loadError}</p>}
+          {!view && !loadError && <p className="muted">Loading…</p>}
+          {view && tab === "local" && <LocalAiSection view={view} onChange={changed} />}
+          {view && tab === "openai" && <OpenAiSection view={view} onChange={changed} title="Your API key" />}
+          {view && tab === "general" && (
+            <>
+              <AppearanceSection />
+              {view.updates?.version && <UpdatesSection view={view} onChange={changed} />}
+              <Section title="Tour" intro="A short walk through the app, one part at a time.">
+                <button type="button" className="btn small-btn tour-again" onClick={() => setTourOpen(true)}>
+                  Show the tour again
+                </button>
+              </Section>
+            </>
+          )}
+          {view && tab === "privacy" && (
+            <>
+              <DataSection dataHome={view.dataHome} />
+              <BrowserSection view={view} onChange={changed} />
+            </>
+          )}
+        </div>
       </div>
     </dialog>
+  );
+}
+
+/** M11 11.6: the daily new-version check (desktop app only). */
+function UpdatesSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+  const u = view.updates!;
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<Note>(null);
+  const apply = async (check: boolean) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      onChange(await api.saveSettings({ updates: { check } }));
+    } catch (err) {
+      setNote({ tone: "bad", text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Section
+      title="Updates"
+      intro={`You have BreadPilot ${u.version}. Once a day, when it starts, BreadPilot can ask GitHub for the newest version number and tell you when there is a new one. Nothing about you, this computer or your projects is sent.`}
+    >
+      <label className="switch">
+        <input type="checkbox" checked={u.check} disabled={busy} onChange={(e) => void apply(e.target.checked)} />
+        <span>Check for a new version</span>
+      </label>
+      <Feedback note={note} />
+    </Section>
   );
 }
 
@@ -119,7 +190,7 @@ function AppearanceSection() {
 function DataSection({ dataHome }: { dataHome: string | null | undefined }) {
   const text = dataKeysText(dataHome);
   return (
-    <Section title="🔒 Your data and keys" intro={text.intro}>
+    <Section title="Your data and keys" intro={text.intro}>
       {text.points.length > 0 && (
         <ul className="data-keys muted small">
           {text.points.map((p) => (
@@ -131,7 +202,7 @@ function DataSection({ dataHome }: { dataHome: string | null | undefined }) {
   );
 }
 
-export function OpenAiSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
+export function OpenAiSection({ view, onChange, title = "OpenAI (optional)" }: { view: SettingsView; onChange: (v: SettingsView) => void; title?: string }) {
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState<"save" | "test" | "remove" | "model" | null>(null);
   const [note, setNote] = useState<Note>(null);
@@ -181,7 +252,7 @@ export function OpenAiSection({ view, onChange }: { view: SettingsView; onChange
 
   return (
     <Section
-      title="OpenAI (optional)"
+      title={title}
       intro={
         <>
           A stronger model for writing code. Your idea, plan and code are sent to OpenAI and billed to your account (usually under 1 cent per project). Create a key at{" "}
@@ -267,31 +338,34 @@ export function OpenAiSection({ view, onChange }: { view: SettingsView; onChange
 function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: SettingsView) => void }) {
   const [form, setForm] = useState(view.local);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<Note>(null);
+  // The answer shows under the form that was saved (memory, or the advanced one).
+  const [note, setNote] = useState<{ at: "memory" | "advanced"; note: Note }>({ at: "memory", note: null });
   const field = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const save = async (e: FormEvent) => {
+  const save = (at: "memory" | "advanced") => async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    setNote(null);
+    const setNoteHere = (n: Note) => setNote({ at, note: n });
+    setNoteHere(null);
     try {
       onChange(await api.saveSettings({ local: { ...form, baseUrl: form.baseUrl.trim(), model: form.model.trim(), embedModel: form.embedModel.trim() } }));
-      setNote({ tone: "ok", text: "Saved. New projects use these settings." });
+      setNoteHere({ tone: "ok", text: "Saved. New projects use these settings." });
     } catch (err) {
-      setNote({ tone: "bad", text: (err as Error).message });
+      setNoteHere({ tone: "bad", text: (err as Error).message });
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Section
-      title="Local AI (Ollama)"
-      intro={
-        <>
-          Free and private: runs on this computer through the{" "}
-          <a href="https://ollama.com/download" target="_blank" rel="noreferrer">
-            Ollama app
-          </a>
-          . Using <code>{view.local.model}</code>.
+    <>
+      <Section
+        title="Model"
+        intro={
+          <>
+            Free and private: runs through the{" "}
+            <a href="https://ollama.com/download" target="_blank" rel="noreferrer">
+              Ollama app
+            </a>
+            , nothing leaves this computer. Now using <code>{view.local.model}</code>.
         </>
       }
     >
@@ -303,7 +377,9 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
           setForm(v.local);
         }}
       />
-      <form className="settings-row" onSubmit={save}>
+    </Section>
+    <Section title="Memory">
+      <form className="settings-row" onSubmit={save("memory")}>
         <label className="field">
           Free its memory after (minutes)
           <input type="number" min={0} max={60} step={1} value={form.keepAliveMin} onChange={(e) => field("keepAliveMin", Number(e.target.value))} required aria-describedby="keepalive-help" />
@@ -315,9 +391,12 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
       <p id="keepalive-help" className="muted small">
         While loaded, the local model uses the memory shown for it in the list. It's freed this long after its last answer; 0 frees it at once (the next answer then takes a few seconds longer to start).
       </p>
+      {note.at === "memory" && <Feedback note={note.note} />}
+    </Section>
+    <Section title="Advanced">
       <details className="settings-more">
-        <summary>Advanced</summary>
-        <form className="settings-grid" onSubmit={save}>
+        <summary>Ollama address, model names, context size</summary>
+        <form className="settings-grid" onSubmit={save("advanced")}>
           <label className="field">
             Ollama address
             <input value={form.baseUrl} onChange={(e) => field("baseUrl", e.target.value)} spellCheck={false} required />
@@ -339,8 +418,9 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
           </button>
         </form>
       </details>
-      <Feedback note={note} />
+      {note.at === "advanced" && <Feedback note={note.note} />}
     </Section>
+    </>
   );
 }
 
@@ -369,7 +449,7 @@ function BrowserSection({ view, onChange }: { view: SettingsView; onChange: (v: 
     }
   };
   return (
-    <Section title="Browser access" intro="Also use BreadPilot in Chrome, Safari or Firefox while this app is open. Only this computer can connect, and the browser needs the sign-in link below.">
+    <Section title="Open in a web browser" intro="Also use BreadPilot in Chrome, Safari or Firefox while this app is open. Only this computer can connect, and the browser needs the sign-in link below.">
       <label className="switch">
         <input type="checkbox" checked={b.enabled} disabled={busy} onChange={(e) => void apply(e.target.checked)} />
         <span>{b.enabled ? "On" : "Off"}</span>
@@ -390,21 +470,24 @@ function BrowserSection({ view, onChange }: { view: SettingsView; onChange: (v: 
           <p className="muted small">The sign-in link works until you quit BreadPilot. Don't share it.</p>
         </div>
       )}
-      <form
-        className="settings-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void apply(b.enabled, port);
-        }}
-      >
-        <label className="field">
-          Port
-          <input type="number" min={1024} max={65535} value={port} onChange={(e) => setPort(Number(e.target.value))} required />
-        </label>
-        <button type="submit" className="btn small-btn" disabled={busy || port === b.port}>
-          Change port
-        </button>
-      </form>
+      <details className="settings-more">
+        <summary>Port ({b.port})</summary>
+        <form
+          className="settings-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void apply(b.enabled, port);
+          }}
+        >
+          <label className="field">
+            Port
+            <input type="number" min={1024} max={65535} value={port} onChange={(e) => setPort(Number(e.target.value))} required />
+          </label>
+          <button type="submit" className="btn small-btn" disabled={busy || port === b.port}>
+            Change port
+          </button>
+        </form>
+      </details>
       <Feedback note={note} />
     </Section>
   );

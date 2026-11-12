@@ -48,6 +48,14 @@ export const MeasuredSchema = z.object({
 });
 const ModelMemorySchema = z.record(z.string().min(1).max(200), MeasuredSchema).refine((r) => Object.keys(r).length <= 200, "too many measured models");
 
+/** M11 11.6: the daily check for a new version (desktop app only; see updates.ts). */
+const UpdatesSchema = z.object({
+  check: z.boolean(),
+  /** When GitHub last answered, and the newest version it named (null = no release yet). Engine only. */
+  lastCheck: z.string().max(40).nullable(),
+  latest: z.string().max(40).nullable(),
+});
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   local: LocalSchema,
@@ -59,6 +67,7 @@ export const SettingsSchema = z.object({
   tourDone: z.boolean(),
   /** Measured memory per local model tag (engine only). */
   modelMemory: ModelMemorySchema,
+  updates: UpdatesSchema,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -70,6 +79,7 @@ export const SettingsPatchSchema = z
     browserAccess: BrowserSchema.partial().strict().optional(),
     setupDone: z.boolean().optional(),
     tourDone: z.boolean().optional(),
+    updates: z.object({ check: z.boolean() }).partial().strict().optional(),
   })
   .strict();
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;
@@ -91,6 +101,7 @@ export function defaultSettings(config: Config, opts: { withKey: boolean; setupD
     setupDone: opts.setupDone ?? false,
     tourDone: opts.setupDone ?? false,
     modelMemory: {},
+    updates: { check: true, lastCheck: null, latest: null },
   };
 }
 
@@ -103,6 +114,7 @@ export function applyPatch(s: Settings, patch: SettingsPatch): Settings {
     setupDone: patch.setupDone ?? s.setupDone,
     tourDone: patch.tourDone ?? s.tourDone,
     modelMemory: s.modelMemory,
+    updates: { ...s.updates, ...patch.updates },
   };
 }
 
@@ -115,6 +127,8 @@ export interface SettingsView {
   tourDone: boolean;
   /** The desktop app's operating system ("darwin", "win32", "linux"), for "Your data and keys"; null for the development server. */
   dataHome: string | null;
+  /** M11: the daily check for a new version; `version` = this app's (null in development: no check). */
+  updates: { check: boolean; version: string | null };
 }
 
 export function viewOf(
@@ -122,6 +136,7 @@ export function viewOf(
   browser: { url: string | null; pairingUrl: string | null; error: string | null },
   keyRefused: string | null = null,
   dataHome: string | null = null,
+  appVersion: string | null = null,
 ): SettingsView {
   const key = s.openai.apiKey;
   return {
@@ -131,6 +146,7 @@ export function viewOf(
     setupDone: s.setupDone,
     tourDone: s.tourDone,
     dataHome,
+    updates: { check: s.updates.check, version: appVersion },
   };
 }
 
@@ -180,6 +196,7 @@ export async function fileSettings(opts: { file: string; key: Uint8Array; defaul
       ...(typeof s.tourDone === "boolean" ? { tourDone: s.tourDone } : {}),
       // Measurements are only a convenience: a damaged list is dropped, not a reason to lose settings.
       ...(ModelMemorySchema.safeParse(s.modelMemory).success ? { modelMemory: s.modelMemory } : {}),
+      ...(UpdatesSchema.safeParse({ ...current.updates, ...s.updates }).success ? { updates: { ...current.updates, ...s.updates } } : {}),
       local: { ...current.local, ...s.local },
       openai: { ...current.openai, ...s.openai },
       browserAccess: { ...current.browserAccess, ...s.browserAccess },

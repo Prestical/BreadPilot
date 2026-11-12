@@ -89,6 +89,19 @@ describe("settings.enc", () => {
     expect(store.get().setupDone).toBe(false); // an app from before the setup screen shows it once
     expect(store.get().tourDone).toBe(false);
     expect(store.get().modelMemory).toEqual({}); // no measured models before 0.3
+    expect(store.get().updates).toEqual({ check: true, lastCheck: null, latest: null }); // M11: on by default
+  });
+
+  it("keeps the update check's settings, and drops damaged ones without losing the others", async () => {
+    const good = join(dir, "updates.enc");
+    const updates = { check: false, lastCheck: "2026-11-11T09:00:00.000Z", latest: "0.3.0" };
+    await writeFile(good, sealBox(dataKey, "BPST1", Buffer.from(JSON.stringify({ ...defaults, updates }))));
+    expect((await fileSettings({ file: good, key: dataKey, defaults })).get().updates).toEqual(updates);
+    const bad = join(dir, "updates-bad.enc");
+    await writeFile(bad, sealBox(dataKey, "BPST1", Buffer.from(JSON.stringify({ ...defaults, updates: { check: "yes" }, setupDone: true }))));
+    const store = await fileSettings({ file: bad, key: dataKey, defaults });
+    expect(store.get().updates).toEqual(defaults.updates);
+    expect(store.get().setupDone).toBe(true);
   });
 
   it("keeps measured model memory, and drops a damaged list without losing the other settings", async () => {
@@ -233,6 +246,14 @@ describe("settings routes", () => {
     expect(store.get().setupDone).toBe(true);
     expect((await put("/api/settings", { setupDone: "yes" })).statusCode).toBe(400);
     expect((await put("/api/settings", { tourDone: true })).json().tourDone).toBe(true);
+  });
+
+  it("turns the update check off and on; the time and answer of a check can't be set from the page", async () => {
+    expect((await app.inject({ url: "/api/settings" })).json().updates).toEqual({ check: true, version: null });
+    expect((await put("/api/settings", { updates: { check: false } })).json().updates.check).toBe(false);
+    expect(store.get().updates.check).toBe(false);
+    expect((await put("/api/settings", { updates: { latest: "9.9.9" } })).statusCode).toBe(400);
+    expect((await put("/api/settings", { updates: { check: true } })).json().updates.check).toBe(true);
   });
 
   it("refuses invalid values and unknown fields", async () => {

@@ -2,7 +2,7 @@
 // (utilityProcess.fork) and talks to it through messages. The database key arrives in a message,
 // never on the command line or in the environment, where other programs could read it.
 //
-// main → here:  { type: "start", dataDir, key (hex), token, webDir, repoDir, migrationsDir, template?, weakKeyStorage? }
+// main → here:  { type: "start", dataDir, key (hex), token, webDir, repoDir, migrationsDir, template?, weakKeyStorage?, appVersion? }
 //               { type: "stop" }
 // here → main:  { type: "ready", url, pairingUrl }   { type: "error", kind, message }   { type: "stopped" }
 // Browser access is a setting (PUT /api/settings), saved in settings.enc.
@@ -37,7 +37,7 @@ async function settingsLocked(file: string, key: Buffer): Promise<boolean> {
 }
 
 type Message =
-  | { type: "start"; dataDir: string; key: string; token: string; webDir: string; repoDir: string; migrationsDir: string; template?: string; weakKeyStorage?: boolean }
+  | { type: "start"; dataDir: string; key: string; token: string; webDir: string; repoDir: string; migrationsDir: string; template?: string; weakKeyStorage?: boolean; appVersion?: string }
   | { type: "stop" };
 
 let data: EncryptedDb | null = null;
@@ -60,7 +60,7 @@ parent.on("message", async ({ data: raw }) => {
       const keyRefused = msg.weakKeyStorage ? WEAK_KEY_STORAGE : null;
       const settings = await fileSettings({ file: join(msg.dataDir, "settings.enc"), key, defaults: defaultSettings(config, { withKey: false }), keyRefused });
       // Messages go to stdout, which the desktop app writes to its log file (no request logs).
-      api = await startApi({ config, db: data.db, settings, port: 0, webDir: msg.webDir, accessToken: msg.token, logger: true, requestLogs: false, desktop: true });
+      api = await startApi({ config, db: data.db, settings, port: 0, webDir: msg.webDir, accessToken: msg.token, logger: true, requestLogs: false, desktop: true, appVersion: msg.appVersion });
       parent.postMessage({ type: "ready", url: api.url, pairingUrl: api.pairingUrl });
     } else if (msg.type === "stop") {
       await api?.close();

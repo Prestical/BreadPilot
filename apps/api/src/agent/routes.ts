@@ -6,6 +6,8 @@ import { AgentError, approvePlan, cancelChange, createProject, deleteProject, is
 import { progressBus, type ProgressEvent } from "./progress";
 import { LLM_CHOICES, type Project } from "./project";
 import { ensureVersions } from "./versions";
+import { exportFile, exportFileName, IMPORT_LIMIT_BYTES, ImportError, importProject } from "./transfer";
+import { randomUUID } from "node:crypto";
 import { catalogEntry } from "../models";
 
 const Power = z.enum(POWER_MODES as [PowerMode, ...PowerMode[]]);
@@ -218,6 +220,29 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentDeps) {
     if (!runningAtStart) {
       send("done", withRunning(p));
       close();
+    }
+  });
+
+  // M11 11.6: a project as a file, and a file back as a new project (checked first: transfer.ts).
+  app.get<{ Params: { id: string } }>("/api/projects/:id/export", async (req, reply) => {
+    const p = await deps.store.get(req.params.id);
+    if (!p) return reply.status(404).send({ code: "NOT_FOUND", message: "Project not found." });
+    if (isRunning(p.id)) return reply.status(409).send({ code: "CONFLICT", message: "Wait until it's finished to export it." });
+    const file = exportFile(ensureVersions(p), (deps.now?.() ?? new Date()).toISOString(), deps.appVersion);
+    return reply
+      .type("application/json; charset=utf-8")
+      .header("content-disposition", `attachment; filename="${exportFileName(p.title)}"`)
+      .send(JSON.stringify(file, null, 1));
+  });
+
+  app.post("/api/projects/import", { bodyLimit: IMPORT_LIMIT_BYTES }, async (req, reply) => {
+    try {
+      const p = importProject(req.body, { id: deps.newId?.() ?? randomUUID(), now: (deps.now?.() ?? new Date()).toISOString() });
+      await deps.store.create(p);
+      return reply.status(201).send(withRunning(p));
+    } catch (err) {
+      if (err instanceof ImportError) return reply.status(400).send({ code: "BAD_PROJECT_FILE", message: err.message });
+      throw err;
     }
   });
 

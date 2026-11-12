@@ -62,6 +62,8 @@ export interface AgentDeps {
   log?: (msg: string) => void;
   now?: () => Date;
   newId?: () => string;
+  /** M11: the desktop app's version, written into exported project files; null/missing for development. */
+  appVersion?: string | null;
   budgetMs?: number;
   /** Live stage events for the SSE route (optional). */
   progress?: ProgressBus;

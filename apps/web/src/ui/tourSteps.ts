@@ -18,7 +18,7 @@ export const TOUR: TourStep[] = [
   { target: "examples", title: "Examples", text: "Finished builds to explore step by step. No AI needed." },
   { target: "tutorial", title: "New to breadboards?", text: "A short hands-on lesson on how a breadboard and the board's pins work." },
   { target: "new", title: "Your projects", text: "Start a new idea here. Every project is saved and listed below." },
-  { target: "settings", title: "Settings", text: "Your OpenAI key, the local AI and browser access. You can replay this tour from here." },
+  { target: "settings", title: "Settings", text: "The local AI, your OpenAI key, how the app looks and your privacy, each on its own tab. You can replay this tour from General." },
 ];
 
 export interface Rect {

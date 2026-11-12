@@ -136,6 +136,16 @@ export interface SettingsView {
   setupDone: boolean;
   /** The guided tour was finished or skipped. */
   tourDone: boolean;
+  /** M11: the daily new-version check; `version` = this app's (null in development: no check). */
+  updates?: { check: boolean; version: string | null };
+}
+
+/** M11: GET /api/update. */
+export interface UpdateInfo {
+  current: string | null;
+  latest: string | null;
+  available: boolean;
+  url: string;
 }
 
 export interface SettingsPatch {
@@ -144,6 +154,7 @@ export interface SettingsPatch {
   browserAccess?: Partial<Pick<SettingsView["browserAccess"], "enabled" | "port">>;
   setupDone?: boolean;
   tourDone?: boolean;
+  updates?: { check?: boolean };
 }
 
 /** An Ollama model download started from the app (GET /api/ollama/pulls). */

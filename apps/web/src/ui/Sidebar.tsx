@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import logo from "../assets/logo.png";
 import { DEMOS } from "../demos";
 import { STATE_LABEL } from "../projects/progress";
 import { useApp } from "../store";
+import { UpdateNotice } from "./UpdateNotice";
 
 /** GitHub's mark (Octicons "mark-github", MIT licence), in the text colour. */
 function GitHubMark() {
@@ -32,6 +34,8 @@ export function Sidebar() {
   const setOpen = useApp((s) => s.setSidebarOpen);
   const setSettingsOpen = useApp((s) => s.setSettingsOpen);
   const setPartsOpen = useApp((s) => s.setPartsOpen);
+  const importProjectFile = useApp((s) => s.importProjectFile);
+  const fileRef = useRef<HTMLInputElement>(null);
   const building = mode === "build";
 
   return (
@@ -63,6 +67,21 @@ export function Sidebar() {
         <button type="button" className="nav-item" onClick={() => setPartsOpen(true)}>
           <span aria-hidden="true">🧩</span> Supported parts
         </button>
+        {/* M11: a project file someone exported (checked by the API before it's shown). */}
+        <button type="button" className="nav-item" disabled={busy} onClick={() => fileRef.current?.click()}>
+          <span aria-hidden="true">📂</span> Open a project file
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // the same file can be chosen again
+            if (file) void importProjectFile(file);
+          }}
+        />
       </nav>
 
       <div className="side-scroll">
@@ -128,8 +147,9 @@ export function Sidebar() {
         </section>
       </div>
 
+      <UpdateNotice />
       <div className="side-foot">
-        <button type="button" className="nav-item settings-btn" data-tour="settings" title="OpenAI key, local AI, browser access" onClick={() => setSettingsOpen(true)}>
+        <button type="button" className="nav-item settings-btn" data-tour="settings" title="Local AI, OpenAI, appearance, updates, privacy" onClick={() => setSettingsOpen(true)}>
           <span aria-hidden="true">⚙</span> Settings
         </button>
         {/* Opens in the normal browser (the desktop app sends other sites there). */}

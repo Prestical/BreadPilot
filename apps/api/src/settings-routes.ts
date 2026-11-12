@@ -22,6 +22,8 @@ export interface SettingsRouteDeps {
   apply(next: Settings, prev: Settings): Promise<void>;
   /** The desktop app's operating system (Settings explains where the data and keys are); null for the development server. */
   dataHome?: string | null;
+  /** The desktop app's version (Settings → Updates); null for the development server. */
+  appVersion?: string | null;
   /** For tests: OpenAI's /models check. */
   checkKey?: (key: string, model: string) => Promise<KeyCheck>;
 }
@@ -41,7 +43,7 @@ export interface SettingsWriter {
 }
 
 export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRouteDeps): SettingsWriter {
-  const view = () => viewOf(deps.settings.get(), deps.browser(), deps.settings.keyRefused ?? null, deps.dataHome ?? null);
+  const view = () => viewOf(deps.settings.get(), deps.browser(), deps.settings.keyRefused ?? null, deps.dataHome ?? null, deps.appVersion ?? null);
   const check = (key: string) => (deps.checkKey ?? ((k, m) => checkOpenAiKey(deps.openAiBaseUrl, k, m)))(key, deps.settings.get().openai.model);
 
   // One change at a time: two quick saves must not apply in one order and store in the other.

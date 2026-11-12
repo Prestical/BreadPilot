@@ -174,7 +174,7 @@ async function startEngine() {
   return new Promise((ok) => {
     child.once("message", ok);
     child.once("exit", (code) => ok({ type: "error", kind: "exit", message: `The engine stopped while starting (code ${code}).` }));
-    child.postMessage({ type: "start", dataDir: DATA_DIR, key, token, webDir: PATHS.web, repoDir: PATHS.docs, migrationsDir: PATHS.migrations, template: TEMPLATE, weakKeyStorage: weakKeyStorage() });
+    child.postMessage({ type: "start", dataDir: DATA_DIR, key, token, webDir: PATHS.web, repoDir: PATHS.docs, migrationsDir: PATHS.migrations, template: TEMPLATE, weakKeyStorage: weakKeyStorage(), appVersion: app.getVersion() });
   });
 }
 

@@ -18,6 +18,7 @@ import { progressBus } from "./agent/progress";
 import { PortInUseError, type KeyCheck, type Settings, type SettingsStore } from "./settings";
 import { registerSettingsRoutes } from "./settings-routes";
 import { ollamaPuller, registerOllamaRoutes } from "./ollama";
+import { registerUpdateRoutes, updateChecker } from "./updates";
 import { localModelService, ollamaModels, registerLocalModelRoutes, thinkSetting } from "./local-models";
 
 export interface StartOptions {
@@ -38,6 +39,10 @@ export interface StartOptions {
   requestLogs?: boolean;
   /** The desktop app (data in its app-data folder, key kept by the operating system). */
   desktop?: boolean;
+  /** M11: the desktop app's version (update check, exported files); missing in development. */
+  appVersion?: string;
+  /** Tests: stands in for asking GitHub for the latest release. */
+  fetchLatest?: () => Promise<string | null>;
   /** Tests: stands in for asking OpenAI whether a key works. */
   checkKey?: (key: string, model: string) => Promise<KeyCheck>;
 }
@@ -142,6 +147,7 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
     progress: progressBus(),
     search: async (q) => (await rag.search(q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
     log: (m) => log(m),
+    appVersion: opts.appVersion ?? null,
   };
   const health: HealthDeps = {
     checkDb: dbCheck(db),
@@ -226,6 +232,7 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
     settings,
     openAiBaseUrl: config.OPENAI_BASE_URL,
     dataHome: opts.desktop ? process.platform : null,
+    appVersion: opts.appVersion ?? null,
     checkKey: opts.checkKey,
     browser: () => ({ url: browserAccess.url(), pairingUrl: browserAccess.pairingUrl(), error: browserError }),
     // Called before a change is saved; throwing keeps the old settings (e.g. the port is taken).
@@ -274,11 +281,17 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
   });
   registerOllamaRoutes(app, { puller, models: localModels.downloadable });
 
+  // M11 11.6: the daily new-version check (desktop only), started in the background below.
+  const updates = updateChecker({ appVersion: opts.appVersion, settings, save: settingsWriter.update, fetchLatest: opts.fetchLatest, log: (m) => log(m) });
+  registerUpdateRoutes(app, updates);
+
   await migrate(db, config.MIGRATIONS_DIR, log);
   await app.listen({ host: "127.0.0.1", port: opts.port });
   const port = (app.server.address() as AddressInfo).port;
   const url = `http://127.0.0.1:${port}/`;
   if (config.RAG_AUTO_INGEST) attempt(1);
+  // Once a day at start (desktop, when allowed): never holds up the start, never fails it.
+  void updates.check();
   if (settings.get().browserAccess.enabled) {
     await browserAccess.enable(settings.get().browserAccess.port).catch((err: Error) => {
       browserError = err.message;

@@ -104,7 +104,7 @@ export function ModelMenu() {
                 className={`model-item${missing ? " locked" : ""}`}
                 onClick={() => {
                   // Without a key, the entry leads to where the key is added.
-                  if (missing) setSettingsOpen(true);
+                  if (missing) setSettingsOpen(true, "openai");
                   else setAi(o.id);
                   setOpen(false);
                 }}

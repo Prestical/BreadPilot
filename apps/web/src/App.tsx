@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { DEMOS } from "./demos";
+import { exportUrl } from "./projects/api";
 import { partsNeeded } from "./projects/parts";
 import { PowerToggle } from "./projects/PowerToggle";
 import { emptyResolved } from "./projects/view";
@@ -176,6 +177,12 @@ export function App() {
               <button type="button" onClick={() => setMode("build")}>
                 Back to building
               </button>
+            )}
+            {/* M11: the whole project (every version) as a file, to keep or to open on another computer. */}
+            {mode === "build" && project && !agent.busy && !codeOpen && (
+              <a className="tool-btn" href={exportUrl(project.id)} download title="Save this project as a file you can open again in BreadPilot">
+                Export
+              </a>
             )}
             {hasCode && !codeOpen && (
               <button type="button" className="code-btn" onClick={() => setCodeOpen(true)}>

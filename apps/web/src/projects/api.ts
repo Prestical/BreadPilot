@@ -1,5 +1,5 @@
 import type { PowerMode } from "@breadpilot/circuit-core";
-import type { AiChoice, ApiProject, KeyCheck, LlmOptions, LocalModelsView, Measured, ProgressEvent, ProjectSummary, PullState, SettingsPatch, SettingsView } from "./types";
+import type { AiChoice, ApiProject, KeyCheck, LlmOptions, LocalModelsView, Measured, ProgressEvent, ProjectSummary, PullState, SettingsPatch, SettingsView, UpdateInfo } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -47,6 +47,12 @@ export const listProjects = () => call<ProjectSummary[]>("GET", "/api/projects")
 /** Removes a project for good (204, no body). */
 export const deleteProject = (id: string) => call<null>("DELETE", `/api/projects/${id}`);
 export const handoffUrl = (id: string) => `/api/projects/${id}/handoff?download=1`;
+/** M11: the project as a .breadpilot.json file (a download). */
+export const exportUrl = (id: string) => `/api/projects/${id}/export`;
+/** M11: an exported file, already read as JSON; the API checks it and answers with the new project. */
+export const importProject = (file: unknown) => call<ApiProject>("POST", "/api/projects/import", file);
+/** M11: whether a newer BreadPilot is out (the desktop app checks at most once a day). */
+export const getUpdate = () => call<UpdateInfo>("GET", "/api/update");
 
 // Settings (the OpenAI key goes in once and never comes back: answers only say whether it's set).
 export const getSettings = () => call<SettingsView>("GET", "/api/settings");
