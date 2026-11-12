@@ -13,7 +13,7 @@
 # scroll, blit); call show() to send the picture to the screen.
 # Drawing helpers on top of it: title, center_text, big_text, bar, graph, icon (ICONS below), sprite.
 #
-# Facts from the Sino Wealth SH1106 datasheet V2.2 (docs/hardware/components/SH1106.pdf):
+# Facts from the Sino Wealth SH1106 datasheet V2.2 (see the BreadPilot part's reference.md):
 #   - I2C 7-bit address 0x3C or 0x3D, chosen by the SA0 pin (p.13).
 #   - Control byte 0x00: command bytes follow; 0x40: display data follows (Co = 0, D/C, p.13-14).
 #   - 132 x 64 display RAM in 8 pages of 8 rows; page address B0h-B7h (p.23); column address set

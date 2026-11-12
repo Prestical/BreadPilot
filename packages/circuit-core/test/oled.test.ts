@@ -1,5 +1,5 @@
 // Milestone 6: the 1.3" I2C OLED display (SH1106). Facts: the user's product page (pin order
-// VCC-GND-SCL-SDA, 3.3-5 V) and docs/hardware/components/SH1106.pdf (I2C, 0x3C/0x3D).
+// VCC-GND-SCL-SDA, 3.3-5 V) and the SH1106 datasheet (I2C, 0x3C/0x3D; see the part's reference.md).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PICO_2_W } from "../src/board";

@@ -33,8 +33,16 @@ function switchStates(elements: PartElement[]): SwitchState[] {
   const switches = elements.filter((e) => e.el.kind === "switch");
   const describe = (closed: PartElement[]) => {
     if (closed.length === 0) return "";
-    const refs = [...new Set(closed.map((s) => s.part.ref))];
-    return `when ${refs.join(" and ")} ${refs.length > 1 ? "are" : "is"} pressed`;
+    // A contact that says how it closes ("slid toward outer leg 1") is described that way.
+    const how = closed.filter((s) => s.el.closed).map((s) => `${s.part.ref} is ${s.el.closed}`);
+    const refs = [...new Set(closed.filter((s) => !s.el.closed).map((s) => s.part.ref))];
+    const pressed = refs.length ? [`${refs.join(" and ")} ${refs.length > 1 ? "are" : "is"} pressed`] : [];
+    return `when ${[...pressed, ...how].join(" and ")}`;
+  };
+  // Contacts of one switch in the same group are never closed together (a slide switch's two sides).
+  const possible = (s: PartElement[]) => {
+    const groups = s.filter((x) => x.el.group).map((x) => `${x.part.ref}#${x.el.group}`);
+    return new Set(groups).size === groups.length;
   };
   const subsets: PartElement[][] = [];
   if (switches.length <= MAX_EXHAUSTIVE_SWITCHES) {
@@ -42,7 +50,7 @@ function switchStates(elements: PartElement[]): SwitchState[] {
   } else {
     subsets.push([], switches, ...switches.map((s) => [s]));
   }
-  return subsets.map((s) => ({ closed: new Set(s.map((x) => x.id)), when: describe(s) }));
+  return subsets.filter(possible).map((s) => ({ closed: new Set(s.map((x) => x.id)), when: describe(s) }));
 }
 
 class IssueList {

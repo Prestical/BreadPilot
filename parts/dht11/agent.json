@@ -1,0 +1,21 @@
+{
+  "plan": {
+    "line": "a DHT11 sensor that measures the air's temperature (0 to 50 °C, ±2 °C) and humidity (20 to 90 %, ±5 %), at most once every 2 seconds; its pull-up resistor is added automatically. Use it for the temperature or humidity of a room, the weather or the air; use the Pico's own chip sensor only when the idea asks for the chip's or CPU's temperature."
+  },
+  "words": {
+    "nouns": ["dht", "dhts", "dht11", "dht11s", "thermometer", "thermometers", "hygrometer", "hygrometers"],
+    "claims": ["dht11", "temperature-sensing"]
+  },
+  "names": {
+    "label": ["a DHT11 temperature and humidity sensor", "DHT11 temperature and humidity sensors"],
+    "count": ["DHT11 sensor", "DHT11 sensors"],
+    "supports": "the DHT11 temperature and humidity sensor",
+    "short": ["temperature sensor", "temperature sensors"]
+  },
+  "code": {
+    "pinLine": "DHT11 temperature and humidity sensor {ref} on {gpio}: sensor = dht.DHT11(Pin({g})). Call sensor.measure(), then sensor.temperature() gives whole degrees C and sensor.humidity() whole percent. Wait 1 s after the program starts before the first measure(), and at least 2 s between measure() calls: the DHT11 can't measure faster. Each measure() returns the reading taken at the previous call. measure() raises OSError when a reading fails (for example a loose wire): catch it and try again on the next round.",
+    "imports": ["from machine import Pin", "import dht"],
+    "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `dht.DHT11(Pin({g}))  (measure(), then temperature() and humidity())` |"],
+    "ragQuery": "GPIO digital input pull-up resistor"
+  }
+}

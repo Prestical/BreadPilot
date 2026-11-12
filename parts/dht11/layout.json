@@ -1,0 +1,15 @@
+{
+  "name": "temperature and humidity sensor",
+  "height": 4,
+  "pins": { "data": { "need": "gpio", "mode": "in" } },
+  "parts": [
+    { "ref": "DHT", "type": "self", "legs": { "vcc": [0, "f"], "data": [1, "f"], "nc": [2, "f"], "gnd": [3, "f"] } },
+    { "ref": "R", "type": "resistor", "legs": { "a": [0, "i"], "b": [1, "g"] }, "props": { "ohms": { "default": 10000 } } }
+  ],
+  "main": "DHT",
+  "wires": [
+    { "power": [0, "j", "DHT.vcc"] },
+    { "pin": "data", "to": [1, "j", "DHT.data"] },
+    { "ground": [3, "j", "DHT.gnd"] }
+  ]
+}

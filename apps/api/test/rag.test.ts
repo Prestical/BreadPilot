@@ -16,10 +16,9 @@ import type { RagService } from "../src/rag/service";
 const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 
 describe("source discovery", () => {
-  it("finds the Pico 2 W PDFs, the part datasheets and the generated pinout text", async () => {
+  it("finds the Pico 2 W PDFs and the generated pinout text (part datasheets aren't committed: M15)", async () => {
     const sources = await discoverSources(REPO);
     expect(sources.map((s) => [s.path, s.board, s.title, s.kind])).toEqual([
-      ["docs/hardware/components/SH1106.pdf", "components", "SH1106 datasheet", "pdf"],
       ["docs/hardware/pico-2-w/pico-2-w-datasheet.pdf", "pico-2-w", "Raspberry Pi Pico 2 W datasheet", "pdf"],
       ["docs/hardware/pico-2-w/pico-2-w-pinout.pdf", "pico-2-w", "Raspberry Pi Pico 2 W pinout", "pdf"],
       ["data/boards/pico-2-w.pinout.generated.md", "pico-2-w", "Raspberry Pi Pico 2 W pinout (verified data)", "markdown"],

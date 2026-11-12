@@ -1,0 +1,8 @@
+{
+  "cases": [
+    { "name": "laid out by the engine (pull-up inside the block)", "layout": [{ "kind": "dht11" }], "expect": [] },
+    { "name": "two sensors, power straight from the Pico", "layout": [{ "kind": "dht11" }, { "kind": "dht11" }], "power": "direct", "expect": [] },
+    { "name": "next to an LED and a button", "layout": [{ "kind": "dht11" }, { "kind": "led" }, { "kind": "button" }], "expect": [] },
+    { "name": "the data pin set as an analog input (GP16 has no ADC)", "layout": [{ "kind": "dht11" }], "modes": { "GP16": "adc" }, "expect": ["E008"] }
+  ]
+}

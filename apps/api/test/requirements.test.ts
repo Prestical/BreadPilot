@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { PICO_2_W } from "@breadpilot/circuit-core";
 import { analyzeIdea, mergeRequirements, minimumParts, planProblems, TEMPERATURE_QUESTION, UNSUPPORTED_DISPLAY } from "../src/agent/requirements";
+import { ALARM_SOUND_QUESTION } from "../src/agent/vocabulary";
 import type { Plan, PartKind } from "../src/agent/schemas";
 
 const a = (text: string) => analyzeIdea(text, PICO_2_W);
@@ -20,7 +21,7 @@ describe("1. unambiguous component names are unsupported", () => {
     ["Wave a flag using a servo", "motors or servos"],
     ["Show my name on an LCD", UNSUPPORTED_DISPLAY],
     ["Rainbow effect on a NeoPixel ring", "RGB or addressable LEDs"],
-    ["Read a DHT22 every minute", "a temperature or humidity sensor"],
+    ["Read a DHT22 every minute", "a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor"],
     ["Switch a lamp with a relay", "a relay or high-power device"],
     ["Type a code on a keypad to unlock", "an input module that isn't supported yet"],
   ])("%s", (idea, label) => {
@@ -33,12 +34,13 @@ describe("2. context words count only in a component context", () => {
     ["Print the button count to the serial monitor on my laptop", []],
     ["Display how many times I pressed using three LEDs", []],
     ["I want to display the knob value", []],
-    ["Blink an LED to the beat of a song", ["a buzzer or speaker"]],
+    ["Blink an LED to the beat of a song", []], // M15: songs are the buzzer's
     ["Show the time on a small screen", []],
     ["Scan Wi-Fi when I click the button, it will display on i2C Display", []],
     ["Print text on a 16x2 screen", [UNSUPPORTED_DISPLAY]],
-    ["Play a tune when the button is pressed", ["a buzzer or speaker"]],
-    ["Count how often it beeps", ["a buzzer or speaker"]],
+    ["Play a tune when the button is pressed", []],
+    ["Count how often it beeps", []],
+    ["Read the news aloud through a speaker", ["a speaker or headphones (for recorded sound or speech; the buzzer only plays tones)"]],
     ["Turn on the LED when it gets dark outside", ["a light sensor"]],
     ["Measure the distance to the wall", ["a distance sensor"]],
     ["Blink faster when an object comes close", ["a distance sensor"]],
@@ -95,43 +97,61 @@ describe("5. the board's own features are supported", () => {
     expect(r.onboard).toBe(true);
     expect(r.parts.led).toBeUndefined();
   });
-  it("an outside temperature still needs a sensor", () => {
-    expect(a("Turn on an LED when the room temperature is high").unsupported).toEqual(["a temperature or humidity sensor"]);
+  it("an outside temperature needs the DHT11 (M15)", () => {
+    const r = a("Turn on an LED when the room temperature is high");
+    expect(r.unsupported).toEqual([]);
+    expect(r.parts.dht11).toEqual({ min: 1 });
   });
 });
 
-describe("5b. the board's own temperature: named by the chip, asked about when not named", () => {
-  it.each(["Print the chip temperature to my laptop once a minute", "Light an LED if the CPU's temperature goes above 30 degrees", "Graph the processor temperature over an hour on a screen"])(
-    "the chip's own temperature is supported: %s",
+describe("5b. temperature (M15, user 11/11/2026): the air's needs the DHT11, the chip's own sensor only when the idea is about the chip", () => {
+  const OTHER = "a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor";
+
+  it.each(["Print the chip temperature to my laptop once a minute", "Light an LED if the CPU's temperature goes above 30 degrees", "Graph the processor temperature over an hour on a screen", "Show the temperature of the Pico on a 128x64 display"])(
+    "the chip's own temperature: no DHT11, nothing to ask: %s",
     (idea) => {
       const r = a(idea);
       expect(r.unsupported).toEqual([]);
       expect(r.ambiguous).not.toContain(TEMPERATURE_QUESTION);
-    },
-  );
-
-  it.each(["Put the temperature on a small display every few seconds", "Flash an LED faster as it gets hot", "Keep a list of temperature readings and send them to my computer"])(
-    "a temperature without saying whose is asked about, not refused: %s",
-    (idea) => {
-      const r = a(idea);
-      expect(r.unsupported).toEqual([]);
-      expect(r.ambiguous).toContain(TEMPERATURE_QUESTION);
+      expect(r.parts.dht11).toBeUndefined();
     },
   );
 
   it.each([
+    "Put the temperature on a small display every few seconds",
+    "Keep a list of temperature readings and send them to my computer",
     "Show the outside temperature and humidity on a screen",
-    "Turn on an LED when the water gets cold",
     "Log the air temperature in my greenhouse plant room",
     "Compare the chip temperature with the room temperature",
-  ])("the temperature of something outside the board still needs a sensor: %s", (idea) => {
-    expect(a(idea).unsupported).toEqual(["a temperature or humidity sensor"]);
+    "Light an LED when it gets humid",
+    "A small weather station on the OLED",
+    "Use a temperature sensor to show how warm my room is",
+  ])("the air's temperature or humidity needs the DHT11, nothing refused or asked: %s", (idea) => {
+    const r = a(idea);
+    expect(r.unsupported).toEqual([]);
+    expect(r.ambiguous).not.toContain(TEMPERATURE_QUESTION);
+    expect(r.parts.dht11).toEqual({ min: 1 });
   });
 
-  it("the answer 'use the Pico's own sensor' clears the question", () => {
-    const merged = mergeRequirements(a("Put the temperature on a small display every few seconds"), a("Use the Pico's own sensor for it"));
-    expect(merged.ambiguous).toEqual([]);
-    expect(merged.unsupported).toEqual([]);
+  it.each(["Read a DHT11 every two seconds", "Show the DHT11's humidity on the screen", "Two DHT11 sensors, one per room"])("a named DHT11 is a part: %s", (idea) => {
+    const r = a(idea);
+    expect(r.unsupported).toEqual([]);
+    expect(r.parts.dht11!.min).toBeGreaterThanOrEqual(1);
+    expect(r.named).toContain("dht11");
+  });
+
+  it.each(["Turn on an LED when the water gets cold", "Show my coffee's temperature on the screen", "Measure the soil temperature in my garden", "Read my body temperature"])(
+    "a temperature the air sensor can't measure still needs another sensor: %s",
+    (idea) => {
+      expect(a(idea).unsupported).toEqual([OTHER]);
+    },
+  );
+
+  it("'no temperature' isn't a DHT11; a condition like 'gets hot' is left to the plan", () => {
+    expect(a("Blink an LED, no temperature needed").parts.dht11).toBeUndefined();
+    const hot = a("Flash an LED faster as it gets hot");
+    expect(hot.unsupported).toEqual([]);
+    expect(hot.ambiguous).not.toContain(TEMPERATURE_QUESTION);
   });
 });
 
@@ -376,5 +396,58 @@ describe("taking away one of several parts (M9 change test, 11/11/2026)", () => 
     const req = mergeRequirements(a("A red LED that turns on while I hold a button"), a("remove the red LED"));
     expect(req.parts.led).toBeUndefined();
     expect(req.removed).toEqual([]);
+  });
+});
+
+describe("slide switch words (M15): a phrase beats the single word inside it", () => {
+  it.each([
+    ["Turn the LED on and off with a slide switch", { "slide-switch": { min: 1 } }],
+    ["Two slide switches set how fast an LED blinks", { "slide-switch": { min: 2, exact: 2 }, led: { min: 1 } }],
+    ["A toggle switch turns the buzzer-free alarm lights on", { "slide-switch": { min: 1 } }],
+    ["An on/off switch for the OLED screen", { "slide-switch": { min: 1 }, oled: { min: 1 } }],
+    ["A slider switch picks fast or slow blinking", { "slide-switch": { min: 1 } }],
+  ])("%s", (idea, parts) => {
+    const r = a(idea);
+    for (const [kind, need] of Object.entries(parts)) expect(r.parts[kind as never], kind).toMatchObject(need);
+    expect(r.parts.button, "not also a button").toBeUndefined();
+    expect(r.parts.pot, "not a slider potentiometer").toBeUndefined();
+  });
+
+  it("a plain switch is still the push button, and 'toggle' as a verb is no part", () => {
+    expect(a("Press the switch to light the LED").parts.button).toEqual({ min: 1 });
+    expect(a("Press the switch to light the LED").parts["slide-switch" as never]).toBeUndefined();
+    expect(a("Toggle the LED every second").parts["slide-switch" as never]).toBeUndefined();
+  });
+});
+
+describe("sound (M15): the passive buzzer plays tones; recorded sound and speech still need a speaker", () => {
+  it.each([
+    "Beep three times when the button is pressed",
+    "Play a short melody when the timer ends",
+    "A buzzer that buzzes when it gets too humid",
+    "Make a sound every second",
+    "Play the notes of a song on a piezo",
+  ])("needs the buzzer, nothing refused: %s", (idea) => {
+    const r = a(idea);
+    expect(r.unsupported).toEqual([]);
+    expect(r.parts.buzzer).toEqual({ min: 1 });
+  });
+
+  it.each(["Play my favourite song through a speaker", "Say the time out loud on headphones"])("a speaker is still unsupported: %s", (idea) => {
+    expect(a(idea).unsupported).toEqual(["a speaker or headphones (for recorded sound or speech; the buzzer only plays tones)"]);
+  });
+
+  it("an alarm alone is asked about; with a sound word it is the buzzer; 'silent' or 'no buzzer' is none", () => {
+    expect(a("An alarm with three LEDs").ambiguous).toContain(ALARM_SOUND_QUESTION);
+    const beeping = a("An alarm that beeps when the button is pressed");
+    expect(beeping.ambiguous).not.toContain(ALARM_SOUND_QUESTION);
+    expect(beeping.parts.buzzer).toEqual({ min: 1 });
+    expect(a("A silent timer that only blinks an LED, no sound").parts.buzzer).toBeUndefined();
+    expect(a("Blink the LED, no buzzer").parts.buzzer).toBeUndefined();
+  });
+
+  it("listening for a sound is a microphone, not the buzzer", () => {
+    const r = a("Light an LED when it hears a clap");
+    expect(r.parts.buzzer).toBeUndefined();
   });
 });

@@ -4,7 +4,7 @@
 // checks them again and turns them into what the engine uses.
 //
 // Facts carry their source: { "value": …, "src": … } where src is one of
-//   { "doc": "SH1106.pdf", "page": 13 }      a document in docs/hardware/
+//   { "doc": "SH1106.pdf", "page": 13 }      a document in docs/hardware/ or in the part's reference.md
 //   { "product": "…" }                       the seller's product page (text supplied by the user)
 //   { "decision": "user, 20/10/2026", "why": "…" }
 //   { "typical": true, "note": "…" }         common value, no datasheet yet: shown as unverified
@@ -99,13 +99,15 @@ export const SIGNAL_TEXTS = ["out", "in", "adc", "i2c_sda", "i2c_scl"] as const;
 /**
  * text.json: the step texts for this part, with {placeholders} (see steps.ts `fill`).
  * Placement: {ref} {name} {list} {holes} {holes.N} {hole.<leg>} {prop.<name>} {ohms} {bands} {note}.
- * whyWithLed adds {led} {ma} {vf}; wire texts for signals add {pin} {bus}.
+ * whyWithLed adds {led} {ma} {vf}; whyPullUp adds {part}; wire texts for signals add {pin} {bus}.
  */
 export interface TextTemplates {
   place?: { title: string; text: string; tip?: string };
   why?: string;
   /** For a resistor in series with an LED: the current it allows. */
   whyWithLed?: string;
+  /** For a resistor from a part's supply leg to its data leg (a pull-up): {part} = that part. */
+  whyPullUp?: string;
   /** "Why" of a wire that ends in a strip with this part's leg. */
   wire?: Partial<Record<"ground" | "power" | (typeof SIGNAL_TEXTS)[number], string>>;
   /** Names in the web app. */
@@ -341,9 +343,10 @@ const partFile = obj({
       "voltageRange?": fact(numPair),
       "maxSafeVoltage?": fact(num),
       "highCurrent?": bool,
+      "activeLow?": bool,
     }),
   ),
-  elements: arr(obj({ kind: oneOf(ELEMENT_KINDS), a: str, b: str, "currentMa?": fact(num) })),
+  elements: arr(obj({ kind: oneOf(ELEMENT_KINDS), a: str, b: str, "currentMa?": fact(num), "group?": str, "closed?": str })),
   "props?": record(obj({ "enum?": arr(str), "type?": str, default: any(str, num) })),
   // Every spec is a fact with a source, except the plain-language note.
   "specs?": (v, p) => {
@@ -415,6 +418,7 @@ const textFile = obj({
   "place?": obj({ title: str, text: str, "tip?": str }),
   "why?": str,
   "whyWithLed?": str,
+  "whyPullUp?": str,
   "wire?": obj(Object.fromEntries(["ground", "power", ...SIGNAL_TEXTS].map((k) => [`${k}?`, str]))),
   "names?": obj({ shop: arr(str, 2), "shopBy?": str, "plan?": str, "planDot?": str, "greeting?": str, "hover?": str, "driver?": str }),
 });
@@ -456,6 +460,7 @@ function checkText(pack: Pack): void {
   check(t.place?.tip, "place.tip");
   check(t.why, "why");
   check(t.whyWithLed, "whyWithLed", ["led", "ma", "vf"]);
+  check(t.whyPullUp, "whyPullUp", ["part"]);
   for (const [k, v] of Object.entries(t.wire ?? {})) check(v, `wire.${k}`, SIGNAL_TEXTS.includes(k as never) ? ["pin", "bus"] : []);
   const planFields = Object.keys(pack.agent?.plan.props ?? {});
   check(t.names?.shopBy, "names.shopBy");
@@ -567,7 +572,8 @@ export function loadPack(src: PackSource): Pack {
     if (!pack.layout?.parts.some((p) => p.props && Object.values(p.props).some((x) => x.request === v))) fail(`${at}/agent.json.plan.props.${k}`, `the layout has no prop asking for "${v}"`);
   }
   for (const w of [...(pack.agent?.words.nouns ?? []), ...(pack.agent?.words.impliedBy?.words ?? [])]) {
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(w)) fail(`${at}/agent.json.words`, `"${w}" must be one lower-case word (letters, digits, dashes)`);
+    // One word, or a short phrase of up to 3 ("slide switch", "on/off switch").
+    if (!/^[a-z0-9][a-z0-9/-]*( [a-z0-9][a-z0-9/-]*){0,2}$/.test(w)) fail(`${at}/agent.json.words`, `"${w}" must be lower-case words (letters, digits, dashes, "/"), at most 3, one space apart`);
   }
   if (pack.code && !pack.driver) fail(`${at}/code.json`, "code rules need the pack's driver (pack.json driver)");
   // {ICONS}, {TEXT_STYLES} … in the AI's pin line become the driver's own lists, so a new icon or

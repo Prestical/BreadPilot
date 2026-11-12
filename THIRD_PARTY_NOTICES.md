@@ -9,11 +9,11 @@ They keep their own licenses and owners.
 | MicroPython rp2 port source files (read as facts) | `docs/software/micropython-v1.29.0/` | Damien P. George and the MicroPython contributors | MIT (notice inside each file) |
 | littlefs WebAssembly build (npm `littlefs` 0.1.0) | installed by npm | Uri Shaked / Wokwi | ISC |
 | Raspberry Pi Pico 2 W datasheet and pinout | `docs/hardware/pico-2-w/` | Raspberry Pi Ltd | Their own terms; download from raspberrypi.com |
-| SH1106 datasheet | `docs/hardware/components/SH1106.pdf` | Sino Wealth | Their own terms |
 | npm packages (React, three.js, Fastify, …) | installed by npm | Their authors | See each package's license |
 
-The datasheets are included for reference while the documentation search is set up. If you share
-this project, check their owners' terms, or replace them with links to the official downloads.
+The Raspberry Pi documents are included for the documentation search. Part datasheets whose owners
+don't allow republishing aren't in the repository: each part's `reference.md` (in `parts/<id>/`) links
+to them, with the pages used and a checksum.
 
 ## MicroPython license (MIT)
 

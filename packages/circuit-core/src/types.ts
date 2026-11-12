@@ -58,6 +58,8 @@ export interface LegDef {
   /** power_in legs: the highest supply that is safe for the Pico (E014), when lower than voltageRange allows. */
   maxSafeVoltage?: number;
   highCurrent?: boolean;
+  /** An input that switches the part ON while it is LOW (e.g. a buzzer module's PNP stage): C018. */
+  activeLow?: boolean;
 }
 
 export type ElementKind = "led" | "resistor" | "switch" | "short" | "load";
@@ -68,6 +70,13 @@ export interface ElementDef {
   a: string;
   b: string;
   currentMa?: number;
+  /**
+   * For "switch": the contacts of one switch that are never closed together share a group (a slide
+   * switch's two sides), and `closed` says how this one is closed ("slid toward outer leg 1"; the
+   * default is "pressed").
+   */
+  group?: string;
+  closed?: string;
 }
 
 export interface ComponentDef {

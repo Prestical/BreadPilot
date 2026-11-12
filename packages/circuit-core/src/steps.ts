@@ -165,6 +165,23 @@ function ledOnResistor(resolved: Resolved, resistor: ResolvedPart): ResolvedPart
   return resolved.parts.find((p) => hasElement(p, "led") && Object.values(p.legs).some((h) => strips.includes(stripOfHole(h))));
 }
 
+/**
+ * The part a resistor pulls up: one of its legs shares a strip with that part's supply leg, the other
+ * with that part's data leg (a sensor's open data line, e.g. the DHT11's DATA).
+ */
+function pulledUpPart(resolved: Resolved, resistor: ResolvedPart): ResolvedPart | undefined {
+  const strips = Object.values(resistor.legs).map(stripOfHole);
+  if (strips.length !== 2 || strips[0] === strips[1]) return undefined;
+  const legIn = (p: ResolvedPart, kinds: string[]) =>
+    p.def.legs.filter((l) => l.kind && kinds.includes(l.kind)).map((l) => p.legs[l.id]).filter((h) => h !== undefined).map(stripOfHole);
+  return resolved.parts.find((p) => {
+    if (p === resistor) return false;
+    const supply = legIn(p, ["power_in"]);
+    const data = legIn(p, ["digital_out", "digital_in"]);
+    return (supply.includes(strips[0]!) && data.includes(strips[1]!)) || (supply.includes(strips[1]!) && data.includes(strips[0]!));
+  });
+}
+
 function ledCurrentMa(led: ResolvedPart, ohms: number, supply = 3.3): { vf: number; ma: number } {
   const table = (led.def.specs?.forwardVoltage ?? {}) as Record<string, number>;
   const vf = table[String(led.props.color)] ?? 2.0;
@@ -180,6 +197,10 @@ function partWhy(resolved: Resolved, part: ResolvedPart): string {
       const { vf, ma } = ledCurrentMa(led, Number(part.props.ohms));
       return fill(t.whyWithLed, { ...vars, led: () => led.ref, vf: () => String(vf), ma: () => String(ma) });
     }
+  }
+  if (t?.whyPullUp) {
+    const pulled = pulledUpPart(resolved, part);
+    if (pulled) return fill(t.whyPullUp, { ...vars, part: () => pulled.ref });
   }
   if (t?.why) return fill(t.why, vars);
   return typeof part.def.specs?.note === "string" ? part.def.specs.note : `${part.ref} is part of this project's circuit.`;

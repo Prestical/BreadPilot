@@ -12,6 +12,6 @@ describe("UI names from part packs", () => {
   });
 
   it("the start screen's parts line", () => {
-    expect(`Parts: ${GREETING_PARTS}, and the Pico's own LED, Wi-Fi and temperature sensor.`).toBe('Parts: LEDs, buttons, knobs, the 1.3" OLED, and the Pico\'s own LED, Wi-Fi and temperature sensor.');
+    expect(`Parts: ${GREETING_PARTS}, and the Pico's own LED, Wi-Fi and temperature sensor.`).toBe('Parts: LEDs, buttons, slide switches, knobs, the 1.3" OLED, a temperature and humidity sensor, a buzzer, and the Pico\'s own LED, Wi-Fi and temperature sensor.');
   });
 });

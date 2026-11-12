@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "dht11",
+  "order": 50,
+  "kind": "dht11",
+  "review": {
+    "status": "reviewed",
+    "by": "the user (11/11/2026); written by Claude from Aosong's DHT11 Product Manual and the user's facts",
+    "date": "2026-11-11"
+  }
+}

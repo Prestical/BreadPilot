@@ -1,0 +1,13 @@
+{
+  "plan": { "line": "a slide switch (on/off) that stays where the user slides it. Use it for something that is either on or off, or for choosing between two modes; use a push button for presses." },
+  "words": {
+    "nouns": ["slide switch", "slide switches", "slider switch", "slider switches", "sliding switch", "sliding switches", "toggle switch", "toggle switches", "on/off switch", "on/off switches", "on-off switch", "on-off switches"]
+  },
+  "names": { "label": ["a slide switch", "slide switches"], "count": ["slide switch", "slide switches"], "supports": "slide switches", "short": ["slide switch", "slide switches"] },
+  "code": {
+    "pinLine": "slide switch {ref} on {gpio}: Pin({g}, Pin.IN, Pin.PULL_UP). value() is 0 while it is slid to its ground side (call that ON) and 1 on the other side (OFF). It stays where the user leaves it: read its position each time round the loop, don't wait for presses.",
+    "imports": ["from machine import Pin"],
+    "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN, Pin.PULL_UP)  (0 = slid to the ground side)` |"],
+    "ragQuery": "GPIO digital input with pull-up resistor"
+  }
+}

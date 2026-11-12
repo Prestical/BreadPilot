@@ -1,0 +1,16 @@
+{
+  "place": {
+    "title": "Place {ref} (slide switch)",
+    "text": "Push the slide switch {ref}'s 3 legs into column f, one leg per row: outer leg 1 into hole {hole.end1}, the middle leg into {hole.com} and outer leg 3 into {hole.end2}. The slider faces up.",
+    "tip": "Outer leg 3 gets no wire: with the slider on that side the middle leg touches nothing, and the Pico reads 1."
+  },
+  "why": "{ref} is an on/off input that stays where you leave it. Slid toward leg 1 it joins its middle leg to ground, so the Pico reads 0; slid the other way the pin reads 1.",
+  "wire": {
+    "ground": "With {ref} slid toward this side, its middle leg (and the Pico pin) connect to ground, so the pin reads 0. Slid the other way, the Pico's internal pull-up makes it read 1."
+  },
+  "names": {
+    "shop": ["slide switch (3 legs)", "slide switches (3 legs)"],
+    "plan": "Slide switch",
+    "greeting": "slide switches"
+  }
+}

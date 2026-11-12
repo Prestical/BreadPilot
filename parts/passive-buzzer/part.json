@@ -1,0 +1,31 @@
+{
+  "id": "passive-buzzer",
+  "name": "Passive buzzer module (MH-FMD, 3 pins)",
+  "category": "output",
+  "legs": [
+    { "id": "gnd", "label": "GND", "kind": "ground" },
+    { "id": "io", "label": "I/O", "kind": "digital_in", "activeLow": true },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": { "value": [3.3, 5.0], "src": { "typical": true, "note": "common MH-FMD buzzer modules; no datasheet for this module" } },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": { "decision": "Claude, from the user's description of the module (11/11/2026)", "why": "its transistor switches the buzzer on while I/O is LOW (a PNP stage from VCC): from 5 V the Pico's 3.3 V HIGH couldn't switch it off, and current would flow into the Pico pin" }
+      }
+    }
+  ],
+  "elements": [
+    { "kind": "load", "a": "vcc", "b": "gnd", "currentMa": { "value": 30, "src": { "typical": true, "note": "a guess for small magnetic buzzers on 3.3 V while sounding; no datasheet for this module" } } }
+  ],
+  "specs": {
+    "pinOrder": { "value": ["gnd", "io", "vcc"], "src": { "decision": "user, 11/11/2026", "why": "the user's module: pins GND, I/O, VCC from top to bottom, marked MH-FMD" } },
+    "activeLevel": {
+      "value": "low",
+      "src": { "decision": "Claude, from the user's description (11/11/2026)", "why": "a 3-leg transistor whose 2-leg side connects to VCC and I/O: emitter and base of a PNP stage, so the buzzer is on while I/O is LOW; to confirm on the real module (M15 step 15.7)" }
+    },
+    "bestFrequencyHz": { "value": [1000, 5000], "src": { "product": "robotistan.com product page 'Passive Buzzer Module' (read 11/11/2026): 'They generally perform best at frequencies between 1-5 kHz'" } },
+    "note": "A passive buzzer only sounds while its signal is switched on and off (PWM); the speed sets the note."
+  }
+}

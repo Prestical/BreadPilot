@@ -1,0 +1,8 @@
+{
+  "cases": [
+    { "name": "laid out by the engine", "layout": [{ "kind": "slide-switch" }], "expect": [] },
+    { "name": "two switches and a button", "layout": [{ "kind": "slide-switch" }, { "kind": "slide-switch" }, { "kind": "button" }], "expect": [] },
+    { "name": "the switch's pin driven as an output (slid to the ground side it shorts)", "layout": [{ "kind": "slide-switch" }], "modes": { "GP16": "out" }, "expect": ["E003"] },
+    { "name": "input with no pull-up (floating on the free side)", "layout": [{ "kind": "slide-switch" }], "modes": { "GP16": "in" }, "expect": ["W003"] }
+  ]
+}

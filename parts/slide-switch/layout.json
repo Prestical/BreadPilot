@@ -1,0 +1,13 @@
+{
+  "name": "slide switch",
+  "height": 3,
+  "pins": { "signal": { "need": "gpio", "mode": "in_pullup" } },
+  "parts": [
+    { "ref": "SW", "type": "self", "legs": { "end1": [0, "f"], "com": [1, "f"], "end2": [2, "f"] } }
+  ],
+  "main": "SW",
+  "wires": [
+    { "ground": [0, "j", "SW.end1"] },
+    { "pin": "signal", "to": [1, "j", "SW.com"] }
+  ]
+}

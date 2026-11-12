@@ -1,0 +1,7 @@
+{
+  "cases": [
+    { "name": "read temperature and humidity every 2 s", "file": "code/read.py", "layout": [{ "kind": "dht11" }], "errors": [], "warnings": [] },
+    { "name": "the sensor on a pin that isn't wired", "file": "code/wrong-pin.py", "layout": [{ "kind": "dht11" }], "errors": ["C004", "C006"] },
+    { "name": "a CircuitPython library instead of MicroPython's built-in dht", "file": "code/adafruit.py", "layout": [{ "kind": "dht11" }], "errors": ["C010"] }
+  ]
+}

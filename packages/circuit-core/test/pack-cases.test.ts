@@ -120,3 +120,48 @@ describe("part pack tests (parts/*/tests)", () => {
     for (const d of dirs) if (existsSync(join(PARTS_DIR, d, "tests"))) expect(packDirs, d).toContain(d);
   });
 });
+
+// M15: a slide switch's two contacts are never closed together, and messages say "slid", not "pressed".
+describe("slide switch contacts (switch groups)", () => {
+  it("the safety check names the slider position, and never closes both sides at once", async () => {
+    const { layoutProject, validateBuild } = await import("../src/index");
+    const l = layoutProject([{ kind: "slide-switch" } as never]);
+    const out = validateBuild({ ...l.build, gpioModes: { GP16: "out" } }).issues.find((i) => i.code === "E003")!;
+    expect(out.when).toBe("when SW1 is slid toward outer leg 1");
+    // Both outer legs to GND and 3V3 (a common "high/low selector" wiring): no short, because the
+    // slider joins the middle leg to one side at a time.
+    const selector = structuredClone(l.build);
+    const sw = selector.parts.find((p) => p.ref === "SW1")!;
+    const end2Row = Number(sw.legs.end2!.slice(0, -1));
+    selector.wires.push({ from: { kind: "hole", row: end2Row, col: "j" }, to: { kind: "rail", rail: "RR+", row: end2Row }, color: "red" });
+    expect(validateBuild(selector).issues.filter((i) => i.code === "E001")).toEqual([]);
+  });
+});
+
+// M15: C018 only for the pin of a part that is on while LOW, never for an LED dimmed to 0.
+describe("C018: duty_u16(0) on a part that is on while its pin is LOW", () => {
+  it("flags the buzzer's PWM, not an LED's in the same program", async () => {
+    const { layoutProject, checkMicroPython, PICO_2_W } = await import("../src/index");
+    const l = layoutProject([{ kind: "buzzer" } as never, { kind: "led" } as never]);
+    const buzzer = Object.entries(l.build.gpioModes).find(([, m]) => m === "pwm")![0].slice(2);
+    const led = Object.entries(l.build.gpioModes).find(([, m]) => m === "out")![0].slice(2);
+    const code = `from machine import Pin, PWM
+import time
+
+BUZZER = ${buzzer}
+light = PWM(Pin(${led}))
+tone = PWM(Pin(BUZZER))
+while True:
+    tone.freq(880)
+    tone.duty_u16(32768)
+    light.duty_u16(65535)
+    time.sleep(0.5)
+    tone.duty_u16(0)
+    light.duty_u16(0)
+    time.sleep(0.5)
+`;
+    const issues = checkMicroPython(code, { ...l.build, gpioModes: { ...l.build.gpioModes, [`GP${led}`]: "pwm" } }, PICO_2_W).issues.filter((i) => i.code === "C018");
+    expect(issues.map((i) => i.line)).toEqual([12]); // only tone.duty_u16(0), not light.duty_u16(0)
+    expect(issues[0]!.message).toMatch(new RegExp(`tone\\.duty_u16\\(0\\), which holds GP${buzzer} LOW, and BZ1 on GP${buzzer} is switched ON while its pin is LOW`));
+  });
+});

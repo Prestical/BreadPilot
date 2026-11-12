@@ -1,0 +1,21 @@
+{
+  "id": "slide-switch",
+  "name": "Slide switch (IC206, 3 legs)",
+  "category": "input",
+  "legs": [
+    { "id": "end1", "label": "outer leg 1" },
+    { "id": "com", "label": "middle leg (common)" },
+    { "id": "end2", "label": "outer leg 3" }
+  ],
+  "elements": [
+    { "kind": "switch", "a": "com", "b": "end1", "group": "slider", "closed": "slid toward outer leg 1" },
+    { "kind": "switch", "a": "com", "b": "end2", "group": "slider", "closed": "slid toward outer leg 3" }
+  ],
+  "specs": {
+    "legs": {
+      "value": "3 legs in a row, straight down, fitting next-to-each-other breadboard holes",
+      "src": { "decision": "user, 11/11/2026", "why": "the user's own IC206 switch (the shop page gives no drawing)" }
+    },
+    "note": "The middle leg is joined to one outer leg or the other, depending on where the slider is. It stays where you leave it."
+  }
+}

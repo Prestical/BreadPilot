@@ -7,7 +7,9 @@
 // a block header without ":", and a block that isn't indented.
 // It can't check behavior (e.g. inverted button logic); that needs a simulator (Milestone 7).
 
+import { buildNets } from "./netlist";
 import { PACKS, type CodeRules } from "./packs";
+import { resolveBuild } from "./resolve";
 import type { Board, Build, GpioMode } from "./types";
 
 export interface CodeIssue {
@@ -599,6 +601,53 @@ function unusedPartIssues(clean: string, modes: Record<string, string>, ints: Ma
     if (uses > 1) continue;
     const line = lineOf(clean, m.index!);
     issues.push({ code: "C006", severity: "error", message: `Line ${line} sets up ${name} (GP${gpio}), but the program never uses ${name} again, so that part does nothing. ${kind === "Pin" && /Pin\.(IN|PULL_UP|PULL_DOWN)/.test(m.input!.slice(m.index!, m.index! + 200).split("\n")[0]!) ? `Read it with ${name}.value()` : kind === "ADC" ? `Read it with ${name}.read_u16()` : kind === "PWM" ? `Set its brightness with ${name}.duty_u16(…)` : `Switch it with ${name}.value(1) / ${name}.value(0)`} in the main loop.`, line });
+  }
+  return issues;
+}
+
+/** GPIOs wired to a part input that switches the part ON while it is LOW (leg `activeLow`), with that part. */
+function activeLowPins(build: Build): Map<number, string> {
+  const out = new Map<number, string>();
+  if (!build.parts.some((p) => PACKS.find((k) => k.meta.id === p.type)?.part.legs.some((l) => l.activeLow))) return out;
+  const { resolved } = resolveBuild(build);
+  if (!resolved) return out;
+  const nets = buildNets(resolved);
+  for (const part of resolved.parts)
+    for (const leg of part.def.legs.filter((l) => l.activeLow && part.legs[l.id]))
+      for (const pin of nets.legNet(part, leg.id).pins) if (pin.gpio !== undefined) out.set(pin.gpio, part.ref);
+  return out;
+}
+
+/**
+ * C018: a part that is ON while its pin is LOW (a buzzer module with a PNP stage) stopped with
+ * duty_u16(0): that holds the pin LOW, so the part stays switched on, silent but drawing current.
+ * Stop the PWM and hold the pin HIGH instead.
+ */
+function activeLowIssues(clean: string, pins: Map<number, string>, ints: Map<string, number>): CodeIssue[] {
+  if (!pins.size) return [];
+  const gpioOf = (arg: string) => (/^\d+$/.test(arg) ? Number(arg) : ints.get(arg));
+  // p = Pin(16, ...) · pwm = PWM(Pin(16)) · pwm = PWM(p) · pwm = PWM(BUZZER_PIN)
+  const pinVars = new Map<string, number>();
+  for (const m of clean.matchAll(/^\s*([A-Za-z_]\w*)\s*=\s*(?:machine\.)?Pin\s*\(\s*([A-Za-z_]\w*|\d+)/gm)) {
+    const g = gpioOf(m[2]!);
+    if (g !== undefined) pinVars.set(m[1]!, g);
+  }
+  const pwmVars = new Map<string, number>();
+  for (const m of clean.matchAll(/^\s*([A-Za-z_]\w*)\s*=\s*(?:machine\.)?PWM\s*\(\s*(?:(?:machine\.)?Pin\s*\(\s*)?([A-Za-z_]\w*|\d+)/gm)) {
+    const g = pinVars.get(m[2]!) ?? gpioOf(m[2]!);
+    if (g !== undefined && pins.has(g)) pwmVars.set(m[1]!, g);
+  }
+  const issues: CodeIssue[] = [];
+  for (const [name, gpio] of pwmVars) {
+    for (const m of clean.matchAll(new RegExp(`(?<![\\w.])${name}\\s*\\.\\s*(duty_u16|duty_ns)\\s*\\(\\s*0\\s*\\)`, "g"))) {
+      const line = lineOf(clean, m.index!);
+      issues.push({
+        code: "C018",
+        severity: "error",
+        message: `Line ${line} sets ${name}.${m[1]}(0), which holds GP${gpio} LOW, and ${pins.get(gpio)} on GP${gpio} is switched ON while its pin is LOW: it stays on, silent but drawing current. To stop the sound write ${name}.deinit() and then Pin(${gpio}, Pin.OUT, value=1) (HIGH = off).`,
+        line,
+      });
+    }
   }
   return issues;
 }
@@ -1351,7 +1400,7 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
   issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean), ...machineNameIssues(clean));
   const displays = displaysIn(build);
   const consts = moduleConstants(src, clean);
-  issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints));
+  issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints), ...activeLowIssues(clean, activeLowPins(build), consts.ints));
   for (const d of displays) issues.push(...displayIssues(clean, d, modes, consts.ints));
   if (displays[0]) issues.push(...displayTextIssues(src, clean, displays[0], consts));
   // C011 only for names the import check didn't already explain (e.g. "time" used without "import time").

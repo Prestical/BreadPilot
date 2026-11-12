@@ -1,0 +1,18 @@
+{
+  "place": {
+    "title": "Place {ref} (passive buzzer module)",
+    "text": "Push the buzzer module {ref}'s 3 pins into column f, one pin per row: GND into hole {hole.gnd}, I/O into {hole.io} and VCC into {hole.vcc}. The buzzer faces up.",
+    "tip": "Read the labels printed next to the pins: GND, I/O, VCC. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} is a passive buzzer: it only sounds while the Pico switches its signal on and off very fast (PWM), and that speed sets the note. This module is on while its I/O pin is LOW, so the program keeps the pin HIGH when it should be quiet.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, not 5 V: the module is on while I/O is LOW, and from 5 V the Pico's 3.3 V HIGH couldn't switch it off.",
+    "out": "{pin} drives {ref}: switching it on and off hundreds or thousands of times a second (PWM) makes the tone."
+  },
+  "names": {
+    "shop": ["passive buzzer module (3 pins)", "passive buzzer modules (3 pins)"],
+    "plan": "Passive buzzer",
+    "greeting": "a buzzer"
+  }
+}

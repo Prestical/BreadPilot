@@ -1,0 +1,18 @@
+{
+  "plan": { "line": "a passive buzzer module that beeps and plays tones and simple melodies, one note at a time (best between 1000 and 5000 Hz). It can't play recorded sound, music files or speech." },
+  "words": {
+    "nouns": ["buzzer", "buzzers", "piezo", "piezos", "beeper", "beepers"],
+    "impliedBy": {
+      "words": ["beep", "beeps", "beeping", "tone", "tones", "melody", "melodies", "tune", "tunes", "song", "songs", "music", "buzz", "buzzes", "buzzing", "chime", "chimes", "siren", "sound", "sounds"],
+      "unless": ["no sound", "without sound", "silent", "silently", "quiet", "mute", "sound sensor", "sound level", "microphone", "hear", "hears", "listen", "listens", "clap", "claps", "detect sound", "detects sound", "measure sound"]
+    },
+    "claims": ["buzzer", "sound"]
+  },
+  "names": { "label": ["a passive buzzer", "passive buzzers"], "count": ["buzzer", "buzzers"], "supports": "a passive buzzer", "short": ["buzzer", "buzzers"] },
+  "code": {
+    "pinLine": "passive buzzer {ref} on {gpio}, which is ON while the pin is LOW: start the program with Pin({g}, Pin.OUT, value=1) so it is quiet. To play a note: pwm = PWM(Pin({g})), pwm.freq(440), pwm.duty_u16(32768). To stop: pwm.deinit(), then Pin({g}, Pin.OUT, value=1) (HIGH = off). Never pwm.duty_u16(0): that holds the pin LOW and keeps this buzzer switched on. Notes in Hz: C4 262, D4 294, E4 330, F4 349, G4 392, A4 440, B4 494, C5 523; it sounds loudest between 1000 and 5000 Hz.",
+    "imports": ["from machine import Pin, PWM"],
+    "handoff": ["| {gpio} | {phys} | {refs} | {mode} | `PWM(Pin({g}))  (freq(f), duty_u16(32768); stop: deinit() + Pin({g}, Pin.OUT, value=1))` |"],
+    "ragQuery": "PWM frequency duty cycle output"
+  }
+}

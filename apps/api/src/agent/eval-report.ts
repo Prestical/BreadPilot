@@ -22,6 +22,7 @@ export const CHECK_TEXT: Record<string, string> = {
   C015: "name the machine module doesn't have",
   C016: "fake or unfinished code (placeholder value, TODO, empty function)",
   C017: "input(): waits for typing on a computer",
+  C018: "PWM stopped with duty 0 on a part that is on while its pin is low",
 };
 
 /** Normalizes line numbers so the same mistake on different lines counts once. */

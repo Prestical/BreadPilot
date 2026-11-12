@@ -1,0 +1,7 @@
+{
+  "cases": [
+    { "name": "a short melody, quiet (pin HIGH) between notes", "file": "code/melody.py", "layout": [{ "kind": "buzzer" }], "errors": [], "warnings": [] },
+    { "name": "stopped with duty_u16(0): holds the pin LOW, so this buzzer stays on", "file": "code/duty-zero.py", "layout": [{ "kind": "buzzer" }], "errors": ["C018"] },
+    { "name": "the buzzer on a pin that isn't wired", "file": "code/wrong-pin.py", "layout": [{ "kind": "buzzer" }], "errors": ["C004", "C006"] }
+  ]
+}

@@ -46,12 +46,13 @@ describe("the push button has a metal plate and a round plunger", () => {
 
 describe("Supported parts list", () => {
   it("lists every part the AI can plan with, from the packs, each with a description", () => {
-    expect(SUPPORTED_PARTS.map((p) => p.kind)).toEqual(["led", "button", "pot", "oled"]);
+    expect(SUPPORTED_PARTS.map((p) => p.kind)).toEqual(["led", "button", "slide-switch", "pot", "oled", "dht11", "buzzer"]);
     for (const p of SUPPORTED_PARTS) {
       expect(p.name.length).toBeGreaterThan(2);
       expect(p.text).toMatch(/^[A-Z]/);
     }
     expect(SUPPORTED_PARTS.find((p) => p.kind === "led")!.text).toMatch(/resistor is added automatically/);
+    expect(SUPPORTED_PARTS.find((p) => p.kind === "dht11")!.text).toMatch(/pull-up resistor is added automatically/);
   });
 });
 

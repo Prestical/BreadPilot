@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "passive-buzzer",
+  "order": 60,
+  "kind": "buzzer",
+  "review": {
+    "status": "reviewed",
+    "by": "the user (11/11/2026), after trying it on their Pico 2 W; written by Claude from the shop page and the user's description of their module",
+    "date": "2026-11-11"
+  }
+}

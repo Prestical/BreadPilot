@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,32 +12,65 @@ import { loadPack, loadPacks, PackError, PACKS, unverifiedFacts, type PackSource
 const DOCS = fileURLToPath(new URL("../../../docs/hardware/", import.meta.url));
 const docFiles = (dir = DOCS): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? docFiles(join(dir, d.name)) : [d.name]));
 
+/** parts/<id>/reference.md: | File | Link | Pages used | SHA-256 | rows, by file name. */
+function referenceRows(id: string): Map<string, { link: string; sha256: string }> {
+  const file = fileURLToPath(new URL(`../../../parts/${id}/reference.md`, import.meta.url));
+  const rows = new Map<string, { link: string; sha256: string }>();
+  if (!existsSync(file)) return rows;
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const cells = line.split("|").map((c) => c.trim());
+    if (cells.length < 6 || !/\.pdf$/i.test(cells[1]!)) continue;
+    rows.set(cells[1]!, { link: cells[2]!.split(" ")[0]!, sha256: cells[4]! });
+  }
+  return rows;
+}
+
 describe("part packs", () => {
   it("parts.generated.ts matches the parts/ folders", () => {
     expect(readFileSync(PARTS_TS_PATH, "utf8")).toBe(partsModule());
   });
 
-  it("the 7 packs make up the catalog, with the OLED's driver", () => {
-    expect(PACKS.map((p) => p.meta.id)).toEqual(["led-5mm", "button-6mm", "potentiometer", "oled-sh1106-i2c", "resistor", "dc-motor", "hc-sr04"]);
+  it("the 10 packs make up the catalog, with the OLED's driver", () => {
+    expect(PACKS.map((p) => p.meta.id)).toEqual(["led-5mm", "button-6mm", "slide-switch", "potentiometer", "oled-sh1106-i2c", "dht11", "passive-buzzer", "resistor", "dc-motor", "hc-sr04"]);
     for (const p of PACKS) expect(p.part, p.meta.id).toBe(CATALOG[p.meta.id]);
     expect(Object.keys(CATALOG).sort()).toEqual(PACKS.map((p) => p.meta.id).sort());
     expect(driversFor(["oled-sh1106-i2c"])[0]!.source).toBe(readFileSync(new URL("../../../parts/oled-sh1106-i2c/driver/sh1106.py", import.meta.url), "utf8"));
-    expect(PACKS.map((p) => p.meta.kind).filter(Boolean)).toEqual(["led", "button", "pot", "oled"]);
+    expect(PACKS.map((p) => p.meta.kind).filter(Boolean)).toEqual(["led", "button", "slide-switch", "pot", "oled", "dht11", "buzzer"]);
   });
 
-  it("every document a fact cites exists in docs/hardware/", () => {
+  // A document is either in docs/hardware/ (free to republish) or listed in the part's reference.md
+  // with its link and SHA-256 (M15: datasheets whose licence doesn't allow it aren't committed).
+  it("every document a fact cites is in docs/hardware/ or in the part's reference.md", () => {
     const files = new Set(docFiles());
-    const cited = PACKS.flatMap((p) => p.facts.flatMap((f) => ("doc" in f.src ? [`${p.meta.id}: ${f.src.doc}`] : [])));
+    const cited = PACKS.flatMap((p) => p.facts.flatMap((f) => ("doc" in f.src ? [{ id: p.meta.id, doc: f.src.doc }] : [])));
     expect(cited.length).toBeGreaterThan(0);
-    for (const c of cited) expect(files.has(c.split(": ")[1]!), c).toBe(true);
+    for (const { id, doc } of cited) {
+      if (files.has(doc)) continue;
+      const refs = referenceRows(id);
+      expect(refs.get(doc), `${id}: ${doc} is neither in docs/hardware/ nor in parts/${id}/reference.md`).toBeDefined();
+    }
+  });
+
+  it("a reference.md row names a link and a SHA-256, and a local copy (if there is one) matches it", () => {
+    for (const p of PACKS) {
+      for (const [file, row] of referenceRows(p.meta.id)) {
+        expect(row.link, `${p.meta.id}: ${file}`).toMatch(/^https:\/\//);
+        expect(row.sha256, `${p.meta.id}: ${file}`).toMatch(/^[0-9a-f]{64}$/);
+        const local = fileURLToPath(new URL(`../../../.local/datasheets/${p.meta.id}/${file}`, import.meta.url));
+        if (existsSync(local)) expect(createHash("sha256").update(readFileSync(local)).digest("hex"), `${p.meta.id}: ${file}`).toBe(row.sha256);
+      }
+    }
   });
 
   it("facts without a datasheet are listed as unverified", () => {
     expect(Object.fromEntries(PACKS.map((p) => [p.meta.id, unverifiedFacts(p).map((f) => f.path)]))).toEqual({
       "led-5mm": ["part.specs.forwardVoltage", "part.specs.maxCurrentMa"],
       "button-6mm": [],
+      "slide-switch": [],
       potentiometer: [],
       "oled-sh1106-i2c": ["code.display.font"],
+      dht11: [],
+      "passive-buzzer": ["part.legs[2].voltageRange", "part.elements[0].currentMa"],
       resistor: [],
       "dc-motor": ["part.elements[0].currentMa", "part.specs.currentMa"],
       "hc-sr04": ["part.legs[0].voltageRange", "part.elements[0].currentMa", "part.specs.currentMa"],

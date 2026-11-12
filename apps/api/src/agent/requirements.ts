@@ -27,7 +27,7 @@
 import type { Board } from "@breadpilot/circuit-core";
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { PartKind, Plan } from "./schemas";
-import { CONTEXTUAL_WORDS, SOUND_VERB_WORDS, STRONG_WORDS, strongEntry, UNSUPPORTED_DISPLAY } from "./vocabulary";
+import { ALARM_SOUND_QUESTION, CONTEXTUAL_WORDS, SOUND_PART, SOUND_VERB_WORDS, STRONG_WORDS, strongEntry, TEMPERATURE_PART, UNSUPPORTED_DISPLAY } from "./vocabulary";
 
 export { UNSUPPORTED_DISPLAY };
 
@@ -236,16 +236,33 @@ function aboutFilming(t: Text, i: number): boolean {
   return b1 === "on" || b1 === "off" || (b1 === "the" && ["for", "to", "at", "into", "on"].includes(b2 ?? ""));
 }
 
+/** The idea is about the Pico's own chip temperature only ("the CPU's temperature"), not the air's. */
+const chipTemperatureOnly = (t: Text) => t.tokens.some((w) => OWN_TEMPERATURE.has(w)) && /\b(temperature|sensor)\b/.test(t.joined) && !OUTSIDE_TEMPERATURE.test(t.joined);
+
+/**
+ * Temperatures the air sensor can't measure: in or of a liquid, soil, a body, or outside its 0-50 °C
+ * (DHT11 manual and shop page): these still need another sensor (M15).
+ */
+const NOT_AIR_TEMPERATURE = /\b(water|liquid|liquids|aquarium|pool|coffee|tea|food|soup|soil|body|skin|fever|oven|freezer|frozen|boiling)\b/;
+
+/** "a temperature sensor", "the humidity sensor": the temperature part, when there is one. */
+const TEMPERATURE_SENSOR_WORDS = new Set(["temperature", "humidity", "dht", "dht11", "thermal"]);
+
 function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[] } {
   const unsupported = new Set<string>();
   const ambiguous = new Set<string>();
-  const internalSensor = t.tokens.some((w) => OWN_TEMPERATURE.has(w)) && /\b(temperature|sensor)\b/.test(t.joined) && !OUTSIDE_TEMPERATURE.test(t.joined);
+  const internalSensor = chipTemperatureOnly(t);
+  // A temperature part exists (M15): the air's temperature is supported, so neither refuse nor ask.
+  const notAir = TEMPERATURE_PART !== undefined && !internalSensor && NOT_AIR_TEMPERATURE.test(t.joined);
+  const temperatureOk = (label: string) => label.startsWith("a temperature or humidity") && (internalSensor || (TEMPERATURE_PART !== undefined && !notAir));
+  const otherTemperatureSensor = strongEntry("temperature")!.label;
 
   for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i) && !aboutFilming(t, i)) unsupported.add(label);
 
   for (const { re, label, ok, question } of CONTEXTUAL_WORDS) {
     for (const i of matches(t, re)) {
       if (negated(t, i) || (ok === "onboard" && before(t, i, 3).some((w) => ONBOARD.has(w)))) continue;
+      if (t.tokens[i]!.startsWith("sensor") && TEMPERATURE_PART && TEMPERATURE_SENSOR_WORDS.has(t.tokens[i - 1] ?? "")) continue;
       const producing = before(t, i, 3).some((w) => PRODUCE.test(w));
       if (!(nounContext(t, i) || producing || after(t, i, 1)[0] === "sensor")) continue;
       if (question && t.tokens[i] === question.word) ambiguous.add(question.text);
@@ -260,7 +277,11 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
   for (const [quantity, label] of Object.entries(QUANTITIES)) {
     for (const i of matches(t, new RegExp(`\\b${quantity}\\b`))) {
       if (negated(t, i)) continue;
-      if (label.startsWith("a temperature") && internalSensor) continue; // the Pico's own sensor
+      if (temperatureOk(label)) continue; // the Pico's own sensor, or the temperature part
+      if (notAir && label.startsWith("a temperature")) {
+        unsupported.add(otherTemperatureSensor);
+        continue;
+      }
       const sensing = before(t, i, 3).some((w) => SENSING_VERBS.test(w));
       // A bare "the temperature" may be the board's own: ask. Room, water, weather… need a sensor.
       if (quantity === "temperature" && !OUTSIDE_TEMPERATURE.test(t.joined)) ambiguous.add(TEMPERATURE_QUESTION);
@@ -274,7 +295,11 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
       const prev = before(t, i, 4);
       const condition = prev.some((w) => ["when", "if", "once", "until", "whenever", "as"].includes(w)) && prev.some((w) => /^(gets|get|is|becomes|goes|comes|turns|it's)$/.test(w));
       if (!condition || negated(t, i)) continue;
-      if (label.startsWith("a temperature") && internalSensor) continue;
+      if (temperatureOk(label)) continue;
+      if (notAir && label.startsWith("a temperature")) {
+        unsupported.add(otherTemperatureSensor);
+        continue;
+      }
       // "when it gets warm" without a room, water, weather…: maybe the board's own; ask (principle 3).
       if (label.startsWith("a temperature") && !OUTSIDE_TEMPERATURE.test(t.joined)) ambiguous.add(TEMPERATURE_QUESTION);
       else unsupported.add(label);
@@ -364,6 +389,12 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
   const named = new Set<PartKind>();
   const impliedOnly: { kind: PartKind; unlessNamed: string[] }[] = [];
   let onboard = false;
+  // A word inside another part's phrase belongs to that phrase: "slide switch" is the slide switch,
+  // not also a button ("switch"); "slider switch" isn't a potentiometer ("slider").
+  const phrases = AGENT_PACKS.flatMap((p) =>
+    p.agent!.words.nouns.filter((n) => n.includes(" ")).flatMap((n) => matches(t, wordsRe([n])).map((i) => ({ kind: p.meta.kind!, from: i, to: i + n.split(" ").length - 1 }))),
+  );
+  const insideOtherPhrase = (kind: string, i: number) => phrases.some((s) => s.kind !== kind && i >= s.from && i <= s.to);
 
   for (const pack of AGENT_PACKS) {
     const kind = pack.meta.kind!;
@@ -377,6 +408,7 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
     const counts: { n: number; or?: number }[] = [];
     const colors = new Set<string>();
     for (const i of matches(t, wordsRe(w.nouns))) {
+      if (insideOtherPhrase(kind, i)) continue;
       const word = t.tokens[i]!;
       // "the on-board LED" is the board's own part.
       if (w.builtIn && before(t, i, 2).some((x) => ONBOARD.has(x))) {
@@ -461,7 +493,15 @@ export function analyzeIdea(text: string, board?: Board): Requirements {
   const t = tokenize(text);
   const { unsupported, ambiguous } = unsupportedParts(t);
   const { parts, removed, fewer, onboard, named } = partsOf(t);
+  // M15 (user, 11/11/2026): the air's temperature or humidity needs the temperature part; the chip's
+  // own sensor only when the idea is about the chip. Humidity always needs the part.
+  if (TEMPERATURE_PART && !parts[TEMPERATURE_PART as PartKind] && !removed.includes(TEMPERATURE_PART as PartKind)) {
+    const asked = (re: RegExp) => matches(t, re).some((i) => !negated(t, i));
+    if (asked(/\b(humidity|humid)\b/) || (asked(/\b(temperatures?|weather)\b/) && !chipTemperatureOnly(t))) parts[TEMPERATURE_PART as PartKind] = { min: 1 };
+  }
   const pins = board ? pinsOf(t, board) : { pins: [], ambiguous: [] };
+  // "an alarm" with no sound word: with a buzzer part it may mean a sound or only lights, so ask.
+  if (SOUND_PART && !parts[SOUND_PART as PartKind] && !removed.includes(SOUND_PART as PartKind) && matches(t, /\balarms?\b/).some((i) => !negated(t, i))) ambiguous.push(ALARM_SOUND_QUESTION);
   const words = t.tokens.filter((w) => !PUNCT.has(w)).length;
   return { unsupported, ambiguous: [...ambiguous, ...pins.ambiguous], parts, removed, ...(Object.keys(fewer).length ? { fewer } : {}), pins: pins.pins, onboard, tooShort: words < 3, named, english: looksEnglish(t) };
 }

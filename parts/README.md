@@ -28,13 +28,14 @@ file and field.
 | `driver/*.py` | optional | MicroPython driver saved next to `main.py` (plain ASCII, ≤ 64 KB) |
 | `tests/wirings.json`, `tests/code.json`, `tests/code/*.py` | with `kind` | Good and bad wirings (exact issue codes) and programs (exact checker codes), run by `packages/circuit-core/test/pack-cases.test.ts` |
 | `SOURCES.md` | always | Documents used, what was checked, by whom |
+| `reference.md` | when a cited document isn't in `docs/hardware/` | A row per document: `| File | Link | Pages used | SHA-256 |`. Datasheets whose owners don't allow republishing stay out of the repository (keep your copy in `.local/datasheets/<id>/`, which git ignores; the pack test checks it against the checksum when it's there) |
 
 Text placeholders such as `{ref}`, `{hole.vcc}`, `{prop.color}` are checked when the pack loads.
 
 ## Sources of facts
 
 ```jsonc
-{ "value": 3.3, "src": { "doc": "SH1106.pdf", "page": 13 } }          // a file in docs/hardware/
+{ "value": 3.3, "src": { "doc": "SH1106.pdf", "page": 13 } }          // a document: in docs/hardware/ or in the part's reference.md
 { "value": [3.3, 5.0], "src": { "product": "seller's product page …" } }
 { "value": 3.3, "src": { "decision": "user, 20/10/2026", "why": "…" } }
 { "value": 20, "src": { "typical": true, "note": "no datasheet yet" } } // listed as unverified

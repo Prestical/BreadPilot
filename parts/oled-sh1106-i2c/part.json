@@ -98,7 +98,7 @@
   },
   "specsSource": [
     "Product page text supplied by the user (robotistan.com, 1.3 inc I2C OLED Ekran - SSD1106): pin order VCC-GND-SCL-SDA, VCC 3.3-5 V, I2C, 128x64, driver SH1106.",
-    "docs/hardware/components/SH1106.pdf (Sino Wealth SH1106 V2.2): 132x64 RAM (p.1), 400 kHz I2C (p.1), 7-bit addresses 0111100/0111101 = 0x3C/0x3D chosen by SA0 (p.13).",
+    "SH1106.pdf (Sino Wealth SH1106 V2.2, see reference.md): 132x64 RAM (p.1), 400 kHz I2C (p.1), 7-bit addresses 0111100/0111101 = 0x3C/0x3D chosen by SA0 (p.13).",
     "Not documented for this module: whether SDA/SCL have pull-ups to VCC, the module's current draw, and which SH1106 columns the 128-pixel panel uses. The validator treats VCC above 3.3 V as unsafe for that reason (maxSafeVoltage), by the user's decision on 20/10/2026."
   ]
 }

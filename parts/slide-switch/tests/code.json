@@ -1,0 +1,6 @@
+{
+  "cases": [
+    { "name": "read the switch's position", "file": "code/read.py", "layout": [{ "kind": "slide-switch" }], "errors": [], "warnings": [] },
+    { "name": "the switch's pin driven as an output", "file": "code/output.py", "layout": [{ "kind": "slide-switch" }], "errors": ["C005"] }
+  ]
+}
