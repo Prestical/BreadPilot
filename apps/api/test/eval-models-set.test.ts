@@ -36,3 +36,29 @@ describe("model test set", () => {
     expect(() => layoutProject(requests as never)).not.toThrow();
   });
 });
+
+// M15 15.6 (user, 11/11/2026: 10 projects with the new parts instead of the 50-idea run).
+const partsCases: Case[] = readFileSync(new URL("../../../data/eval/parts-m15.jsonl", import.meta.url), "utf8")
+  .trim()
+  .split("\n")
+  .map((l) => JSON.parse(l));
+
+describe("new parts test set (M15)", () => {
+  it("has 10 different ideas, each with at least one new part (slide switch, buzzer, DHT11)", () => {
+    expect(partsCases).toHaveLength(10);
+    expect(new Set(partsCases.map((c) => c.idea.toLowerCase())).size).toBe(10);
+    for (const c of partsCases) expect(Object.keys(c.expect.parts).some((k) => ["slide-switch", "buzzer", "dht11"].includes(k)), c.idea).toBe(true);
+    for (const kind of ["slide-switch", "buzzer", "dht11"]) expect(partsCases.filter((c) => c.expect.parts[kind]).length, kind).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(partsCases.map((c, i) => [i + 1, c] as const))("idea %i is read as its expected parts and fits the breadboard", (_n, c) => {
+    const r = analyzeIdea(c.idea);
+    expect(r.unsupported).toEqual([]);
+    expect(r.ambiguous).toEqual([]);
+    const read: Record<string, number> = {};
+    for (const [kind, need] of Object.entries(r.parts)) read[kind] = need.exact ?? need.min;
+    expect(read).toEqual(c.expect.parts);
+    const requests = Object.entries(c.expect.parts).flatMap(([kind, n]) => Array.from({ length: n }, () => ({ kind })));
+    expect(() => layoutProject(requests as never)).not.toThrow();
+  });
+});

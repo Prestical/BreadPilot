@@ -2,6 +2,8 @@
 //   npm run eval:agent -w @breadpilot/api -- [--file data/eval/agent-holdout.jsonl] [--only 3,7] [--model qwen3:8b] [--openai] [--limit 5] [--json /tmp/out.json] [--think on|off]
 //   npm run eval:models -w @breadpilot/api -- --model qwen3.5:4b [--json out.json]
 //     = the 50-idea model test (data/eval/models.jsonl: 20 easy, 20 medium, 10 hard), PLAN §13.2.
+//   npm run eval:parts -w @breadpilot/api -- [--openai] [--json out.json]
+//     = the 10 projects with the M15 parts (data/eval/parts-m15.jsonl: slide switch, buzzer, DHT11), PLAN §13.10.
 //   --openai: run every idea on OpenAI's model (OPENAI_API_KEY, OPENAI_MODEL in .env) to compare with the local one.
 //   --think: override the model list's `think` value (only sent to models Ollama says can think).
 //   --max-swap-gb 2: stop the run when swap grew this much since the start (default 2).

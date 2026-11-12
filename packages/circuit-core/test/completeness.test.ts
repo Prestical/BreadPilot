@@ -87,3 +87,24 @@ describe("C006: a part set up but never used again", () => {
     expect(unused("from machine import Pin, ADC\nimport time\nled = Pin(16, Pin.OUT)\nbtn = Pin(18, Pin.IN, Pin.PULL_UP)\nknob = ADC(0)\nwhile True:\n    led.value(btn.value())\n    time.sleep(0.1)\n")[0]!.message).toMatch(/sets up knob \(GP26\)/);
   });
 });
+
+// M15 15.6: a small model put the functions its main loop calls below that endless loop (qwen #7).
+describe("C019: functions defined after the endless loop that calls them", () => {
+  const sensors = layoutProject([{ kind: "led" }, { kind: "dht11" }, { kind: "buzzer" }] as never).build;
+  const QWEN_7 = "from machine import Pin, PWM\nimport dht\nimport time\n\n# Settings\nHUMIDITY_ALERT_THRESHOLD = 70\nHUMIDITY_DEACTIVATION_THRESHOLD = 10\nBLINK_DELAY = 0.5\nMEASURE_INTERVAL = 2\n\n# Set up the parts\nled_red = Pin(16, Pin.OUT)\nbuzzer_pin = Pin(20, Pin.OUT)\ndht_sensor = dht.DHT11(Pin(18))\n\n# Main loop\nwhile True:\n    # Wait 1 second after start, then measure every 2 seconds\n    if time.ticks_diff(time.ticks_ms(), time.ticks_ms()) < 1000:\n        time.sleep(1)\n    else:\n        try:\n            dht_sensor.measure()\n            humidity = dht_sensor.humidity()\n            print(f\"Humidity: {humidity}%\")\n        except OSError:\n            print(\"DHT11 reading failed, retrying...\")\n            continue\n\n        # Check if humidity is above 70%\n        if humidity > HUMIDITY_ALERT_THRESHOLD:\n            led_red.value(1)\n            buzzer_on()\n            print(\"ALERT: Humidity too high!\")\n        # Check if humidity drops below 10%\n        elif humidity < HUMIDITY_DEACTIVATION_THRESHOLD:\n            led_red.value(0)\n            buzzer_off()\n            print(\"Normal: Humidity low again.\")\n\n    time.sleep(MEASURE_INTERVAL)\n\n# Function to turn on buzzer with a note (A4 = 440 Hz)\ndef buzzer_on():\n    buzzer_pin.init(Pin.OUT)\n    pwm = PWM(buzzer_pin)\n    pwm.freq(440)\n    pwm.duty_u16(32768)\n    time.sleep(0.5)\n    pwm.deinit()\n    buzzer_pin.value(1)\n\n# Function to turn off buzzer\ndef buzzer_off():\n    buzzer_pin.value(1)";
+
+  it("catches the real case: buzzer_on and buzzer_off come after while True", () => {
+    const found = codes(QWEN_7, "C019", sensors);
+    expect(found.map((i) => /defines (\w+)\(\)/.exec(i.message)![1])).toEqual(["buzzer_on", "buzzer_off"]);
+    expect(found[0]!.message).toMatch(/after the endless loop on line \d+, so the loop runs before Python ever reaches that line/);
+  });
+
+  it("stays quiet when the functions come first, when the loop can end, or when the loop doesn't call them", () => {
+    const fn = "def show():\n    print(knob.read_u16())\n";
+    expect(codes(HEAD + fn + "while True:\n    led.value(btn.value() == 0)\n    show()\n    time.sleep(0.1)\n", "C019")).toEqual([]);
+    expect(codes(HEAD + "while True:\n    led.value(btn.value() == 0)\n    if btn.value() == 0:\n        break\n    show()\n    time.sleep(0.1)\n" + fn, "C019")).toEqual([]);
+    expect(codes(HEAD + LOOP + fn, "C019")).toEqual([]);
+    // A call inside a function defined before the loop isn't the loop calling it: only the loop's own lines count.
+    expect(codes(HEAD + LOOP, "C019")).toEqual([]);
+  });
+});

@@ -1,0 +1,10 @@
+{"difficulty": "easy", "idea": "Light the LED while the slide switch is on", "expect": {"clarity": "clear", "parts": {"slide-switch": 1, "led": 1}}}
+{"difficulty": "easy", "idea": "Beep the buzzer once every two seconds", "expect": {"clarity": "clear", "parts": {"buzzer": 1}}}
+{"difficulty": "easy", "idea": "Print the room temperature and humidity to my computer every 5 seconds", "expect": {"clarity": "clear", "parts": {"dht11": 1}}}
+{"difficulty": "medium", "idea": "Show the room temperature and humidity on the OLED screen and update it every few seconds", "expect": {"clarity": "clear", "parts": {"dht11": 1, "oled": 1}}}
+{"difficulty": "medium", "idea": "Play a short melody on the buzzer each time the button is pressed", "expect": {"clarity": "clear", "parts": {"buzzer": 1, "button": 1}}}
+{"difficulty": "medium", "idea": "A slide switch picks between a fast and a slow blink for the LED", "expect": {"clarity": "clear", "parts": {"slide-switch": 1, "led": 1}}}
+{"difficulty": "medium", "idea": "Turn on a red LED and beep the buzzer when the humidity goes above 70 percent", "expect": {"clarity": "clear", "parts": {"dht11": 1, "buzzer": 1, "led": 1}}}
+{"difficulty": "hard", "idea": "A kitchen timer: the knob sets 1 to 10 minutes on the OLED, the button starts it, and the buzzer plays a tune when the time is up", "expect": {"clarity": "clear", "parts": {"pot": 1, "oled": 1, "button": 1, "buzzer": 1}}}
+{"difficulty": "hard", "idea": "A small weather station: the OLED shows the temperature, the humidity and a graph of the last readings, and a slide switch turns the screen off", "expect": {"clarity": "clear", "parts": {"oled": 1, "dht11": 1, "slide-switch": 1}}}
+{"difficulty": "hard", "idea": "A night alarm: while the slide switch is on, pressing the button sounds the buzzer and flashes two LEDs until the switch is turned off", "expect": {"clarity": "clear", "parts": {"slide-switch": 1, "button": 1, "buzzer": 1, "led": 2}}}

@@ -569,6 +569,39 @@ function unfinishedIssues(src: string, clean: string): CodeIssue[] {
 }
 
 /**
+ * C019: a function or class defined after an endless top-level loop (`while True:` with no `break`)
+ * and used inside it. Python runs the file from the top, so the loop starts before the `def` line is
+ * ever reached and the first call fails with NameError (seen in a small model's program, M15 15.6).
+ */
+function lateDefinitionIssues(clean: string): CodeIssue[] {
+  const lines = clean.split("\n");
+  const indent = (l: string) => l.length - l.trimStart().length;
+  const issues: CodeIssue[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^while\s+(True|1)\s*:/.test(lines[i]!)) continue;
+    // The loop body: the following lines that are indented (or blank).
+    let end = i + 1;
+    while (end < lines.length && (lines[end]!.trim() === "" || indent(lines[end]!) > 0)) end++;
+    const body = lines.slice(i + 1, end).join("\n");
+    if (/\bbreak\b/.test(body)) continue; // it can end, so later lines may run
+    for (let k = end; k < lines.length; k++) {
+      const def = /^(?:async\s+)?(def|class)\s+([A-Za-z_]\w*)/.exec(lines[k]!);
+      if (!def) continue;
+      const name = def[2]!;
+      if (!new RegExp(`(?<![\\w.])${name}\\s*\\(`).test(body)) continue;
+      issues.push({
+        code: "C019",
+        severity: "error",
+        message: `Line ${k + 1} defines ${name}() after the endless loop on line ${i + 1}, so the loop runs before Python ever reaches that line and calling ${name}() fails with NameError. Move the ${def[1] === "def" ? "function" : "class"} above the loop.`,
+        line: k + 1,
+      });
+    }
+    break; // only the program's main loop
+  }
+  return issues;
+}
+
+/**
  * C017: input() waits for someone to type on a computer over USB. On a Pico running on its own (power
  * from a charger or battery) the program stops there forever. When the build has buttons or knobs, the
  * program should use those instead (an error); without them it may be on purpose (a warning).
@@ -1400,7 +1433,7 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
   issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean), ...machineNameIssues(clean));
   const displays = displaysIn(build);
   const consts = moduleConstants(src, clean);
-  issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints), ...activeLowIssues(clean, activeLowPins(build), consts.ints));
+  issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints), ...activeLowIssues(clean, activeLowPins(build), consts.ints), ...lateDefinitionIssues(clean));
   for (const d of displays) issues.push(...displayIssues(clean, d, modes, consts.ints));
   if (displays[0]) issues.push(...displayTextIssues(src, clean, displays[0], consts));
   // C011 only for names the import check didn't already explain (e.g. "time" used without "import time").

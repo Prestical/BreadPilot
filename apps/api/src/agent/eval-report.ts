@@ -23,6 +23,7 @@ export const CHECK_TEXT: Record<string, string> = {
   C016: "fake or unfinished code (placeholder value, TODO, empty function)",
   C017: "input(): waits for typing on a computer",
   C018: "PWM stopped with duty 0 on a part that is on while its pin is low",
+  C019: "function defined after the endless loop that calls it",
 };
 
 /** Normalizes line numbers so the same mistake on different lines counts once. */

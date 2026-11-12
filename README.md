@@ -363,6 +363,9 @@ npm run eval:agent -w @breadpilot/api -- [--model <name>] [--openai] [--json <fi
 # Reloads the model between ideas, prints memory after each, stops if swap grows more than 2 GB
 npm run eval:models -w @breadpilot/api -- --model <ollama tag> [--json <file>] [--think on|off] [--max-swap-gb <n>] [--keep-loaded]
 
+# New parts test: 10 projects with the slide switch, buzzer and DHT11 (3 easy, 4 medium, 3 hard)
+npm run eval:parts -w @breadpilot/api -- [--openai] [--model <ollama tag>] [--json <file>]
+
 # Change test: builds 5 projects, asks for one change each, checks the parts that stay didn't move
 npm run eval:changes -w @breadpilot/api -- [--openai] [--model <ollama tag>] [--only 1,3] [--json <file>]
 
