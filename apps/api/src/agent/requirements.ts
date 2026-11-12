@@ -72,6 +72,16 @@ const DETERMINERS = new Set([
 const NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, twenty: 20 };
 const COLORS = new Set(["red", "green", "yellow", "blue", "white", "orange", "purple", "pink", "amber"]);
 const ONBOARD = new Set(["on-board", "onboard", "built-in", "builtin", "internal", "pico's", "board's", "pico"]);
+/**
+ * Words that point at the Pico's own temperature sensor, which sits inside its chip (principle 5):
+ * "the board's temperature", "the chip temperature", "the CPU's temperature".
+ */
+const OWN_TEMPERATURE = new Set([...ONBOARD, "chip", "chip's", "cpu", "cpu's", "processor", "processor's", "microcontroller", "microcontroller's", "rp2350", "rp2350's", "board"]);
+/** Temperature of something outside the board: needs a separate sensor. */
+const OUTSIDE_TEMPERATURE = /\b(room|outside|outdoor|outdoors|indoor|air|ambient|water|body|weather|soil|fridge|freezer|oven|house|home|garden|plant|aquarium|liquid|food|coffee|tea|humidity|humid)\b/;
+/** Principle 3 for a bare "temperature": the board can read its own, so ask instead of refusing. */
+export const TEMPERATURE_QUESTION =
+  "The Pico 2 W has a temperature sensor inside its chip: it reads the chip's own temperature, which is close to the room's while the board is idle. Should the project use that, or do you mean a separate temperature sensor (not supported yet)?";
 const COMPUTER = /\b(computer|laptop|pc|mac|phone|tablet|terminal|serial|thonny|shell|console|browser|web ?page|website)\b/;
 
 interface Text {
@@ -224,7 +234,7 @@ function aboutFilming(t: Text, i: number): boolean {
 function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[] } {
   const unsupported = new Set<string>();
   const ambiguous = new Set<string>();
-  const internalSensor = t.tokens.some((w) => ONBOARD.has(w)) && /\b(temperature|sensor)\b/.test(t.joined);
+  const internalSensor = t.tokens.some((w) => OWN_TEMPERATURE.has(w)) && /\b(temperature|sensor)\b/.test(t.joined) && !OUTSIDE_TEMPERATURE.test(t.joined);
 
   for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i) && !aboutFilming(t, i)) unsupported.add(label);
 
@@ -247,7 +257,9 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
       if (negated(t, i)) continue;
       if (label.startsWith("a temperature") && internalSensor) continue; // the Pico's own sensor
       const sensing = before(t, i, 3).some((w) => SENSING_VERBS.test(w));
-      if (sensing || quantity === "temperature") unsupported.add(label);
+      // A bare "the temperature" may be the board's own: ask. Room, water, weather… need a sensor.
+      if (quantity === "temperature" && !OUTSIDE_TEMPERATURE.test(t.joined)) ambiguous.add(TEMPERATURE_QUESTION);
+      else if (sensing || quantity === "temperature") unsupported.add(label);
     }
   }
 
@@ -255,10 +267,12 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
   for (const [word, label] of Object.entries(CONDITIONS)) {
     for (const i of matches(t, new RegExp(`\\b${word}\\b`))) {
       const prev = before(t, i, 4);
-      const condition = prev.some((w) => ["when", "if", "once", "until", "whenever"].includes(w)) && prev.some((w) => /^(gets|get|is|becomes|goes|comes|turns|it's)$/.test(w));
+      const condition = prev.some((w) => ["when", "if", "once", "until", "whenever", "as"].includes(w)) && prev.some((w) => /^(gets|get|is|becomes|goes|comes|turns|it's)$/.test(w));
       if (!condition || negated(t, i)) continue;
       if (label.startsWith("a temperature") && internalSensor) continue;
-      unsupported.add(label);
+      // "when it gets warm" without a room, water, weather…: maybe the board's own; ask (principle 3).
+      if (label.startsWith("a temperature") && !OUTSIDE_TEMPERATURE.test(t.joined)) ambiguous.add(TEMPERATURE_QUESTION);
+      else unsupported.add(label);
     }
   }
 
@@ -294,12 +308,31 @@ function numberBefore(t: Text, i: number): { n: number; or?: number } | null {
   return lower !== null ? { n, or: lower } : { n };
 }
 
+/**
+ * A further part of the same kind (principle 6c): "a second button", "the third LED", "another
+ * knob", "the other button" mean at least that many, so "one button starts it, a second button
+ * resets it" is 2 buttons, not exactly 1.
+ */
+const ORDINALS: Record<string, number> = { second: 2, "2nd": 2, third: 3, "3rd": 3, fourth: 4, "4th": 4, fifth: 5, "5th": 5, sixth: 6, "6th": 6, another: 2, other: 2 };
+
+function ordinalBefore(t: Text, i: number): number {
+  // Checked before modifiers are skipped: "2nd" looks like a technical modifier ("16x2").
+  for (let k = i - 1, skipped = 0; k >= 0 && skipped <= 3; k--, skipped++) {
+    const w = t.tokens[k]!;
+    if (ORDINALS[w]) return ORDINALS[w]!;
+    if (!isModifier(w)) break;
+  }
+  return 0;
+}
+
 /** Colors in front of an LED noun: "a red LED", "red, yellow and green LEDs", "a red blinking LED". */
 function colorsBefore(t: Text, i: number): string[] {
   const colors: string[] = [];
   for (let k = i - 1; k >= 0; k--) {
     const w = t.tokens[k]!;
     if (COLORS.has(w)) colors.push(w);
+    // "a red, a green and a blue LED": an article starting a list item belongs to the list.
+    else if ((w === "a" || w === "an") && colors.length && [",", "and", "or"].includes(t.tokens[k - 1] ?? "") && COLORS.has(t.tokens[k - 2] ?? "")) continue;
     else if (w !== "," && w !== "and" && w !== "or" && !isModifier(w)) break;
   }
   return colors;
@@ -320,6 +353,7 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
     // LCD display") doesn't also count as this part.
     const other = ctx?.unlessUnsupported ? !!strongEntry(ctx.unlessUnsupported)?.re.test(t.joined) : false;
     let min = 0;
+    let further = 0;
     const counts: { n: number; or?: number }[] = [];
     const colors = new Set<string>();
     for (const i of matches(t, wordsRe(w.nouns))) {
@@ -341,9 +375,14 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
       const count = numberBefore(t, i);
       if (count) counts.push(count);
       min = Math.max(min, count ? Math.min(count.n, count.or ?? count.n) : 1);
+      further = Math.max(further, ordinalBefore(t, i));
       if (w.colors) colorsBefore(t, i).forEach((c) => colors.add(c));
     }
-    min = Math.max(min, colors.size);
+    // At least as many as the colors listed and the highest "second"/"another" mentioned. With those,
+    // "one X" only names the first of them ("one button goes up, the other goes down"), not a count.
+    const floor = Math.max(colors.size, further);
+    min = Math.max(min, floor);
+    if (further) counts.splice(0, counts.length, ...counts.filter((c) => c.n !== 1 || c.or !== undefined));
     const distinct = [...new Set(counts.map((c) => `${c.n}|${c.or ?? ""}`))];
     // Words that imply the part when none is named ("press" → a button, "blink" → an LED): decided
     // after every part is read, because a named part can be what those words describe.
@@ -356,8 +395,8 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
       // Exactly one clear number (repeated mentions of the same number are fine) → exact.
       if (distinct.length === 1) {
         const c = counts[0]!;
-        if (c.or !== undefined) Object.assign(need, { min: Math.max(Math.min(c.n, c.or), colors.size), max: Math.max(c.n, c.or) });
-        else if (c.n >= colors.size) Object.assign(need, { min: c.n, exact: c.n });
+        if (c.or !== undefined) Object.assign(need, { min: Math.max(Math.min(c.n, c.or), floor), max: Math.max(c.n, c.or) });
+        else if (c.n >= floor) Object.assign(need, { min: c.n, exact: c.n });
       }
       parts[kind] = need;
     }

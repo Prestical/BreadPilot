@@ -2,7 +2,7 @@
 // from data/eval/*.jsonl, so passing them says something about general behavior.
 import { describe, expect, it } from "vitest";
 import { PICO_2_W } from "@breadpilot/circuit-core";
-import { analyzeIdea, mergeRequirements, minimumParts, planProblems, UNSUPPORTED_DISPLAY } from "../src/agent/requirements";
+import { analyzeIdea, mergeRequirements, minimumParts, planProblems, TEMPERATURE_QUESTION, UNSUPPORTED_DISPLAY } from "../src/agent/requirements";
 import type { Plan, PartKind } from "../src/agent/schemas";
 
 const a = (text: string) => analyzeIdea(text, PICO_2_W);
@@ -97,6 +97,41 @@ describe("5. the board's own features are supported", () => {
   });
   it("an outside temperature still needs a sensor", () => {
     expect(a("Turn on an LED when the room temperature is high").unsupported).toEqual(["a temperature or humidity sensor"]);
+  });
+});
+
+describe("5b. the board's own temperature: named by the chip, asked about when not named", () => {
+  it.each(["Print the chip temperature to my laptop once a minute", "Light an LED if the CPU's temperature goes above 30 degrees", "Graph the processor temperature over an hour on a screen"])(
+    "the chip's own temperature is supported: %s",
+    (idea) => {
+      const r = a(idea);
+      expect(r.unsupported).toEqual([]);
+      expect(r.ambiguous).not.toContain(TEMPERATURE_QUESTION);
+    },
+  );
+
+  it.each(["Put the temperature on a small display every few seconds", "Flash an LED faster as it gets hot", "Keep a list of temperature readings and send them to my computer"])(
+    "a temperature without saying whose is asked about, not refused: %s",
+    (idea) => {
+      const r = a(idea);
+      expect(r.unsupported).toEqual([]);
+      expect(r.ambiguous).toContain(TEMPERATURE_QUESTION);
+    },
+  );
+
+  it.each([
+    "Show the outside temperature and humidity on a screen",
+    "Turn on an LED when the water gets cold",
+    "Log the air temperature in my greenhouse plant room",
+    "Compare the chip temperature with the room temperature",
+  ])("the temperature of something outside the board still needs a sensor: %s", (idea) => {
+    expect(a(idea).unsupported).toEqual(["a temperature or humidity sensor"]);
+  });
+
+  it("the answer 'use the Pico's own sensor' clears the question", () => {
+    const merged = mergeRequirements(a("Put the temperature on a small display every few seconds"), a("Use the Pico's own sensor for it"));
+    expect(merged.ambiguous).toEqual([]);
+    expect(merged.unsupported).toEqual([]);
   });
 });
 
@@ -229,6 +264,37 @@ describe("displays (Milestone 6): the 1.3\" I2C OLED is a part; other display ty
 
   it("three displays can't be wired (same I2C address, two buses)", () => {
     expect(minimumParts(a("Show three numbers on three OLED displays"))).toEqual([{ kind: "oled" }, { kind: "oled" }, { kind: "oled" }]);
+  });
+});
+
+describe("6c. a second, another, the other: one more of the same part", () => {
+  it.each([
+    ["One knob sets the speed and a second knob sets the brightness", { pot: { min: 2 } }],
+    ["Press one button to start, then press another button to stop", { button: { min: 2 } }],
+    ["The first LED blinks fast, the second LED slowly and the third LED stays on", { led: { min: 3 } }],
+    ["Use one button for left and the other button for right", { button: { min: 2 } }],
+    ["A 2nd display shows the score", { oled: { min: 2 } }],
+  ])("%s", (idea, parts) => {
+    expect(a(idea).parts).toEqual(parts);
+  });
+
+  it("a clear number that already covers them stays exact", () => {
+    expect(a("Two buttons: one button goes up, the other button goes down").parts).toEqual({ button: { min: 2, exact: 2 } });
+  });
+
+  it("'a second time' or 'each other' are not parts", () => {
+    expect(a("Press the button a second time to switch the LED off").parts).toEqual({ button: { min: 1 }, led: { min: 1 } });
+    expect(a("Two LEDs that copy each other").parts).toEqual({ led: { min: 2, exact: 2 } });
+  });
+});
+
+describe("6d. a list of colors before one LED noun is that many LEDs", () => {
+  it.each([
+    ["Fade a red, a green and a blue LED in turn", 3],
+    ["Light a yellow or a white LED depending on the knob", 2],
+    ["Blink a red LED", 1],
+  ])("%s", (idea, n) => {
+    expect(a(idea).parts.led?.min).toBe(n);
   });
 });
 
