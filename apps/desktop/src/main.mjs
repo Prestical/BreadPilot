@@ -10,10 +10,11 @@
 import { app, BrowserWindow, dialog, Menu, safeStorage, screen, shell, utilityProcess } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
+import { readFile, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { brokenName, openLog } from "./log.mjs";
 import { KeychainError, macKeychain } from "./keychain.mjs";
+import { KeyFileError, loadKey } from "./keyfile.mjs";
 import { buildMenu } from "./menu.mjs";
 import { crashProblem, filesToSetAside, keyMoveNotice, startupProblem } from "./problems.mjs";
 import { readWindowState, restoreBounds, writeWindowState } from "./windowState.mjs";
@@ -39,6 +40,8 @@ app.setPath("userData", join(app.getPath("appData"), NAME));
 const USER_DIR = app.getPath("userData");
 const DATA_DIR = join(USER_DIR, "data");
 const KEY_FILE = join(USER_DIR, "key.bin");
+/** Linux with no keyring only (keyfile.mjs). */
+const PLAIN_KEY_FILE = join(USER_DIR, "key.plain");
 /** macOS: the keychain entry with the data key (keychain.mjs). */
 const KEYCHAIN_SERVICE = `${NAME} data key`;
 const WINDOW_FILE = join(USER_DIR, "window.json");
@@ -76,29 +79,22 @@ function refuseNewKeyForOldData() {
 }
 
 /**
- * The database key: 32 random bytes made on first start, stored only encrypted by the operating
- * system: the macOS login keychain through Apple's security tool (keychain.mjs: no password prompt
- * after updates), Windows DPAPI or a Linux keyring through safeStorage (key.bin).
+ * The database key: 32 random bytes made on first start. macOS: the login keychain through Apple's
+ * security tool (keychain.mjs: no password prompt after updates). Windows and Linux: keyfile.mjs
+ * (DPAPI or a Linux keyring through safeStorage; on Linux with no keyring a user-only file, moved
+ * into the keyring once one appears). Resolves with { key, weak }: weak = no OpenAI key is saved.
  */
 async function dataKey() {
-  if (process.platform === "darwin") return macDataKey();
-  if (!safeStorage.isEncryptionAvailable()) throw new KeyError("storage", "Secure storage isn't available.");
-  const stored = await readFile(KEY_FILE).catch((err) => (err.code === "ENOENT" ? null : Promise.reject(err)));
-  if (stored) {
-    try {
-      return safeStorage.decryptString(stored);
-    } catch (err) {
-      throw new KeyError("key", `The key file couldn't be decrypted: ${err.message}`);
-    }
+  if (process.platform === "darwin") return { key: await macDataKey(), weak: false };
+  try {
+    const oldData = ["data.enc", "settings.enc"].filter((f) => existsSync(join(DATA_DIR, f)));
+    const { key, weak } = await loadKey({ platform: process.platform, safe: safeStorage, keyFile: KEY_FILE, plainFile: PLAIN_KEY_FILE, oldData, log: (t) => log.write("main", t) });
+    if (weak) log.write("main", "no keyring: an OpenAI key won't be saved");
+    return { key, weak };
+  } catch (err) {
+    if (err instanceof KeyFileError) throw new KeyError(err.kind, err.message);
+    throw err;
   }
-  refuseNewKeyForOldData();
-  const key = randomBytes(32).toString("hex");
-  await mkdir(USER_DIR, { recursive: true, mode: 0o700 });
-  const fh = await open(KEY_FILE, "wx", 0o600);
-  await fh.writeFile(safeStorage.encryptString(key));
-  await fh.close();
-  log.write("main", "made a new data key (first start)");
-  return key;
 }
 
 async function macDataKey() {
@@ -131,21 +127,6 @@ async function macDataKey() {
   }
 }
 
-/**
- * Linux without a keyring (GNOME Keyring, KWallet…): safeStorage still "works" but encrypts with a
- * password built into Electron, so anyone with a copy of the files could decrypt them. The database
- * still opens (projects stay on this computer), but the engine refuses to keep an OpenAI key.
- */
-function weakKeyStorage() {
-  if (process.platform !== "linux") return false;
-  const backend = safeStorage.getSelectedStorageBackend();
-  if (backend === "basic_text" || backend === "unknown") {
-    log.write("main", `no keyring (safeStorage backend: ${backend}): an OpenAI key won't be saved`);
-    return true;
-  }
-  return false;
-}
-
 /** The engine's output goes to the log (and to the terminal while developing). */
 function pipeToLog(stream) {
   let rest = "";
@@ -162,8 +143,9 @@ function pipeToLog(stream) {
 /** Starts the engine; resolves with { type: "ready", url, pairingUrl } or { type: "error", kind, message }. */
 async function startEngine() {
   let key;
+  let weak;
   try {
-    key = await dataKey();
+    ({ key, weak } = await dataKey());
   } catch (err) {
     return { type: "error", kind: err instanceof KeyError ? err.kind : "other", message: err.message };
   }
@@ -174,7 +156,7 @@ async function startEngine() {
   return new Promise((ok) => {
     child.once("message", ok);
     child.once("exit", (code) => ok({ type: "error", kind: "exit", message: `The engine stopped while starting (code ${code}).` }));
-    child.postMessage({ type: "start", dataDir: DATA_DIR, key, token, webDir: PATHS.web, repoDir: PATHS.docs, migrationsDir: PATHS.migrations, template: TEMPLATE, weakKeyStorage: weakKeyStorage(), appVersion: app.getVersion() });
+    child.postMessage({ type: "start", dataDir: DATA_DIR, key, token, webDir: PATHS.web, repoDir: PATHS.docs, migrationsDir: PATHS.migrations, template: TEMPLATE, weakKeyStorage: weak, appVersion: app.getVersion() });
   });
 }
 

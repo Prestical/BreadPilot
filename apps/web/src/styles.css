@@ -244,6 +244,11 @@ pre.code { margin: 0; max-height: 420px; overflow: auto; background: var(--code-
 .update-notice { margin: 0 10px 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--accent); background: var(--info-bg); font-size: 0.84rem; }
 .update-notice p { margin: 0 0 6px; }
 .update-notice .card-actions { margin-top: 0; gap: 6px; }
+.keyring-notice { margin: 0 10px 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--warn); background: var(--surface-2); font-size: 0.84rem; }
+.keyring-notice p { margin: 0 0 6px; }
+.keyring-notice p:first-child { display: flex; align-items: center; gap: 6px; }
+.keyring-notice p:first-child .icon { color: var(--warn); }
+.keyring-notice .card-actions { margin-top: 0; gap: 6px; }
 a.tool-btn { text-decoration: none; }
 .side-foot { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--border); }
 .status-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--muted); }

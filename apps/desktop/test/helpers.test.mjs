@@ -98,7 +98,7 @@ describe("problem dialogs", () => {
   it("set aside only what can't be read", () => {
     expect(filesToSetAside("snapshot-corrupt")).toEqual(["data/data.enc"]); // the settings (and OpenAI key) stay
     expect(filesToSetAside("settings")).toEqual(["data/settings.enc"]); // the projects stay
-    expect(filesToSetAside("key")).toEqual(["key.bin", "data/data.enc", "data/settings.enc"]); // both need the lost key
+    expect(filesToSetAside("key")).toEqual(["key.bin", "key.plain", "data/data.enc", "data/settings.enc"]); // both need the lost key
     expect(filesToSetAside("locked")).toEqual([]);
   });
 });

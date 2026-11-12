@@ -1,7 +1,13 @@
-<h1 align="center">
-  <img src="apps/desktop/build/icon.png" alt="" width="72" align="center">
-  BreadPilot
-</h1>
+<p align="center">
+  <img src="apps/desktop/build/icon.png" alt="" width="72">
+</p>
+
+<!-- A Markdown heading (not an HTML <h1>): tools such as the AppImage catalog read the app's name from it. -->
+<div align="center">
+
+# BreadPilot
+
+</div>
 
 <p align="center"><strong>Describe a hardware project in plain words. Build it step by step on a 3D breadboard.</strong></p>
 
@@ -400,7 +406,9 @@ Apple's built-in `security` tool, so BreadPilot never asks for your password, no
 update. It's encrypted with your login password: a copy of your disk or a backup can't open your
 projects. The tradeoff, until BreadPilot is signed with an Apple Developer ID: another program you
 run on your Mac could read that entry without asking. On Windows and Linux, `key.bin` holds the key,
-encrypted by the operating system.
+encrypted by the operating system. On Linux with no keyring (such as GNOME Keyring or KWallet),
+BreadPilot keeps the key in `key.plain`, readable only by your user account, and doesn't save an
+OpenAI key; the next start after a keyring is installed or unlocked moves the key into it.
 
 ---
 

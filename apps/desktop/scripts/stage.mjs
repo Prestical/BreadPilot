@@ -16,7 +16,7 @@ const REPO = resolve(DESKTOP, "../..");
 const STAGE = join(DESKTOP, ".stage");
 
 /** The desktop app's own code (named, not "every file in src": src may hold other files). */
-const APP_FILES = ["main.mjs", "keychain.mjs", "log.mjs", "menu.mjs", "problems.mjs", "windowState.mjs"];
+const APP_FILES = ["main.mjs", "keychain.mjs", "keyfile.mjs", "log.mjs", "menu.mjs", "problems.mjs", "windowState.mjs"];
 /** Packages the engine loads at runtime (esbuild leaves them out of desktop.js). */
 const ENGINE_PACKAGES = ["@electric-sql/pglite", "@electric-sql/pglite-pgvector", "@fastify/static", "fastify", "pdfjs-dist", "zod"];
 

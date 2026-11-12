@@ -23,6 +23,12 @@ files:
 npmRebuild: false # no native modules
 publish: null # never uploads anything (releases are made by hand / in D8)
 
+# The AppImage's newer static runtime: it runs without libfuse2, which many current Linux systems no
+# longer install (the AppImage catalog flagged the old one, 12/11/2026). electron-builder still calls
+# this toolset "beta"; "0.0.0" is the old FUSE2 runtime to go back to.
+toolsets:
+  appimage: "1.0.3"
+
 # Hardening: the app binary can't be used to run other Node code or to be debugged from outside.
 electronFuses:
   runAsNode: false

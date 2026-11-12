@@ -116,7 +116,7 @@ export function filesToSetAside(kind) {
     case "settings":
       return ["data/settings.enc"];
     case "key":
-      return ["key.bin", "data/data.enc", "data/settings.enc"];
+      return ["key.bin", "key.plain", "data/data.enc", "data/settings.enc"];
     default:
       return [];
   }

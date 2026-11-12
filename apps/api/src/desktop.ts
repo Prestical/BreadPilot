@@ -24,7 +24,7 @@ if (!parent) throw new Error("desktop.ts runs only inside the BreadPilot desktop
 
 /** Shown in Settings when the operating system has no keyring to protect the OpenAI key with. */
 const WEAK_KEY_STORAGE =
-  "This computer has no keyring (such as GNOME Keyring or KWallet), so BreadPilot can't keep an OpenAI key safe here and won't save one. Install or unlock a keyring, then restart BreadPilot. The local AI works without a key.";
+  "No keyring was found on this computer (such as GNOME Keyring or KWallet). Without one, BreadPilot can't lock its files away safely: anyone who got a copy of them could read an OpenAI key and spend money on your account. That's why BreadPilot never saves a key here. The local AI works without a key. To use OpenAI, install or unlock a keyring, then restart BreadPilot: it moves its own key into the keyring on its own, and you can add your OpenAI key in Settings.";
 
 /** True when settings.enc exists and this key can't open it. */
 async function settingsLocked(file: string, key: Buffer): Promise<boolean> {

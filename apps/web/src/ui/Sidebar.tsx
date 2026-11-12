@@ -4,6 +4,7 @@ import { DEMOS } from "../demos";
 import { STATE_LABEL } from "../projects/progress";
 import { useApp } from "../store";
 import { UpdateNotice } from "./UpdateNotice";
+import { KeyringNotice } from "./KeyringNotice";
 import { Icon } from "./Icon";
 
 /** GitHub's mark (Octicons "mark-github", MIT licence), in the text colour. */
@@ -148,6 +149,7 @@ export function Sidebar() {
         </section>
       </div>
 
+      <KeyringNotice />
       <UpdateNotice />
       <div className="side-foot">
         <button type="button" className="nav-item settings-btn" data-tour="settings" title="Local AI, OpenAI, appearance, updates, privacy" onClick={() => setSettingsOpen(true)}>
