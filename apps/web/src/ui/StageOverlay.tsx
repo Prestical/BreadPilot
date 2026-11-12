@@ -10,13 +10,6 @@ import { projectView } from "../projects/view";
 import { useApp, viewedVersion } from "../store";
 import { aiLabel } from "./AiPicker";
 
-// One per kind of project the app can build: a first LED, a game on the display, Wi-Fi, a puzzle.
-const EXAMPLES = [
-  "Blink an LED",
-  "Snake on the OLED display, steered with 2 buttons",
-  "Scan nearby Wi-Fi networks and list them on the OLED",
-  "Simon Says with 4 colored LEDs and 4 buttons",
-];
 
 const ICON: Record<Tone, string> = { busy: "…", ok: "✓", warn: "!", bad: "✕" };
 /** A plan part's label and colour dot, from its pack (text.json names.plan / names.planDot). */
@@ -33,22 +26,12 @@ const planDefault = (kind: string, request: string) =>
 /** The start screen's parts line: each pack's names.greeting. */
 export const GREETING_PARTS = PACKS.flatMap((p) => (p.text?.names?.greeting ? [p.text.names.greeting] : [])).join(", ");
 
+/** The start card: short on purpose (user, 11/11/2026); the parts are listed in "Supported parts". */
 function Greeting() {
-  const setDraft = useApp((s) => s.setDraft);
   return (
     <section className="float-card greeting" aria-labelledby="greet-title">
       <h1 id="greet-title">What do you want to build?</h1>
       <p className="muted">Describe an idea. You get a safety-checked plan, step-by-step wiring and the code.</p>
-      <div className="chips" aria-label="Example ideas">
-        {EXAMPLES.map((x) => (
-          <button key={x} type="button" className="chip" onClick={() => setDraft(x)}>
-            {x}
-          </button>
-        ))}
-      </div>
-      <p className="muted small">
-        Parts: {GREETING_PARTS}, and the Pico's own LED, Wi-Fi and temperature sensor.
-      </p>
     </section>
   );
 }
@@ -69,11 +52,12 @@ function Progress() {
   const wait = useApp((s) => typicalWait(s.agent.project?.llm));
   const rows = timeline(events);
   return (
-    <section className="float-card progress" aria-live="polite" aria-busy="true">
+    <section className="float-card progress" aria-busy="true" aria-label="Working on it">
+      {/* The seconds counter is left out of the screen reader's live updates (it would be read every second). */}
       <p className="eyebrow">
-        Working on it · {model} {startedAt && <>· <Elapsed since={startedAt} /></>}
+        Working on it · {model} {startedAt && <span aria-hidden="true">· <Elapsed since={startedAt} /></span>}
       </p>
-      <ol className="timeline">
+      <ol className="timeline" aria-live="polite">
         {(rows.length ? rows : [{ text: "Starting…", tone: "busy" as Tone, detail: undefined }]).map((r, i) => (
           <li key={i} className={`tone-${r.tone}`}>
             <span className="ticon" aria-hidden="true">

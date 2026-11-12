@@ -36,6 +36,7 @@ export function ModelMenu() {
   const setSettingsOpen = useApp((s) => s.setSettingsOpen);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const current = AI_OPTIONS.find((o) => o.id === ai)!;
   // The status of the AI picked here, shown as a dot on the button and in words in the menu.
   const health = useHealth();
@@ -48,7 +49,12 @@ export function ModelMenu() {
     const away = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Escape gives the focus back to the button, so keyboard users aren't dropped at the page start.
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
     document.addEventListener("mousedown", away);
     document.addEventListener("keydown", esc);
     return () => {
@@ -59,11 +65,13 @@ export function ModelMenu() {
 
   return (
     <div className="model-menu" data-tour="model" ref={ref}>
+      {/* A button that shows a panel (disclosure), not an ARIA menu: menus promise arrow-key movement. */}
       <button
+        ref={buttonRef}
         type="button"
         className={`model-button tone-${status.tone}`}
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls="model-list"
         aria-label={`AI for new projects: ${current.label(options)}. ${status.text}`}
         title={status.text}
         onClick={() => setOpen(!open)}
@@ -72,7 +80,7 @@ export function ModelMenu() {
         {current.label(options)} <span aria-hidden="true">{open ? "▾" : "▴"}</span>
       </button>
       {open && (
-        <div className="model-list" role="menu" aria-label="AI for new projects">
+        <div className="model-list" id="model-list" role="group" aria-label="AI for new projects">
           <div className={`model-status tone-${status.tone}`} role="status">
             <p>
               <span className="status-dot" aria-hidden="true" />
@@ -92,8 +100,7 @@ export function ModelMenu() {
               <button
                 key={o.id}
                 type="button"
-                role="menuitemradio"
-                aria-checked={ai === o.id}
+                aria-pressed={ai === o.id}
                 className={`model-item${missing ? " locked" : ""}`}
                 onClick={() => {
                   // Without a key, the entry leads to where the key is added.

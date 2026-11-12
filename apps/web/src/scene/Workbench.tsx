@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { CameraControls } from "@react-three/drei";
-import { Box3, Vector3 } from "three";
+import { CameraControls, ContactShadows } from "@react-three/drei";
+import { Box3, Group, Vector3 } from "three";
 import type { Resolved } from "@breadpilot/circuit-core";
 import { Breadboard } from "./Breadboard";
 import { BOARD } from "./coords";
@@ -11,6 +11,7 @@ import { clampPopup, popupAnchor, type SceneModel } from "./model";
 import { PartView } from "./Parts";
 import { Pico } from "./Pico";
 import type { Target } from "./targets";
+import { useDark } from "../ui/theme";
 
 export interface HoverInfo {
   lines: string[];
@@ -36,7 +37,6 @@ export interface WorkbenchProps {
 
 
 
-const DARK = typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
 
 const OVERVIEW = { pos: [0, 175, 150] as const, target: [0, 0, 8] as const };
 /**
@@ -104,8 +104,23 @@ function PinToScreen({ anchor, target }: { anchor: [number, number, number]; tar
   return null;
 }
 
+/** Shadows must never catch the pointer: hovering a hole has to reach the hole under them. */
+function NoPointer({ children }: { children: React.ReactNode }) {
+  const ref = useRef<Group>(null);
+  useEffect(() => {
+    ref.current?.traverse((o) => {
+      o.raycast = () => {};
+    });
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
 export default function Workbench({ model, resolved, resetSignal, onHover, onTarget, popupTarget, onReady }: WorkbenchProps) {
   const anchor = popupTarget ? popupAnchor(model.focus) : null;
+  // Lights, table and shadows follow the theme (Settings → Appearance) without a reload.
+  const dark = useDark();
+  // What's on the board: the shadows are drawn again only when this changes.
+  const shadowKey = useMemo(() => [model.pico, ...model.parts.map((p) => `${p.key ?? p.part.ref}:${p.state}`), ...model.wires.map((w) => w.id)].join("|"), [model.pico, model.parts, model.wires]);
   const hoverTarget = (t: Target | null, e?: ThreeEvent<PointerEvent>) => {
     if (!t || !e) return onHover(null);
     onHover({ lines: describeTarget(t, resolved), x: e.nativeEvent.clientX, y: e.nativeEvent.clientY });
@@ -125,17 +140,24 @@ export default function Workbench({ model, resolved, resetSignal, onHover, onTar
       role="img"
     >
       {/* No scene background: the CSS gradient behind the canvas shows through (.viewport). */}
-      <hemisphereLight args={["#ffffff", "#8a8f99", DARK ? 1.7 : 1.4]} />
+      <hemisphereLight args={["#ffffff", "#8a8f99", dark ? 1.7 : 1.4]} />
       <directionalLight position={[60, 160, 90]} intensity={2.2} />
       <directionalLight position={[-80, 90, -60]} intensity={0.6} />
       {/* Soft light pool over the board, which gives the glossy table a gentle sheen. */}
-      <spotLight position={[0, 260, 120]} angle={0.55} penumbra={1} decay={0} intensity={DARK ? 1.6 : 0.8} />
+      <spotLight position={[0, 260, 120]} angle={0.55} penumbra={1} decay={0} intensity={dark ? 1.6 : 0.8} />
 
       {/* Table */}
       <mesh position={[0, -BOARD.height - 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
         <planeGeometry args={[900, 900]} />
-        <meshStandardMaterial color={DARK ? "#353d4b" : "#dfe4ea"} roughness={0.38} metalness={0.15} />
+        <meshStandardMaterial color={dark ? "#353d4b" : "#dfe4ea"} roughness={0.38} metalness={0.15} />
       </mesh>
+
+      {/* Soft contact shadows (user, 11/11/2026). Drawn once per board change (frames=1, re-keyed),
+          not every frame, so they cost nothing while the camera moves. */}
+      <NoPointer>
+        <ContactShadows key={`table-${shadowKey}-${dark ? "d" : "l"}`} frames={1} position={[(BOARD.minX + BOARD.maxX) / 2, -BOARD.height - 0.45, (BOARD.minZ + BOARD.maxZ) / 2]} scale={[BOARD.maxX - BOARD.minX + 40, BOARD.maxZ - BOARD.minZ + 40]} resolution={512} blur={3} far={BOARD.height + 30} opacity={dark ? 0.55 : 0.35} />
+        <ContactShadows key={`board-${shadowKey}`} frames={1} position={[(BOARD.minX + BOARD.maxX) / 2, 0.03, (BOARD.minZ + BOARD.maxZ) / 2]} scale={[BOARD.maxX - BOARD.minX, BOARD.maxZ - BOARD.minZ]} resolution={1024} blur={1.6} far={22} opacity={0.4} />
+      </NoPointer>
 
       <Breadboard highlights={model.highlights} onHover={hoverTarget} onClick={onTarget} />
       {model.pico !== "hidden" && (
@@ -145,7 +167,7 @@ export default function Workbench({ model, resolved, resetSignal, onHover, onTar
         <PartView key={p.key ?? p.part.ref} part={p.part} state={p.state} lit={p.lit ?? false} onHover={hoverPart} />
       ))}
       {model.wires.map((w) => (
-        <Jumper key={w.id} from={w.from} to={w.to} color={w.color} state={w.state} />
+        <Jumper key={w.id} from={w.from} to={w.to} color={w.color} state={w.state} lift={w.lift} />
       ))}
 
       {anchor && popupTarget && <PinToScreen anchor={anchor} target={popupTarget} />}

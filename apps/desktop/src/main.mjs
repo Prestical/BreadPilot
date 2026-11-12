@@ -276,6 +276,7 @@ function watchEngine() {
 let origin = "";
 const setOrigin = (url) => (origin = new URL(url).origin);
 
+
 async function createWindow(pairingUrl) {
   const saved = await readWindowState(WINDOW_FILE);
   const { bounds, maximized } = restoreBounds(saved, screen.getAllDisplays().map((d) => d.workArea));

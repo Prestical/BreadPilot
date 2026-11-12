@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { setThemeChoice, useThemeChoice, type ThemeChoice } from "./theme";
 import * as api from "../projects/api";
 import type { KeyCheck, ReasoningEffort, SettingsView } from "../projects/types";
 import { useApp } from "../store";
@@ -80,6 +81,7 @@ export function SettingsDialog() {
             <LocalAiSection view={view} onChange={changed} />
             <BrowserSection view={view} onChange={changed} />
             <DataSection dataHome={view.dataHome} />
+            <AppearanceSection />
             <Section title="Help" intro="A short walk through the app, one part at a time.">
               <button type="button" className="btn small-btn tour-again" onClick={() => setTourOpen(true)}>
                 Show the tour again
@@ -89,6 +91,28 @@ export function SettingsDialog() {
         )}
       </div>
     </dialog>
+  );
+}
+
+const THEMES: { id: ThemeChoice; label: string }[] = [
+  { id: "system", label: "Same as the computer" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
+
+/** M11 11.5: light or dark; saved on this computer only. */
+function AppearanceSection() {
+  const choice = useThemeChoice();
+  return (
+    <Section title="Appearance">
+      <div className="view-switch theme-switch" role="group" aria-label="Colour theme">
+        {THEMES.map((t) => (
+          <button key={t.id} type="button" aria-pressed={choice === t.id} onClick={() => setThemeChoice(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </Section>
   );
 }
 

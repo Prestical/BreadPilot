@@ -21,6 +21,8 @@ export function Sidebar() {
   const setMode = useApp((s) => s.setMode);
   const source = useApp((s) => s.source);
   const list = useApp((s) => s.agent.list);
+  const listState = useApp((s) => s.agent.listState);
+  const refreshList = useApp((s) => s.refreshList);
   const busy = useApp((s) => s.agent.busy);
   const openProject = useApp((s) => s.openProject);
   const removeProject = useApp((s) => s.removeProject);
@@ -29,6 +31,7 @@ export function Sidebar() {
   const open = useApp((s) => s.sidebarOpen);
   const setOpen = useApp((s) => s.setSidebarOpen);
   const setSettingsOpen = useApp((s) => s.setSettingsOpen);
+  const setPartsOpen = useApp((s) => s.setPartsOpen);
   const building = mode === "build";
 
   return (
@@ -57,12 +60,26 @@ export function Sidebar() {
         >
           <span aria-hidden="true">📘</span> Breadboard &amp; Pico 101
         </button>
+        <button type="button" className="nav-item" onClick={() => setPartsOpen(true)}>
+          <span aria-hidden="true">🧩</span> Supported parts
+        </button>
       </nav>
 
       <div className="side-scroll">
-        {list.length > 0 && (
-          <section>
-            <p className="side-head">Your projects</p>
+        <section>
+          <p className="side-head">Your projects</p>
+          {list.length === 0 && listState === "loading" ? (
+            <p className="muted small side-empty">Loading…</p>
+          ) : list.length === 0 && listState === "error" ? (
+            <p className="muted small side-empty">
+              Couldn't load your projects. They are still saved on this computer.{" "}
+              <button type="button" className="link-btn" onClick={() => void refreshList()}>
+                Try again
+              </button>
+            </p>
+          ) : list.length === 0 ? (
+            <p className="muted small side-empty">Nothing here yet. Describe an idea in the box at the bottom, or open an example below.</p>
+          ) : (
             <ul className="plist">
               {list.slice(0, 30).map((x) => (
                 <li key={x.id}>
@@ -94,8 +111,8 @@ export function Sidebar() {
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          )}
+        </section>
         <section data-tour="examples">
           <p className="side-head">Examples</p>
           <ul className="plist">

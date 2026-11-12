@@ -29,6 +29,8 @@ export interface Material {
   emissiveIntensity?: number;
   roughness?: number;
   metalness?: number;
+  /** Faceted shading: shows the ribs of a knurled shaft. */
+  flatShading?: boolean;
   transparent: boolean;
   opacity: number;
   map?: LabelSpec;
@@ -93,6 +95,9 @@ function led(part: ResolvedPart, state: ItemState, lit: boolean, v: Spec<"led-do
           { node: "mesh", position: [0, 2.5, 0], geometry: { type: "sphere", args: [2.5, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2] }, material: { kind: "standard", color, emissive: color, emissiveIntensity: lit ? 2 : 0, transparent: true, opacity, roughness: 0.2 } },
           // rim
           { node: "mesh", position: [0, -2.5, 0], geometry: { type: "cylinder", args: [2.9, 2.9, 0.8, 24] }, material: { kind: "standard", color, transparent: true, opacity } },
+          // inside the clear epoxy, like a real LED: the reflector cup holding the chip and the thin post
+          { node: "mesh", position: [0.6, -0.4, 0], noRaycast: true, geometry: { type: "box", args: [1.5, 1.4, 0.5] }, material: { kind: "standard", color: "#8d939b", metalness: 0.8, roughness: 0.35, transparent: true, opacity: opacity * 0.9 } },
+          { node: "mesh", position: [-0.7, -0.6, 0], noRaycast: true, geometry: { type: "box", args: [0.5, 1, 0.4] }, material: { kind: "standard", color: "#8d939b", metalness: 0.8, roughness: 0.35, transparent: true, opacity: opacity * 0.9 } },
           ...(lit ? [{ node: "light", color, intensity: 40, distance: 30 } as ShapeNode] : []),
         ],
         { hover: true },
@@ -142,20 +147,30 @@ function axial(part: ResolvedPart, state: ItemState, v: Spec<"axial">): ShapeNod
   };
 }
 
+/** A 6 mm tactile switch: black body, metal top plate with corner tabs, round plunger. */
 function button(part: ResolvedPart, state: ItemState, v: Spec<"tact-button">): ShapeNode {
   const legs = legsOf(part);
   const center = mid(Object.values(legs));
   const opacity = state === "ghost" ? 0.3 : 1;
   const t = opacity < 1;
+  const plate = v.plate ?? "#c3c8cf";
+  const metal = { kind: "standard" as const, color: plate, metalness: 0.85, roughness: 0.3, transparent: t, opacity };
   return {
     node: "group",
     children: [
-      ...Object.values(legs).map((p): ShapeNode => ({ node: "rod", from: p, to: [p[0], 1.6, p[2]], opacity })),
+      ...Object.values(legs).map((p): ShapeNode => ({ node: "rod", from: p, to: [p[0], 1.2, p[2]], opacity })),
       group(
-        [center[0], 2.4, center[2]],
+        [center[0], 0, center[2]],
         [
-          { node: "mesh", geometry: { type: "box", args: [6.2, 3.2, 6.2] }, pulse: true, material: { kind: "standard", color: v.body, emissive: "#ffffff", transparent: t, opacity } },
-          { node: "mesh", position: [0, 2.1, 0], geometry: { type: "cylinder", args: [1.8, 1.8, 1.4, 20] }, material: { kind: "standard", color: v.cap, transparent: t, opacity } },
+          { node: "mesh", position: [0, 2, 0], geometry: { type: "box", args: [6, 3.4, 6] }, pulse: true, material: { kind: "standard", color: v.body, emissive: "#ffffff", roughness: 0.6, transparent: t, opacity } },
+          // metal plate on top, bent down at the four sides like the real part
+          { node: "mesh", position: [0, 3.82, 0], geometry: { type: "box", args: [6.2, 0.25, 6.2] }, material: metal },
+          ...([[-1, 0], [1, 0], [0, -1], [0, 1]] as const).map(
+            ([x, z]): ShapeNode => ({ node: "mesh", position: [x * 3.05, 3.1, z * 3.05], geometry: { type: "box", args: [x ? 0.2 : 2.2, 1.3, z ? 0.2 : 2.2] }, material: metal }),
+          ),
+          // plunger: a short collar and the round cap you press
+          { node: "mesh", position: [0, 4.1, 0], geometry: { type: "cylinder", args: [1.9, 1.9, 0.4, 28] }, material: { kind: "standard", color: v.body, roughness: 0.5, transparent: t, opacity } },
+          { node: "mesh", position: [0, 4.85, 0], geometry: { type: "cylinder", args: [1.6, 1.7, 1.3, 28] }, material: { kind: "standard", color: v.cap, roughness: 0.45, transparent: t, opacity } },
         ],
         { hover: true },
       ),
@@ -163,22 +178,42 @@ function button(part: ResolvedPart, state: ItemState, v: Spec<"tact-button">): S
   };
 }
 
+/**
+ * A panel potentiometer like the common 16 mm ones (scaled to sit on the board): the three legs in
+ * their holes go up into a brown circuit-board tab with solder lugs; the round body sits beside it,
+ * toward the channel (the wires use the holes on the outer side); on top a hex nut, a threaded
+ * bushing and a ribbed metal shaft with its slot, plus the small anti-rotation pin.
+ */
 function knob(part: ResolvedPart, state: ItemState, v: Spec<"rotary-knob">): ShapeNode {
   const legs = legsOf(part);
-  const center = mid(Object.values(legs));
+  const pts = Object.values(legs);
+  const center = mid(pts);
   const opacity = state === "ghost" ? 0.3 : 1;
   const t = opacity < 1;
-  // The body sits a little toward the board's outer edge: right on the right half, left on the left.
-  const outward = center[0] < 0 ? -1 : 1;
+  const inward = center[0] < 0 ? 1 : -1; // toward the centre channel
+  const R = 5;
+  const spanZ = Math.max(...pts.map((p) => p[2])) - Math.min(...pts.map((p) => p[2])) + 3.2;
+  const metal = { kind: "standard" as const, color: v.knob, metalness: 0.9, roughness: 0.28, transparent: t, opacity };
+  const tab = v.tab ?? "#8a4b23";
   return {
     node: "group",
     children: [
-      ...Object.values(legs).map((p): ShapeNode => ({ node: "rod", from: p, to: [p[0], 2, p[2]], opacity })),
+      ...pts.map((p): ShapeNode => ({ node: "rod", from: p, to: [p[0], 2.6, p[2]], opacity })),
+      // brown circuit-board tab and its solder lugs, right over the legs
+      { node: "mesh", position: [center[0] + inward * 1.6, 2.6, center[2]], noRaycast: true, geometry: { type: "box", args: [4.6, 1, spanZ] }, material: { kind: "standard", color: tab, roughness: 0.75, transparent: t, opacity } },
+      ...pts.map((p): ShapeNode => ({ node: "mesh", position: [p[0], 3.2, p[2]], noRaycast: true, geometry: { type: "cylinder", args: [0.75, 0.75, 0.35, 14] }, material: metal })),
       group(
-        [center[0] + 1.5 * outward, 4, center[2]],
+        [center[0] + inward * (R + 1.6), 0, center[2]],
         [
-          { node: "mesh", geometry: { type: "box", args: [7, 4, 9.5] }, pulse: true, material: { kind: "standard", color: v.body, emissive: "#ffffff", transparent: t, opacity } },
-          { node: "mesh", position: [0, 3, 0], geometry: { type: "cylinder", args: [2.6, 2.6, 2.4, 20] }, material: { kind: "standard", color: v.knob, transparent: t, opacity } },
+          { node: "mesh", position: [0, 4.2, 0], geometry: { type: "cylinder", args: [R, R, 3.8, 40] }, pulse: true, material: { kind: "standard", color: v.body, emissive: "#ffffff", metalness: 0.55, roughness: 0.35, transparent: t, opacity } },
+          { node: "mesh", position: [0, 6.75, 0], geometry: { type: "cylinder", args: [3.6, 3.6, 1.3, 6] }, material: metal },
+          { node: "mesh", position: [0, 8.75, 0], geometry: { type: "cylinder", args: [2.5, 2.5, 2.7, 24] }, material: metal },
+          // thread ridges on the bushing
+          ...[7.9, 8.6, 9.3].map((y): ShapeNode => ({ node: "mesh", position: [0, y, 0], noRaycast: true, geometry: { type: "cylinder", args: [2.68, 2.68, 0.22, 24] }, material: metal })),
+          { node: "mesh", position: [0, 13.35, 0], geometry: { type: "cylinder", args: [1.8, 1.8, 6.5, 18] }, material: { ...metal, flatShading: true } },
+          { node: "mesh", position: [0, 16.5, 0], noRaycast: true, geometry: { type: "box", args: [3.7, 0.5, 0.7] }, material: { kind: "standard", color: "#3a3d42", roughness: 0.8, transparent: t, opacity } },
+          // anti-rotation pin beside the nut
+          { node: "mesh", position: [0, 6.9, -4.1], geometry: { type: "box", args: [1, 1.8, 0.8] }, material: metal },
         ],
         { hover: true },
       ),
@@ -210,6 +245,11 @@ function headerModule(part: ResolvedPart, state: ItemState, v: Spec<"header-modu
         [boardCenterX, OLED.height, center[2]],
         [
           { node: "mesh", geometry: { type: "box", args: [OLED.boardX, 1.6, OLED.boardZ] }, pulse: true, material: { kind: "standard", color: v.board.color, emissive: "#ffffff", roughness: 0.5, transparent: t, opacity } },
+          // plated mounting holes in the four corners
+          ...([[-1, -1], [-1, 1], [1, -1], [1, 1]] as const).flatMap(([x, z]): ShapeNode[] => [
+            { node: "mesh", position: [x * (OLED.boardX / 2 - 2.2), 0.81, z * (OLED.boardZ / 2 - 2.2)], noRaycast: true, geometry: { type: "cylinder", args: [1.35, 1.35, 0.05, 20] }, material: { kind: "standard", color: "#cfd3d8", metalness: 0.85, roughness: 0.3, transparent: t, opacity } },
+            { node: "mesh", position: [x * (OLED.boardX / 2 - 2.2), 0.83, z * (OLED.boardZ / 2 - 2.2)], noRaycast: true, geometry: { type: "cylinder", args: [0.75, 0.75, 0.05, 16] }, material: { kind: "standard", color: "#0b0d12", transparent: t, opacity } },
+          ]),
           ...(v.screen
             ? [
                 { node: "mesh", position: [-2, 1.1, 0], geometry: { type: "box", args: [OLED.glassX, 0.6, OLED.glassZ] }, material: { kind: "standard", color: "#05070d", roughness: 0.15, metalness: 0.3, transparent: t, opacity } } as ShapeNode,

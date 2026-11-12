@@ -16,6 +16,7 @@ import { Sidebar } from "./ui/Sidebar";
 import { StageOverlay } from "./ui/StageOverlay";
 import { StepCard, StepStrip } from "./ui/StepCard";
 import { VersionMenu } from "./ui/VersionMenu";
+import { PartsDialog } from "./ui/PartsDialog";
 
 // three.js is big: load the 3D view separately so the page shell paints first.
 const Workbench = lazy(() => import("./scene/Workbench"));
@@ -81,17 +82,26 @@ export function App() {
     if (last) void openProject(last);
   }, []);
 
-  // ← / → step through the build.
+  // ← / → step through the build. → on the last step opens the code (user, 11/11/2026: no reach for
+  // the mouse at the end); ← while the code is open goes back to the last step.
+  const lastStep = (view?.steps.length ?? 1) - 1;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
-      if (mode !== "build" || codeOpen || t instanceof HTMLSelectElement || t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
-      if (e.key === "ArrowRight") setStep(stepIndex + 1);
+      if (mode !== "build" || t instanceof HTMLSelectElement || t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      if (codeOpen) {
+        if (e.key === "ArrowLeft") setCodeOpen(false);
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        if (stepIndex >= lastStep && hasCode) setCodeOpen(true);
+        else setStep(stepIndex + 1);
+      }
       if (e.key === "ArrowLeft") setStep(stepIndex - 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [mode, codeOpen, stepIndex, setStep]);
+  }, [mode, codeOpen, stepIndex, setStep, lastStep, hasCode, setCodeOpen]);
 
   // While a run is in progress or a plan waits, the overlay card has the stage, not the step.
   const showSteps = !!view && !agent.busy && project?.state !== "AWAIT_APPROVAL";
@@ -109,6 +119,7 @@ export function App() {
       </a>
       <Sidebar />
       <SettingsDialog />
+      <PartsDialog />
       <SetupDialog />
       <Tour />
       {sidebarOpen && <div className="scrim" onClick={() => setSidebarOpen(false)} aria-hidden="true" />}

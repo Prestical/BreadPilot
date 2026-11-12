@@ -129,8 +129,9 @@ export interface TextTemplates {
 export type ViewSpec =
   | { shape: "led-dome"; legs: [string, string]; colorProp: string; colors: Record<string, string> }
   | { shape: "axial"; legs: [string, string]; body: string; bandsProp: string }
-  | { shape: "tact-button"; body: string; cap: string }
-  | { shape: "rotary-knob"; body: string; knob: string }
+  | { shape: "tact-button"; body: string; cap: string; plate?: string }
+  /** A panel potentiometer: round `body`, metal `knob` (nut, bushing, shaft), brown circuit-board `tab`. */
+  | { shape: "rotary-knob"; body: string; knob: string; tab?: string }
   | {
       shape: "header-module";
       pins: string[];
@@ -425,8 +426,8 @@ const viewFile: Check = (v, p) => {
   const shapes: Record<string, Check> = {
     "led-dome": obj({ shape: str, legs: arr(str, 2), colorProp: str, colors: record(color) }),
     axial: obj({ shape: str, legs: arr(str, 2), body: color, bandsProp: str }),
-    "tact-button": obj({ shape: str, body: color, cap: color }),
-    "rotary-knob": obj({ shape: str, body: color, knob: color }),
+    "tact-button": obj({ shape: str, body: color, cap: color, "plate?": color }),
+    "rotary-knob": obj({ shape: str, body: color, knob: color, "tab?": color }),
     "header-module": obj({
       shape: str,
       pins: arr(str, 16),

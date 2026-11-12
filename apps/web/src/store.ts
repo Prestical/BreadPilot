@@ -24,6 +24,8 @@ export interface AgentState {
   startedAt: number | null;
   error: string | null;
   list: ProjectSummary[];
+  /** M11 11.5: so an empty list isn't shown as "no projects" while loading or when loading failed. */
+  listState: "loading" | "ok" | "error";
 }
 
 export interface TutorialState {
@@ -54,6 +56,8 @@ interface AppState {
   sidebarOpen: boolean;
   /** The Settings dialog. */
   settingsOpen: boolean;
+  /** M11: the "Supported parts" list. */
+  partsOpen: boolean;
   /** The first-run setup (shown until it's finished or skipped). */
   setupOpen: boolean;
   /** The guided tour of the app (starts once after the setup; Settings can replay it). */
@@ -79,6 +83,7 @@ interface AppState {
   setCodeOpen(open: boolean): void;
   setSidebarOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
+  setPartsOpen(open: boolean): void;
   setSetupOpen(open: boolean): void;
   setTourOpen(open: boolean): void;
   setDraft(text: string): void;
@@ -267,13 +272,14 @@ export const useApp = create<AppState>((set, get) => {
   codeOpen: false,
   sidebarOpen: false,
   settingsOpen: false,
+  partsOpen: false,
   setupOpen: false,
   tourOpen: false,
   draft: "",
   power: loadPower(),
   ai: loadAi(),
   aiOptions: null,
-  agent: { project: null, events: [], busy: false, startedAt: null, error: null, list: [] },
+  agent: { project: null, events: [], busy: false, startedAt: null, error: null, list: [], listState: "loading" },
   tut: { chapter: 0, step: 0, ...freshStep, completed: loadCompleted(), finished: false },
 
   setMode: (mode) => set({ mode, hover: null }),
@@ -297,6 +303,7 @@ export const useApp = create<AppState>((set, get) => {
   setCodeOpen: (codeOpen) => set({ codeOpen }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen, sidebarOpen: false }),
+  setPartsOpen: (partsOpen) => set({ partsOpen, sidebarOpen: false }),
   setSetupOpen: (setupOpen) => set({ setupOpen }),
   // The tour points at the build screen's parts, so it starts there with the sidebar visible.
   setTourOpen: (tourOpen) => set(tourOpen ? { tourOpen, mode: "build", settingsOpen: false, codeOpen: false } : { tourOpen }),
@@ -418,9 +425,10 @@ export const useApp = create<AppState>((set, get) => {
   },
   refreshList: async () => {
     try {
-      patchAgent({ list: await api.listProjects() });
+      patchAgent({ list: await api.listProjects(), listState: "ok" });
     } catch {
-      /* the list is a convenience; the API badge shows when it's down */
+      // Projects already shown stay; an empty list says it couldn't load (not "no projects").
+      patchAgent({ listState: "error" });
     }
   },
   newProject: () => {

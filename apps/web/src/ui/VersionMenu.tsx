@@ -25,13 +25,18 @@ export function VersionMenu({ p }: { p: ApiProject }) {
   const busy = useApp((s) => s.agent.busy);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
     document.addEventListener("mousedown", away);
     document.addEventListener("keydown", esc);
     return () => {
@@ -46,14 +51,14 @@ export function VersionMenu({ p }: { p: ApiProject }) {
   const shown = viewVersion ?? current;
   return (
     <div className="version-menu" ref={ref}>
-      <button type="button" className="version-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button ref={buttonRef} type="button" className="version-button" aria-expanded={open} aria-controls="version-list" onClick={() => setOpen(!open)}>
         Version {shown}
         {shown !== current ? " (old)" : ""} <span aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
-        <div className="version-list" role="menu" aria-label="Versions of this project">
+        <ul className="version-list" id="version-list" aria-label="Versions of this project">
           {[...versions].reverse().map((v) => (
-            <div key={v.n} className={`version-item${v.n === shown ? " shown" : ""}`} role="menuitem">
+            <li key={v.n} className={`version-item${v.n === shown ? " shown" : ""}`} aria-current={v.n === shown ? "true" : undefined}>
               <p>
                 <strong>Version {v.n}</strong>
                 {v.n === current && <span className="model-tag">Current</span>} {versionLabel(v)}
@@ -88,9 +93,9 @@ export function VersionMenu({ p }: { p: ApiProject }) {
                   </button>
                 </div>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

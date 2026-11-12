@@ -14,13 +14,13 @@ export function wireHex(color: string): string {
   return COLOR_HEX[color] ?? color;
 }
 
-/** A jumper wire arcing between two holes, with plastic plug ends. */
-export function Jumper({ from, to, color, state }: { from: Vec3; to: Vec3; color: string; state: JumperState }) {
+/** A jumper wire arcing between two holes, with plastic plug ends. `lift`: arc height (wireLifts). */
+export function Jumper({ from, to, color, state, lift: given }: { from: Vec3; to: Vec3; color: string; state: JumperState; lift?: number }) {
   const geometry = useMemo(() => {
     const a = new Vector3(...from);
     const b = new Vector3(...to);
     const dist = a.distanceTo(b);
-    const lift = 5 + Math.min(18, dist * 0.18);
+    const lift = given ?? 5 + Math.min(18, dist * 0.18);
     const curve = new CatmullRomCurve3([
       a.clone().setY(4),
       a.clone().setY(lift * 0.8),
@@ -30,7 +30,7 @@ export function Jumper({ from, to, color, state }: { from: Vec3; to: Vec3; color
     ]);
     return new TubeGeometry(curve, 48, 0.55, 8, false);
     // Keyed by coordinates, not array identity: the scene model is rebuilt on every state change.
-  }, [from.join(","), to.join(",")]);
+  }, [from.join(","), to.join(","), given]);
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   const material = useRef<MeshStandardMaterial>(null);

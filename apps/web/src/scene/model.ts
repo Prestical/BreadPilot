@@ -9,6 +9,8 @@ export interface SceneWire {
   to: Vec3;
   color: string;
   state: JumperState;
+  /** Arc height (see wireLifts): a wire that crosses a lower one goes over it. */
+  lift?: number;
 }
 
 export interface ScenePart {
@@ -40,12 +42,60 @@ export function endPos(end: ResolvedEnd, other: ResolvedEnd): Vec3 {
   return railPos(end.rail, end.row ?? endRow(other) ?? 32);
 }
 
+/** A jumper's own arc height from its length (the same formula Jumper used before wireLifts). */
+export const baseLift = (from: Vec3, to: Vec3) => 5 + Math.min(18, Math.hypot(to[0] - from[0], to[2] - from[2]) * 0.18);
+
+/** Closest distance between two segments seen from above (x, z). */
+function segmentGap(a: Vec3, b: Vec3, c: Vec3, d: Vec3): number {
+  const P = (p: Vec3) => [p[0], p[2]] as const;
+  const [A, B, C, D] = [P(a), P(b), P(c), P(d)];
+  const cross = (o: readonly number[], p: readonly number[], q: readonly number[]) => (p[0]! - o[0]!) * (q[1]! - o[1]!) - (p[1]! - o[1]!) * (q[0]! - o[0]!);
+  const d1 = cross(C, D, A), d2 = cross(C, D, B), d3 = cross(A, B, C), d4 = cross(A, B, D);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  const toSeg = (p: readonly number[], s: readonly number[], e: readonly number[]) => {
+    const vx = e[0]! - s[0]!, vz = e[1]! - s[1]!;
+    const len = vx * vx + vz * vz || 1;
+    const t = Math.max(0, Math.min(1, ((p[0]! - s[0]!) * vx + (p[1]! - s[1]!) * vz) / len));
+    return Math.hypot(p[0]! - (s[0]! + t * vx), p[1]! - (s[1]! + t * vz));
+  };
+  return Math.min(toSeg(A, C, D), toSeg(B, C, D), toSeg(C, A, B), toSeg(D, A, B));
+}
+
+/**
+ * Arc heights for all the wires on a board at once (user, 11/11/2026: crossing wires went through
+ * each other). Seen from above, wires that cross or run within a tube's width of each other must not
+ * share a height: shorter wires stay low, and a wire that meets a lower one is lifted until it clears
+ * it. A jumper rises straight up at its ends to 80 % of its height, so clearing means 80 % of the
+ * upper one is at least 2.2 mm above the lower one's top. Wires that share a hole are left alone.
+ */
+export function wireLifts(segs: { id: string; from: Vec3; to: Vec3 }[]): Map<string, number> {
+  const same = (p: Vec3, q: Vec3) => Math.abs(p[0] - q[0]) < 0.01 && Math.abs(p[2] - q[2]) < 0.01;
+  const order = [...segs].sort((x, y) => Math.hypot(x.to[0] - x.from[0], x.to[2] - x.from[2]) - Math.hypot(y.to[0] - y.from[0], y.to[2] - y.from[2]));
+  const lifts = new Map<string, number>();
+  const placed: typeof segs = [];
+  for (const w of order) {
+    let lift = baseLift(w.from, w.to);
+    for (const o of placed) {
+      const shared = same(w.from, o.from) || same(w.from, o.to) || same(w.to, o.from) || same(w.to, o.to);
+      if (shared || segmentGap(w.from, w.to, o.from, o.to) > 1.4) continue;
+      lift = Math.max(lift, (lifts.get(o.id)! + 2.2) / 0.8);
+    }
+    lifts.set(w.id, lift);
+    placed.push(w);
+  }
+  return lifts;
+}
+
 export function resolvedWires(resolved: Resolved, wires: Wire[], state: (index: number) => JumperState | null): SceneWire[] {
-  return resolved.wires.flatMap((w) => {
+  // Heights from every wire of the build (not only the ones shown yet), so a wire keeps its height
+  // while the steps add the others.
+  const all = resolved.wires.map((w) => ({ id: `w${w.index}`, from: endPos(w.ends[0], w.ends[1]), to: endPos(w.ends[1], w.ends[0]) }));
+  const lifts = wireLifts(all);
+  return resolved.wires.flatMap((w, i) => {
     const s = state(w.index);
     if (!s) return [];
-    const [a, b] = w.ends;
-    return [{ id: `w${w.index}`, from: endPos(a, b), to: endPos(b, a), color: wires[w.index]?.color ?? "yellow", state: s }];
+    const { from, to, id } = all[i]!;
+    return [{ id, from, to, color: wires[w.index]?.color ?? "yellow", state: s, lift: lifts.get(id) }];
   });
 }
 
