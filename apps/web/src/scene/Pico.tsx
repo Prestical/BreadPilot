@@ -27,7 +27,7 @@ export interface PicoProps {
 /** A plain box or cylinder on the Pico, sharing its ghost opacity (scenery: never catches the pointer). */
 function Bit({ at, box, cyl, color, metal = false, opacity, rough = 0.5 }: { at: [number, number, number]; box?: [number, number, number]; cyl?: [number, number, number, number]; color: string; metal?: boolean; opacity: number; rough?: number }) {
   return (
-    <mesh position={at} raycast={() => null}>
+    <mesh position={at} raycast={() => null} castShadow={opacity >= 1 && (box ? box[1] : cyl![2]) > 0.3} receiveShadow>
       {box ? <boxGeometry args={box} /> : <cylinderGeometry args={cyl} />}
       <meshStandardMaterial color={color} metalness={metal ? 0.85 : 0} roughness={metal ? 0.3 : rough} transparent={opacity < 1} opacity={opacity} />
     </mesh>
@@ -53,7 +53,7 @@ export function Pico({ showLabels, highlights, ghost = false, onHover, onClick }
     <group>
       {/* Black plastic header strips that sit on the breadboard */}
       {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * 3.5 * PITCH, 1.25, PICO.centerZ]} raycast={() => null}>
+        <mesh key={side} position={[side * 3.5 * PITCH, 1.25, PICO.centerZ]} raycast={() => null} castShadow={!ghost}>
           <boxGeometry args={[PITCH, 2.5, PITCH * 20]} />
           <meshStandardMaterial color="#1d1f23" transparent={transparent} opacity={opacity} />
         </mesh>
@@ -62,6 +62,8 @@ export function Pico({ showLabels, highlights, ghost = false, onHover, onClick }
       {/* PCB */}
       <mesh
         position={[0, PICO.pcbY, PICO.centerZ]}
+        castShadow={!ghost}
+        receiveShadow
         onPointerMove={(e) => {
           e.stopPropagation();
           onHover(null);

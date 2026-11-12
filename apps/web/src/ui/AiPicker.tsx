@@ -5,6 +5,7 @@ import { useHealth } from "../useHealth";
 import { statusView } from "./status";
 import { modelName } from "./labels";
 import { localLabel } from "./modelList";
+import { Icon } from "./Icon";
 
 interface Option {
   id: AiChoice;
@@ -77,7 +78,7 @@ export function ModelMenu() {
         onClick={() => setOpen(!open)}
       >
         <span className="status-dot" aria-hidden="true" />
-        {current.label(options)} <span aria-hidden="true">{open ? "▾" : "▴"}</span>
+        {current.label(options)} <Icon name={open ? "chevron-down" : "chevron-up"} size={14} />
       </button>
       {open && (
         <div className="model-list" id="model-list" role="group" aria-label="AI for new projects">
@@ -110,7 +111,7 @@ export function ModelMenu() {
                 }}
               >
                 <span className="model-check" aria-hidden="true">
-                  {ai === o.id ? "✓" : missing ? "🔒" : ""}
+                  {ai === o.id ? <Icon name="check" size={14} /> : missing ? <Icon name="lock" size={14} /> : null}
                 </span>
                 <span>
                   <span className="model-name">

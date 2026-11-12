@@ -1,5 +1,6 @@
 import type { PowerMode } from "@breadpilot/circuit-core";
 import { currentPower, useApp } from "../store";
+import { Icon } from "../ui/Icon";
 
 const OPTIONS: { mode: PowerMode; label: string; help: string }[] = [
   {
@@ -22,7 +23,7 @@ export function PowerToggle() {
   return (
     <div className="power-toggle" data-tour="power" role="group" aria-label="Power wiring (both modes use the Pico's USB power)">
       <span className="power-label" aria-hidden="true">
-        ⚡ Power
+        <Icon name="bolt" size={14} /> Power
       </span>
       {OPTIONS.map((o) => (
         <button key={o.mode} type="button" aria-pressed={power === o.mode} title={o.help} disabled={busy} onClick={() => void setPower(o.mode)}>

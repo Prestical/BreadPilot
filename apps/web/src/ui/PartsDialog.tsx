@@ -4,6 +4,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { PACKS } from "@breadpilot/circuit-core";
 import { useApp } from "../store";
+import { Icon } from "./Icon";
 
 const PartPreview = lazy(() => import("../scene/PartPreview"));
 
@@ -29,7 +30,7 @@ export function PartsDialog() {
       <header className="settings-head">
         <h2 id="parts-title">Supported parts</h2>
         <button type="button" className="icon-btn" aria-label="Close the parts list" onClick={() => setOpen(false)}>
-          ✕
+          <Icon name="x" />
         </button>
       </header>
       <div className="settings-body">

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { ApiProject } from "../projects/types";
 import { CodePanel } from "../steps/CodePanel";
 import { useApp } from "../store";
+import { Icon } from "./Icon";
 
 /**
  * The code view: slides in from the right over the 3D stage (and back out to the right), so the
@@ -25,7 +26,7 @@ export function CodeSide({ p, open }: { p: ApiProject; open: boolean }) {
         <h2>{p.title}</h2>
         {/* Same spot and look as "</> Code", so the way back is where the way in was. */}
         <button type="button" className="tool-btn code-btn code-view-back" onClick={() => setCodeOpen(false)}>
-          ← Back to 3D
+          <Icon name="arrow-left" /> Back to 3D
         </button>
       </header>
       <CodePanel p={p} />

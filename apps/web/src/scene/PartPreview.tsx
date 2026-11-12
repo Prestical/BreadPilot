@@ -4,9 +4,11 @@
 import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { layoutProject, resolveBuild } from "@breadpilot/circuit-core";
+import { layoutProject, packByKind, resolveBuild } from "@breadpilot/circuit-core";
 import { holePos } from "./coords";
 import { PartView } from "./Parts";
+import { StudioLights } from "./Studio";
+import { useDark } from "../ui/theme";
 
 export default function PartPreview({ kind, label }: { kind: string; label: string }) {
   const parts = useMemo(() => resolveBuild(layoutProject([{ kind }]).build).resolved?.parts ?? [], [kind]);
@@ -15,11 +17,15 @@ export default function PartPreview({ kind, label }: { kind: string; label: stri
     const n = pts.length || 1;
     return pts.reduce<[number, number, number]>((a, p) => [a[0] + p[0] / n, a[1] + p[1] / n, a[2] + p[2] / n], [0, 0, 0]);
   }, [parts]);
-  const size = kind === "oled" ? 70 : 34;
+  const size = kind === "oled" ? 70 : kind === "buzzer" ? 60 : kind === "dht11" ? 46 : 34;
+  const dark = useDark();
+  // Parts whose front faces the centre channel (the buzzer module, the DHT11) are first shown from that side.
+  const shape = packByKind(kind)?.view?.shape;
+  const side = shape === "upright-module" || shape === "grid-sensor" ? -1 : 1;
+  const lookY = kind === "buzzer" ? 16 : kind === "dht11" ? 8 : 4;
   return (
-    <Canvas frameloop="demand" dpr={[1, 2]} camera={{ fov: 35, position: [center[0] + size * 0.55, size * 0.8, center[2] + size * 0.9] }} aria-label={`3D view of ${label}`} role="img">
-      <hemisphereLight args={["#ffffff", "#8a8f99", 1.6]} />
-      <directionalLight position={[40, 120, 60]} intensity={2.2} />
+    <Canvas frameloop="demand" dpr={[1, 2]} camera={{ fov: 35, position: [center[0] + side * size * 0.55, size * 0.8, center[2] + size * 0.9] }} aria-label={`3D view of ${label}`} role="img">
+      <StudioLights dark={dark} />
       {/* a small piece of breadboard under the part */}
       <mesh position={[center[0], -1, center[2]]} raycast={() => null}>
         <boxGeometry args={[size * 1.1, 2, size * 0.9]} />
@@ -29,7 +35,7 @@ export default function PartPreview({ kind, label }: { kind: string; label: stri
       {parts.map((p) => (
         <PartView key={p.ref} part={p} state="done" onHover={() => {}} />
       ))}
-      <OrbitControls target={[center[0], 4, center[2]]} enablePan={false} enableZoom={false} />
+      <OrbitControls target={[center[0], lookY, center[2]]} enablePan={false} enableZoom={false} />
     </Canvas>
   );
 }

@@ -5,6 +5,7 @@ import { useApp } from "../store";
 import { OpenAiSection } from "./Settings";
 import { LocalModels } from "./LocalModels";
 import { ModelDownloads } from "./ModelDownloads";
+import { Icon } from "./Icon";
 
 
 /**
@@ -113,8 +114,8 @@ function Welcome() {
         Describe a hardware project in plain words, like <em>“blink an LED when I press a button”</em>. BreadPilot plans it, checks the wiring for safety, shows every step on a 3D breadboard and writes the MicroPython code
         for your microcontroller.
       </p>
-      <p>An AI turns your idea into a plan and code. Next you choose which one: a free local AI on this computer, or OpenAI. You can change this any time in ⚙ Settings.</p>
-      <p className="muted small">🔒 Your projects and settings are saved encrypted on this computer.</p>
+      <p>An AI turns your idea into a plan and code. Next you choose which one: a free local AI on this computer, or OpenAI. You can change this any time in Settings.</p>
+      <p className="muted small"><Icon name="lock" size={14} /> Your projects and settings are saved encrypted on this computer.</p>
     </div>
   );
 }
@@ -144,9 +145,9 @@ function Done({ view }: { view: SettingsView | null }) {
       <ul>
         <li>Pick the AI for each project in the model menu next to the box{hasKey ? `: Local AI or ${view?.openai.model}` : ""}.</li>
         <li>New to breadboards? Start with “Breadboard &amp; Pico 101” in the sidebar.</li>
-        <li>⚙ next to the status line holds every setting from this setup.</li>
+        <li>Settings, at the bottom of the project list, holds every setting from this setup.</li>
       </ul>
-      <p className="muted small">⚠️ BreadPilot checks the wiring, but always look over your circuit before plugging in the USB cable.</p>
+      <p className="muted small"><Icon name="alert" size={14} /> BreadPilot checks the wiring, but always look over your circuit before plugging in the USB cable.</p>
     </div>
   );
 }

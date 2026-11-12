@@ -7,6 +7,7 @@ import { LocalModels } from "./LocalModels";
 import { ModelDownloads } from "./ModelDownloads";
 import { dataKeysText } from "./dataKeys";
 import { SETTINGS_TABS, tabForKey, type SettingsTab } from "./settingsTabs";
+import { Icon } from "./Icon";
 
 const EFFORTS: { id: ReasoningEffort; label: string }[] = [
   { id: "none", label: "None (fastest)" },
@@ -81,7 +82,7 @@ export function SettingsDialog() {
       <header className="settings-head">
         <h2 id="settings-title">Settings</h2>
         <button type="button" className="icon-btn" aria-label="Close settings" onClick={() => setOpen(false)}>
-          ✕
+          <Icon name="x" />
         </button>
       </header>
       <div className="settings-frame">

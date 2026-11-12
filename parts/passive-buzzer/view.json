@@ -1,0 +1,7 @@
+{
+  "shape": "upright-module",
+  "pins": ["gnd", "io", "vcc"],
+  "board": { "size": [13, 32], "color": "#1d3c8f", "note": "Not measured: the usual size of these 3-pin buzzer modules. The board stands upright on its pin header." },
+  "buzzer": { "radius": 6, "height": 8.5, "color": "#17181b" },
+  "labels": ["GND", "I/O", "VCC"]
+}

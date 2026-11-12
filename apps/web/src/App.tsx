@@ -18,6 +18,7 @@ import { StageOverlay } from "./ui/StageOverlay";
 import { StepCard, StepStrip } from "./ui/StepCard";
 import { VersionMenu } from "./ui/VersionMenu";
 import { PartsDialog } from "./ui/PartsDialog";
+import { Icon } from "./ui/Icon";
 
 // three.js is big: load the 3D view separately so the page shell paints first.
 const Workbench = lazy(() => import("./scene/Workbench"));
@@ -155,14 +156,14 @@ export function App() {
         <div className="stage-top">
           <div className="view-tools">
             <button type="button" className="icon-btn menu-btn" aria-label="Show projects" onClick={() => setSidebarOpen(true)}>
-              ☰
+              <Icon name="menu" />
             </button>
             {mode === "build" && <PowerToggle />}
             <button type="button" data-tour="view" onClick={toggleLabels} aria-pressed={showLabels}>
-              {showLabels ? "Hide pin labels" : "Show pin labels"}
+              <Icon name="tag" /> {showLabels ? "Hide pin labels" : "Show pin labels"}
             </button>
             <button type="button" onClick={resetCamera}>
-              Reset view
+              <Icon name="reset" /> Reset view
             </button>
           </div>
           {head && (
@@ -175,18 +176,18 @@ export function App() {
           <div className="view-tools right">
             {mode === "tutorial" && (
               <button type="button" onClick={() => setMode("build")}>
-                Back to building
+                <Icon name="arrow-left" /> Back to building
               </button>
             )}
             {/* M11: the whole project (every version) as a file, to keep or to open on another computer. */}
             {mode === "build" && project && !agent.busy && !codeOpen && (
               <a className="tool-btn" href={exportUrl(project.id)} download title="Save this project as a file you can open again in BreadPilot">
-                Export
+                <Icon name="export" /> Export
               </a>
             )}
             {hasCode && !codeOpen && (
               <button type="button" className="code-btn" onClick={() => setCodeOpen(true)}>
-                {"</>"} Code
+                <Icon name="code" /> Code
               </button>
             )}
           </div>
@@ -198,7 +199,7 @@ export function App() {
             {narrow && stepCard}
             {showSteps && <StepStrip steps={view.steps} />}
             <PromptBar />
-            <p className="view-help muted small">Drag to rotate · scroll to zoom · right-drag to pan · hover a hole for its connections</p>
+            <p className="view-help small">Drag to rotate · scroll to zoom · right-drag to pan · hover a hole for its connections</p>
           </div>
         )}
 

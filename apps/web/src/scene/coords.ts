@@ -23,9 +23,13 @@ export const railPos = (rail: RailId, row: number, y = 0): Vec3 => [railX(rail),
 export const BOARD = {
   minX: (-4.6 - CENTER) * PITCH,
   maxX: (15.6 - CENTER) * PITCH,
-  minZ: rowZ(0.2),
-  maxZ: rowZ(ROWS + 0.8),
+  // 1.5 pitches past the first and last row: 165 mm long, like a real 830-point board, with room
+  // for the printed column letters.
+  minZ: rowZ(-0.5),
+  maxZ: rowZ(ROWS + 1.5),
   height: 8.5,
+  /** The centre channel: a groove between columns e and f. */
+  channel: { width: 3.2, depth: 3 },
 };
 
 /** Pico PCB placement (pins in rows 1-20, columns c and h). */

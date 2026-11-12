@@ -10,6 +10,7 @@ import { Jumper } from "./Jumper";
 import { clampPopup, popupAnchor, type SceneModel } from "./model";
 import { PartView } from "./Parts";
 import { Pico } from "./Pico";
+import { Desk, ShadowsOnChange, StudioLights } from "./Studio";
 import type { Target } from "./targets";
 import { useDark } from "../ui/theme";
 
@@ -117,7 +118,7 @@ function NoPointer({ children }: { children: React.ReactNode }) {
 
 export default function Workbench({ model, resolved, resetSignal, onHover, onTarget, popupTarget, onReady }: WorkbenchProps) {
   const anchor = popupTarget ? popupAnchor(model.focus) : null;
-  // Lights, table and shadows follow the theme (Settings → Appearance) without a reload.
+  // Lights, desk and shadows follow the theme (Settings → Appearance) without a reload.
   const dark = useDark();
   // What's on the board: the shadows are drawn again only when this changes.
   const shadowKey = useMemo(() => [model.pico, ...model.parts.map((p) => `${p.key ?? p.part.ref}:${p.state}`), ...model.wires.map((w) => w.id)].join("|"), [model.pico, model.parts, model.wires]);
@@ -134,29 +135,21 @@ export default function Workbench({ model, resolved, resetSignal, onHover, onTar
     <Canvas
       camera={{ fov: 40, near: 1, far: 2000, position: [...OVERVIEW.pos] }}
       dpr={[1, 2]}
+      shadows="percentage"
       onPointerMissed={() => onHover(null)}
       onCreated={() => requestAnimationFrame(() => onReady?.())}
       aria-label="3D view of the breadboard and Raspberry Pi Pico 2 W"
       role="img"
     >
       {/* No scene background: the CSS gradient behind the canvas shows through (.viewport). */}
-      <hemisphereLight args={["#ffffff", "#8a8f99", dark ? 1.7 : 1.4]} />
-      <directionalLight position={[60, 160, 90]} intensity={2.2} />
-      <directionalLight position={[-80, 90, -60]} intensity={0.6} />
-      {/* Soft light pool over the board, which gives the glossy table a gentle sheen. */}
-      <spotLight position={[0, 260, 120]} angle={0.55} penumbra={1} decay={0} intensity={dark ? 1.6 : 0.8} />
+      <StudioLights dark={dark} shadows />
+      <ShadowsOnChange drawKey={`${shadowKey}-${dark ? "d" : "l"}`} />
+      <Desk dark={dark} />
 
-      {/* Table */}
-      <mesh position={[0, -BOARD.height - 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-        <planeGeometry args={[900, 900]} />
-        <meshStandardMaterial color={dark ? "#353d4b" : "#dfe4ea"} roughness={0.38} metalness={0.15} />
-      </mesh>
-
-      {/* Soft contact shadows (user, 11/11/2026). Drawn once per board change (frames=1, re-keyed),
-          not every frame, so they cost nothing while the camera moves. */}
+      {/* A soft dark patch where the board touches the mat, on top of the main light's shadows.
+          Drawn once per board change (frames=1, re-keyed), not every frame. */}
       <NoPointer>
-        <ContactShadows key={`table-${shadowKey}-${dark ? "d" : "l"}`} frames={1} position={[(BOARD.minX + BOARD.maxX) / 2, -BOARD.height - 0.45, (BOARD.minZ + BOARD.maxZ) / 2]} scale={[BOARD.maxX - BOARD.minX + 40, BOARD.maxZ - BOARD.minZ + 40]} resolution={512} blur={3} far={BOARD.height + 30} opacity={dark ? 0.55 : 0.35} />
-        <ContactShadows key={`board-${shadowKey}`} frames={1} position={[(BOARD.minX + BOARD.maxX) / 2, 0.03, (BOARD.minZ + BOARD.maxZ) / 2]} scale={[BOARD.maxX - BOARD.minX, BOARD.maxZ - BOARD.minZ]} resolution={1024} blur={1.6} far={22} opacity={0.4} />
+        <ContactShadows key={`table-${shadowKey}-${dark ? "d" : "l"}`} frames={1} position={[(BOARD.minX + BOARD.maxX) / 2, -BOARD.height + 0.06, (BOARD.minZ + BOARD.maxZ) / 2]} scale={[BOARD.maxX - BOARD.minX + 40, BOARD.maxZ - BOARD.minZ + 40]} resolution={512} blur={3} far={BOARD.height + 30} opacity={dark ? 0.45 : 0.3} />
       </NoPointer>
 
       <Breadboard highlights={model.highlights} onHover={hoverTarget} onClick={onTarget} />

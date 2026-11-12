@@ -9,4 +9,7 @@
 No datasheet: the shop links none and the switch has no part number beyond "IC206". No electrical
 rating is used (the Pico's pull-up current is a few tens of microamps).
 
-Reviewed: by the user, 11/11/2026 (written by Claude the same day). The 3D shape is a grey box until M15 step 15.5.
+Reviewed: by the user, 11/11/2026 (written by Claude the same day).
+
+3D shape (`view.json`): the body and slider sizes are those of common small slide switches, not
+measured on the user's switch.

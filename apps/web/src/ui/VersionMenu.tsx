@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ApiProject, ProjectVersion } from "../projects/types";
 import { currentVersionOf, useApp } from "../store";
 import { modelName } from "./labels";
+import { Icon } from "./Icon";
 
 /** "the first version", "“make it blink” (from version 1)" when made from an older one. */
 export function versionLabel(v: ProjectVersion): string {
@@ -53,7 +54,7 @@ export function VersionMenu({ p }: { p: ApiProject }) {
     <div className="version-menu" ref={ref}>
       <button ref={buttonRef} type="button" className="version-button" aria-expanded={open} aria-controls="version-list" onClick={() => setOpen(!open)}>
         Version {shown}
-        {shown !== current ? " (old)" : ""} <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        {shown !== current ? " (old)" : ""} <Icon name={open ? "chevron-up" : "chevron-down"} size={12} />
       </button>
       {open && (
         <ul className="version-list" id="version-list" aria-label="Versions of this project">

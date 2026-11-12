@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { DriverFile } from "@breadpilot/circuit-core";
+import { Icon } from "../ui/Icon";
 
 /** File-name-safe version of the project title, e.g. "Wi-Fi Scanner" → "wi-fi-scanner". */
 export function uf2Name(title: string): string {
@@ -57,7 +58,7 @@ export function PicoBuild({ title, code, drivers, blocked }: Props) {
       <div className="code-head">
         <span className="eyebrow">Put it on the Pico</span>
         <button type="button" className="btn primary small-btn" disabled={!!blocked || state.busy} title={blocked ?? undefined} onClick={() => void build()}>
-          {state.busy ? "Building…" : "⬇ Build for Pico"}
+          {state.busy ? "Building…" : <><Icon name="download" /> Build for Pico</>}
         </button>
       </div>
       {blocked && <p className="small muted">{blocked}</p>}
@@ -93,7 +94,7 @@ export function PicoBuild({ title, code, drivers, blocked }: Props) {
         </p>
       </details>
       <p className="small warn-note">
-        ⚠ Erases other files on the Pico.
+        <Icon name="alert" size={14} /> Erases other files on the Pico.
       </p>
     </section>
   );

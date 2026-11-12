@@ -3,6 +3,7 @@ import { useApp } from "../store";
 import { editKey, loadEdit } from "../steps/codeEdits";
 import { aiLabel, ModelMenu } from "./AiPicker";
 import { usageText } from "./labels";
+import { Icon } from "./Icon";
 
 /**
  * The one text box, at the bottom of the 3D stage. While a plan waits for approval it sends a
@@ -125,11 +126,11 @@ export function PromptBar() {
             void stop();
           }}
         >
-          ■
+          <Icon name="stop" />
         </button>
       ) : (
         <button type="submit" className="send" disabled={busy || text.length < 3} aria-label={revising || changing ? "Send the change" : "Make a plan"}>
-          ↑
+          <Icon name="arrow-up" size={18} />
         </button>
       )}
     </form>

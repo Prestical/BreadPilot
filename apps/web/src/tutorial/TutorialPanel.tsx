@@ -1,5 +1,6 @@
 import { useApp } from "../store";
 import { CHAPTERS } from "./chapters";
+import { Icon } from "../ui/Icon";
 
 export function TutorialPanel() {
   const tut = useApp((s) => s.tut);
@@ -16,7 +17,7 @@ export function TutorialPanel() {
     return (
       <div className="panel">
         <section className="step-card">
-          <p className="eyebrow">Tutorial complete 🎉</p>
+          <p className="eyebrow">Tutorial complete</p>
           <h2>You're ready to build</h2>
           <p>You know how the breadboard connects, how the Pico's pins are numbered, how to read a connection line, and how the app keeps you safe.</p>
           <div className="row">
@@ -60,7 +61,7 @@ export function TutorialPanel() {
         <h2 id="tut-title">{chapter.title}</h2>
         <p>{step.text}</p>
         {step.expect.type !== "next" && !tut.passed && !tut.feedback && (
-          <p className="task">{step.expect.type === "wire" ? "👆 Click two holes in the 3D view to place a wire." : "👆 Click in the 3D view."}</p>
+          <p className="task"><Icon name="pointer" /> {step.expect.type === "wire" ? "Click two holes in the 3D view to place a wire." : "Click in the 3D view."}</p>
         )}
         {tut.feedback && (
           <div className={`feedback ${tut.passed ? "good" : tut.attempt?.blocked ? "bad" : "info"}`} role="status">

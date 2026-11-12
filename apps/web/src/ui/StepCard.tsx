@@ -5,6 +5,7 @@ import type { BuildStep } from "@breadpilot/circuit-core";
 import type { BuildView } from "../projects/view";
 import type { NeedItem } from "../projects/parts";
 import { useApp } from "../store";
+import { Icon } from "./Icon";
 
 interface Props {
   steps: BuildStep[];
@@ -55,7 +56,11 @@ export function StepCard({ steps, docked = false, need, hasCode = false, change 
           <strong>Why:</strong> {step.why}
         </p>
       )}
-      {full && step.tip && <p className="tip">💡 {step.tip}</p>}
+      {full && step.tip && (
+        <p className="tip">
+          <Icon name="bulb" /> <span>{step.tip}</span>
+        </p>
+      )}
       {full && step.index === 0 && need && (
         <div className="need">
           <p className="eyebrow">What you need</p>
@@ -76,15 +81,15 @@ export function StepCard({ steps, docked = false, need, hasCode = false, change 
       )}
       <div className="row">
         <button type="button" onClick={() => setStep(step.index - 1)} disabled={step.index === 0}>
-          ← Back
+          <Icon name="arrow-left" /> Back
         </button>
         {last && hasCode ? (
           <button type="button" className="primary" onClick={() => setCodeOpen(true)}>
-            Put it on your Pico →
+            Put it on your Pico <Icon name="arrow-right" />
           </button>
         ) : (
           <button type="button" className="primary" onClick={() => setStep(step.index + 1)} disabled={last}>
-            {last ? "Done" : "Next →"}
+            {last ? "Done" : <>Next <Icon name="arrow-right" /></>}
           </button>
         )}
       </div>
@@ -99,7 +104,7 @@ export function StepStrip({ steps }: { steps: BuildStep[] }) {
   return (
     <nav className="step-strip" aria-label="Build steps (← and → keys also work)">
       <button type="button" className="icon-btn" aria-label="Previous step" disabled={current === 0} onClick={() => setStep(current - 1)}>
-        ‹
+        <Icon name="chevron-left" />
       </button>
       <ol>
         {steps.map((s) => (
@@ -119,7 +124,7 @@ export function StepStrip({ steps }: { steps: BuildStep[] }) {
         {current + 1}/{steps.length}
       </span>
       <button type="button" className="icon-btn" aria-label="Next step" disabled={current === steps.length - 1} onClick={() => setStep(current + 1)}>
-        ›
+        <Icon name="chevron-right" />
       </button>
     </nav>
   );

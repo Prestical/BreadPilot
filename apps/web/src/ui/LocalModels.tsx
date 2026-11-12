@@ -3,6 +3,7 @@ import * as api from "../projects/api";
 import type { LocalModel, LocalModelsView, PullState, SettingsView } from "../projects/types";
 import { useApp } from "../store";
 import { actionsFor, computerLine, formatBytes, groupModels, optionText, smallModelWarning, tooBigWarning, warningShort } from "./modelList";
+import { Icon } from "./Icon";
 
 const PULL_MS = 1000;
 const AFTER_DOWNLOAD_MS = 3000;
@@ -199,7 +200,7 @@ export function LocalModels({ active = true, onSaved, initialView = null, warnSm
         </select>
       </label>
       {chosen && warningShort(chosen) && <p className={`small ${chosen.fit.kind === "too-big" ? "fit-text-bad" : "fit-text-warn"}`}>{chosen.fit.reason}</p>}
-      {warnSmall && chosen?.tier === "small" && <p className="small fit-text-warn">⚠ {smallModelWarning(chosen.name)}</p>}
+      {warnSmall && chosen?.tier === "small" && <p className="small fit-text-warn"><Icon name="alert" size={14} /> {smallModelWarning(chosen.name)}</p>}
       {chosen && (
         <div className="model-row-actions">
           {actions.map((a) => {

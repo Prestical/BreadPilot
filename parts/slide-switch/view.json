@@ -1,0 +1,8 @@
+{
+  "shape": "slide-switch",
+  "legs": ["end1", "com", "end2"],
+  "size": [8.6, 4.4, 4],
+  "body": "#1e2024",
+  "slider": "#3a3d43",
+  "note": "Not measured: the sizes of common small 3-leg slide switches. The slider is drawn toward outer leg 1."
+}

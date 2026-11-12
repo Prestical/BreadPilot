@@ -22,7 +22,7 @@ file and field.
 | `part.json` | always | Legs (`kind`: power_in, ground, digital_in, digital_out, analog_out, i2c_sda, i2c_scl; `level: "vcc"`), elements (led, resistor, switch, short, load), props, specs. **Every number is a fact with a source** (below) |
 | `layout.json` | with `kind` | How one block sits on the breadboard: `name`, `height` (rows), optional `max` (+ `maxMessage`), one pin need (`gpio`, `adc` or `i2c-pair`, with its `mode`), parts with holes relative to the block's first row, the `main` part, and the wires in order (`pin`, `ground`, `power`) |
 | `text.json` | optional | Build-step texts: `place` {title, text, tip}, `why`, `wire` texts (ground, power, out, in, adc, i2c_sda, i2c_scl), and `names` for the web app (shopping list, plan card, start screen, hover, driver label) |
-| `view.json` | optional | 3D look from a small shape set: `led-dome`, `axial`, `tact-button`, `rotary-knob`, `header-module`, `cylinder` (no file = a grey box) |
+| `view.json` | optional | 3D look from a small shape set: `led-dome`, `axial`, `tact-button`, `rotary-knob`, `header-module`, `cylinder`, `slide-switch`, `upright-module`, `grid-sensor` (no file = a grey box) |
 | `code.json` | optional | Code-checker rules: a framebuf `display` (driver class, size, font), driver `modules` hints |
 | `agent.json` | with `kind` | For the AI: its line in the parts list, plan hint and plan fields, the words that name it in an idea, vocabulary it `claims` (e.g. `"buzzer"` makes buzzers supported), labels, its pin-table line, handoff rows, documentation search |
 | `driver/*.py` | optional | MicroPython driver saved next to `main.py` (plain ASCII, ≤ 64 KB) |
@@ -31,6 +31,29 @@ file and field.
 | `reference.md` | when a cited document isn't in `docs/hardware/` | A row per document: `| File | Link | Pages used | SHA-256 |`. Datasheets whose owners don't allow republishing stay out of the repository (keep your copy in `.local/datasheets/<id>/`, which git ignores; the pack test checks it against the checksum when it's there) |
 
 Text placeholders such as `{ref}`, `{hole.vcc}`, `{prop.color}` are checked when the pack loads.
+
+## 3D look (the house style)
+
+New parts are modelled the same way as the M15 parts (slide switch, buzzer module, DHT11; Fable 5.2,
+12/11/2026), so every part looks like it belongs to the same app:
+
+- **A shape is plain data** in `apps/web/src/scene/shapes.ts` (no React or three.js objects; `Parts.tsx`
+  only turns the nodes into meshes), in millimetres (1 unit = 1 mm), and tested in
+  `apps/web/test/parts3d.test.ts`. A part picks its shape and its sizes and colours in `view.json`; a
+  new kind of look is a new shape function plus its `view.json` schema in `packages/circuit-core/src/packs.ts`.
+- **Only simple geometry**: box, rounded box, cylinder, sphere, capsule, plane and lathe profiles. No
+  image, model or HDR files: printed surfaces and textures are drawn on a canvas at run time
+  (`textures.ts`, `labels.ts`), so everything works offline.
+- **Shared materials**: metal legs and pins use the shared metal and tin values in `shapes.ts`; plastic
+  bodies are matte (roughness about 0.45-0.6); the main body carries the step highlight (`pulse`, white
+  emissive) and small details are left out of hovering (`noRaycast`).
+- **Every shape supports the three states**: built, current step (it pulses) and ghost (faded, for
+  parts a change step takes out).
+- **Legs come from the part's real holes** (`legsOf` / `holePos`), so the body sits over the holes its
+  build step names.
+- **Sizes come from the datasheet** (say which page in the `view.json` note) or are marked as not
+  measured, like other facts without a source.
+- In the app's UI, icons are the line icons in `apps/web/src/ui/Icon.tsx`, never emoji.
 
 ## Sources of facts
 

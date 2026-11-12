@@ -9,6 +9,7 @@ import type { ApiProject, PlanPart, PlanVersion } from "../projects/types";
 import { projectView } from "../projects/view";
 import { useApp, viewedVersion } from "../store";
 import { aiLabel } from "./AiPicker";
+import { Icon } from "./Icon";
 
 
 const ICON: Record<Tone, string> = { busy: "…", ok: "✓", warn: "!", bad: "✕" };
@@ -235,7 +236,7 @@ export function StageOverlay() {
     card = (
       <section className={`float-card banner ${p.state === "HANDOFF" ? "warn" : "bad"}`} role="status">
         <button type="button" className="icon-btn banner-close" aria-label="Hide this message" onClick={() => setHidden(bannerKey)}>
-          ✕
+          <Icon name="x" />
         </button>
         {view?.kind === "unsafe" ? (
           <p>
@@ -275,7 +276,7 @@ export function StageOverlay() {
     card = (
       <section className="float-card banner warn" role="status">
         <button type="button" className="icon-btn banner-close" aria-label="Hide this message" onClick={() => setHidden(`change@${p.changeError!.at}`)}>
-          ✕
+          <Icon name="x" />
         </button>
         <p>
           <strong>Couldn't make the change</strong> “{p.changeError.request}”: {p.changeError.message}
@@ -291,7 +292,7 @@ export function StageOverlay() {
         <div className="float-card toast bad" role="alert">
           <p>{agent.error}</p>
           <button type="button" className="icon-btn" aria-label="Dismiss" onClick={dismissError}>
-            ✕
+            <Icon name="x" />
           </button>
         </div>
       )}

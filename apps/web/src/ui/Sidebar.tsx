@@ -4,6 +4,7 @@ import { DEMOS } from "../demos";
 import { STATE_LABEL } from "../projects/progress";
 import { useApp } from "../store";
 import { UpdateNotice } from "./UpdateNotice";
+import { Icon } from "./Icon";
 
 /** GitHub's mark (Octicons "mark-github", MIT licence), in the text colour. */
 function GitHubMark() {
@@ -45,13 +46,13 @@ export function Sidebar() {
         <span>BreadPilot</span>
         <span className="board-chip">Pico 2 W</span>
         <button type="button" className="icon-btn drawer-close" aria-label="Close the project list" onClick={() => setOpen(false)}>
-          ✕
+          <Icon name="x" />
         </button>
       </div>
 
       <nav className="side-nav" aria-label="Main">
-        <button type="button" data-tour="new" className={`nav-item${building && source.kind === "agent" && !source.id ? " current" : ""}`} disabled={busy} onClick={newProject}>
-          <span aria-hidden="true">＋</span> New project
+        <button type="button" data-tour="new" className={`nav-item nav-new${building && source.kind === "agent" && !source.id ? " current" : ""}`} disabled={busy} onClick={newProject}>
+          <Icon name="plus" /> New project
         </button>
         <button
           type="button"
@@ -62,14 +63,14 @@ export function Sidebar() {
             setOpen(false);
           }}
         >
-          <span aria-hidden="true">📘</span> Breadboard &amp; Pico 101
+          <Icon name="book" /> Breadboard &amp; Pico 101
         </button>
         <button type="button" className="nav-item" onClick={() => setPartsOpen(true)}>
-          <span aria-hidden="true">🧩</span> Supported parts
+          <Icon name="chip" /> Supported parts
         </button>
         {/* M11: a project file someone exported (checked by the API before it's shown). */}
         <button type="button" className="nav-item" disabled={busy} onClick={() => fileRef.current?.click()}>
-          <span aria-hidden="true">📂</span> Open a project file
+          <Icon name="folder" /> Open a project file
         </button>
         <input
           ref={fileRef}
@@ -125,7 +126,7 @@ export function Sidebar() {
                       if (window.confirm(`Delete “${x.title}”?\n\nThe project, its plan, wiring and code are removed for good.`)) void removeProject(x.id);
                     }}
                   >
-                    ✕
+                    <Icon name="x" size={14} />
                   </button>
                 </li>
               ))}
@@ -150,7 +151,7 @@ export function Sidebar() {
       <UpdateNotice />
       <div className="side-foot">
         <button type="button" className="nav-item settings-btn" data-tour="settings" title="Local AI, OpenAI, appearance, updates, privacy" onClick={() => setSettingsOpen(true)}>
-          <span aria-hidden="true">⚙</span> Settings
+          <Icon name="settings" /> Settings
         </button>
         {/* Opens in the normal browser (the desktop app sends other sites there). */}
         <a className="icon-btn github-link" href="https://github.com/Prestical/BreadPilot" target="_blank" rel="noreferrer" aria-label="BreadPilot on GitHub" title="BreadPilot on GitHub">

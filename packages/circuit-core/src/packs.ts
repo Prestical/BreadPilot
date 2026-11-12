@@ -141,7 +141,20 @@ export type ViewSpec =
       screen?: { size: [number, number]; text: string; bg: string; fg: string };
       labels?: boolean;
     }
-  | { shape: "cylinder"; radius: number; height: number; color: string; top?: string; label?: string };
+  | { shape: "cylinder"; radius: number; height: number; color: string; top?: string; label?: string }
+  /** A small slide switch: `legs` in a row (outer, middle, outer); `size` = along the legs, across, tall (mm). */
+  | { shape: "slide-switch"; legs: [string, string, string]; size: [number, number, number]; body: string; slider: string; note?: string }
+  /** A module board standing upright on its pin header, parts on one face (e.g. a buzzer module). `board.size` = across the pins, tall (mm). */
+  | {
+      shape: "upright-module";
+      pins: string[];
+      board: { size: [number, number]; color: string; note?: string };
+      buzzer?: { radius: number; height: number; color: string };
+      /** Printed next to the pins, in the order of `pins`. */
+      labels?: string[];
+    }
+  /** A boxed sensor standing on a row of legs, with a grid of openings on its front (e.g. the DHT11). `body.size` = across the legs, tall, thick (mm). */
+  | { shape: "grid-sensor"; pins: string[]; body: { size: [number, number, number]; color: string; note?: string } };
 
 /** Fills {placeholders} from `vars`; unknown ones stay as written. */
 export function fillTemplate(template: string, vars: Record<string, string | number | undefined>): string {
@@ -440,6 +453,15 @@ const viewFile: Check = (v, p) => {
       "labels?": bool,
     }),
     cylinder: obj({ shape: str, radius: num, height: num, color, "top?": color, "label?": str }),
+    "slide-switch": obj({ shape: str, legs: arr(str, 3), size: arr(num, 3), body: color, slider: color, "note?": str }),
+    "upright-module": obj({
+      shape: str,
+      pins: arr(str, 16),
+      board: obj({ size: size2, color, "note?": str }),
+      "buzzer?": obj({ radius: num, height: num, color }),
+      "labels?": arr(str, 16),
+    }),
+    "grid-sensor": obj({ shape: str, pins: arr(str, 16), body: obj({ size: arr(num, 3), color, "note?": str }) }),
   };
   if (typeof shape !== "string" || !shapes[shape]) fail(`${p}.shape`, `must be one of ${Object.keys(shapes).join(", ")}`);
   shapes[shape as string]!(v, p);

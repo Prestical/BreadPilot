@@ -3,6 +3,7 @@ import { Color, InstancedMesh, Object3D } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { BREADBOARD, RAIL_IDS, type Column } from "@breadpilot/circuit-core";
 import { BOARD, colX, PITCH, railX, ROWS, rowZ, type Vec3 } from "./coords";
+import { boardTopTexture } from "./textures";
 import { targetKey, type Target } from "./targets";
 
 interface HoleSpot {
@@ -82,36 +83,46 @@ export function Breadboard({ highlights, onHover, onClick }: BreadboardProps) {
 
   const targetOf = (e: ThreeEvent<PointerEvent | MouseEvent>) => (e.instanceId === undefined ? null : spots[e.instanceId]!.target);
 
-  const railLines = RAIL_IDS.map((rail) => {
-    // Colored line on the outer side of the outer rail and the inner side of the inner rail.
-    const left = rail.startsWith("RL");
-    const plus = rail.endsWith("+");
-    const x = railX(rail) + PITCH * 0.5 * (left ? (plus ? 1 : -1) : plus ? -1 : 1);
-    return { rail, x, color: rail.endsWith("+") ? "#d93a3a" : "#2f6fd6" };
-  });
+  // The printed top (numbers, letters, rail lines, hole rims) as one picture, shown on the two
+  // halves beside the centre channel.
+  const tops = useMemo(() => {
+    const width = BOARD.maxX - BOARD.minX;
+    const half = (width - BOARD.channel.width) / 2;
+    return [-1, 1].map((side) => {
+      const map = boardTopTexture().clone();
+      map.repeat.set(half / width, 1);
+      map.offset.set(side < 0 ? 0 : 1 - half / width, 0);
+      map.needsUpdate = true;
+      return { side, half, map };
+    });
+  }, []);
+  const midZ = (BOARD.minZ + BOARD.maxZ) / 2;
+  const length = BOARD.maxZ - BOARD.minZ;
 
   return (
     <group>
-      {/* body */}
-      <mesh position={[(BOARD.minX + BOARD.maxX) / 2, -BOARD.height / 2, (BOARD.minZ + BOARD.maxZ) / 2]}>
-        <boxGeometry args={[BOARD.maxX - BOARD.minX, BOARD.height, BOARD.maxZ - BOARD.minZ]} />
-        <meshStandardMaterial color="#f3f1ea" roughness={0.85} />
-      </mesh>
-      {/* center channel */}
-      <mesh position={[0, 0.01, (BOARD.minZ + BOARD.maxZ) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[PITCH * 1.4, BOARD.maxZ - BOARD.minZ]} />
-        <meshStandardMaterial color="#d9d5ca" />
-      </mesh>
-      {railLines.map((l) => (
-        <mesh key={l.rail} position={[l.x, 0.015, (BOARD.minZ + BOARD.maxZ) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.35, BOARD.maxZ - BOARD.minZ - 4]} />
-          <meshBasicMaterial color={l.color} />
-        </mesh>
+      {/* body: two halves and the lower floor of the centre channel between them */}
+      {tops.map(({ side, half, map }) => (
+        <group key={side} position={[side * (BOARD.channel.width / 2 + half / 2), 0, midZ]}>
+          {/* The box stops just under the printed top, so the two never flicker from far away. */}
+          <mesh position={[0, -BOARD.height / 2 - 0.03, 0]} castShadow receiveShadow>
+            <boxGeometry args={[half, BOARD.height - 0.06, length]} />
+            <meshStandardMaterial color="#f3f1ea" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow raycast={() => null}>
+            <planeGeometry args={[half, length]} />
+            <meshStandardMaterial map={map} roughness={0.8} />
+          </mesh>
+        </group>
       ))}
+      <mesh position={[0, -(BOARD.height + BOARD.channel.depth) / 2, midZ]} receiveShadow>
+        <boxGeometry args={[BOARD.channel.width, BOARD.height - BOARD.channel.depth, length]} />
+        <meshStandardMaterial color="#e4e1d7" roughness={0.85} />
+      </mesh>
 
       <instancedMesh ref={holesRef} args={[undefined, undefined, allPos.length]} raycast={() => null}>
         <planeGeometry args={[1.1, 1.1]} />
-        <meshStandardMaterial color="#3b3d42" roughness={1} />
+        <meshStandardMaterial color="#2b2d31" roughness={1} />
       </instancedMesh>
 
       {/* Invisible, larger squares for easy picking. */}

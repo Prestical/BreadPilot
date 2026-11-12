@@ -18,7 +18,7 @@ export function Rod({ from, to, radius = 0.25, color = "#b8bcc4", opacity = 1 }:
     };
   }, [from, to]);
   return (
-    <mesh position={position} quaternion={quaternion}>
+    <mesh position={position} quaternion={quaternion} castShadow={opacity >= 1}>
       <cylinderGeometry args={[radius, radius, length, 8]} />
       <meshStandardMaterial color={color} metalness={0.7} roughness={0.35} transparent={opacity < 1} opacity={opacity} />
     </mesh>
