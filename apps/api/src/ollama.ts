@@ -105,15 +105,16 @@ export function ollamaPuller(opts: { baseUrl: () => string; onDone?: (model: str
 
 /**
  *   GET  /api/ollama/pulls   → { pulls: PullState[] }
- *   POST /api/ollama/pull    { model } → 202 PullState. Only the two models in Settings can be
- *                            downloaded (the chat model and the documentation-search model).
+ *   POST /api/ollama/pull    { model } → 202 PullState. Only BreadPilot's model list (PLAN §13.2)
+ *                            and the two models in Settings (chat + documentation search) can be
+ *                            downloaded.
  */
 export function registerOllamaRoutes(app: FastifyInstance, deps: { puller: Puller; models: () => string[] }): void {
   app.get("/api/ollama/pulls", async () => ({ pulls: deps.puller.list() }));
   app.post<{ Body: { model?: unknown } }>("/api/ollama/pull", async (req, reply) => {
     const model = typeof req.body?.model === "string" ? req.body.model.trim() : "";
     if (!deps.models().includes(model)) {
-      return reply.status(400).send({ code: "UNKNOWN_MODEL", message: `Only the models in Settings can be downloaded here: ${deps.models().join(", ")}.` } satisfies ApiError);
+      return reply.status(400).send({ code: "UNKNOWN_MODEL", message: "Only the models in BreadPilot's list or in Settings can be downloaded here." } satisfies ApiError);
     }
     return reply.status(202).send(deps.puller.start(model));
   });

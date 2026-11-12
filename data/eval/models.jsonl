@@ -1,0 +1,50 @@
+{"difficulty": "easy", "idea": "Blink an LED twice per second", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"difficulty": "easy", "idea": "Light an LED only while a button is held down", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"difficulty": "easy", "idea": "Make the Pico's built-in LED blink every half second", "expect": {"clarity": "clear", "parts": {}}}
+{"difficulty": "easy", "idea": "Fade an LED up and down smoothly forever", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"difficulty": "easy", "idea": "Use a knob to set how bright an LED is", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1}}}
+{"difficulty": "easy", "idea": "Press a button to toggle an LED on and off", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1}}}
+{"difficulty": "easy", "idea": "Show the word Hello on an OLED display", "expect": {"clarity": "clear", "parts": {"oled": 1}}}
+{"difficulty": "easy", "idea": "Print the board's temperature to the computer every 2 seconds", "expect": {"clarity": "clear", "parts": {}}}
+{"difficulty": "easy", "idea": "Blink three LEDs one after another in a loop", "expect": {"clarity": "clear", "parts": {"led": 3}}}
+{"difficulty": "easy", "idea": "Turn a knob to change how fast an LED blinks", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1}}}
+{"difficulty": "easy", "idea": "Show the knob's position as a number on an OLED", "expect": {"clarity": "clear", "parts": {"pot": 1, "oled": 1}}}
+{"difficulty": "easy", "idea": "Count how many times a button is pressed and print the count to the computer", "expect": {"clarity": "clear", "parts": {"button": 1}}}
+{"difficulty": "easy", "idea": "A red LED and a green LED that take turns blinking", "expect": {"clarity": "clear", "parts": {"led": 2}}}
+{"difficulty": "easy", "idea": "Light the Pico's built-in LED while a button is pressed", "expect": {"clarity": "clear", "parts": {"button": 1}}}
+{"difficulty": "easy", "idea": "Show the board's own temperature on an OLED, updated every second", "expect": {"clarity": "clear", "parts": {"oled": 1}}}
+{"difficulty": "easy", "idea": "Two buttons: one turns an LED on, the other turns it off", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 2}}}
+{"difficulty": "easy", "idea": "Show how many seconds have passed since the start on an OLED", "expect": {"clarity": "clear", "parts": {"oled": 1}}}
+{"difficulty": "easy", "idea": "Blink SOS in Morse code with an LED", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"difficulty": "easy", "idea": "Make four LEDs blink together once a second", "expect": {"clarity": "clear", "parts": {"led": 4}}}
+{"difficulty": "easy", "idea": "Print pressed to the computer every time a button is pressed", "expect": {"clarity": "clear", "parts": {"button": 1}}}
+{"difficulty": "medium", "idea": "A traffic light with red, yellow and green LEDs that changes by itself", "expect": {"clarity": "clear", "parts": {"led": 3}}}
+{"difficulty": "medium", "idea": "A pedestrian crossing: when I press a button, a traffic light made of red, yellow and green LEDs switches to red after a short wait", "expect": {"clarity": "clear", "parts": {"led": 3, "button": 1}}}
+{"difficulty": "medium", "idea": "A knob sets how many of five LEDs are lit, like a bar graph", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 5}}}
+{"difficulty": "medium", "idea": "A stopwatch on an OLED with two buttons: the first starts and stops it, the second resets it", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 2}}}
+{"difficulty": "medium", "idea": "Press a button to roll a dice and show the number from 1 to 6 on an OLED", "expect": {"clarity": "clear", "parts": {"button": 1, "oled": 1}}}
+{"difficulty": "medium", "idea": "Two knobs: one sets how fast an LED blinks, the other sets how bright it is", "expect": {"clarity": "clear", "parts": {"pot": 2, "led": 1}}}
+{"difficulty": "medium", "idea": "A counter on an OLED with two buttons: the first adds one, the second takes one away", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 2}}}
+{"difficulty": "medium", "idea": "A night light whose brightness follows a knob, and a button turns it off and on", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1, "button": 1}}}
+{"difficulty": "medium", "idea": "Show the board's own temperature on an OLED with a bar that grows as it gets warmer", "expect": {"clarity": "clear", "parts": {"oled": 1}}}
+{"difficulty": "medium", "idea": "Six LEDs that light up one after another back and forth like a scanner", "expect": {"clarity": "clear", "parts": {"led": 6}}}
+{"difficulty": "medium", "idea": "A kitchen timer: a knob sets the minutes, a button starts it, the OLED counts down and an LED flashes when the time is up", "expect": {"clarity": "clear", "parts": {"pot": 1, "button": 1, "oled": 1, "led": 1}}}
+{"difficulty": "medium", "idea": "Count in binary on four LEDs, adding one every time I press a button", "expect": {"clarity": "clear", "parts": {"led": 4, "button": 1}}}
+{"difficulty": "medium", "idea": "Three knobs control the brightness of three LEDs: a red one, a green one and a blue one", "expect": {"clarity": "clear", "parts": {"pot": 3, "led": 3}}}
+{"difficulty": "medium", "idea": "The longer I hold a button, the more of four LEDs light up; letting go turns them off", "expect": {"clarity": "clear", "parts": {"button": 1, "led": 4}}}
+{"difficulty": "medium", "idea": "Draw the knob's reading as a moving line graph on an OLED", "expect": {"clarity": "clear", "parts": {"pot": 1, "oled": 1}}}
+{"difficulty": "medium", "idea": "An LED that blinks faster as the board gets warmer", "expect": {"clarity": "clear", "parts": {"led": 1}}}
+{"difficulty": "medium", "idea": "A menu on an OLED with two buttons: the first moves down the list, the second picks the item and shows which one was chosen", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 2}}}
+{"difficulty": "medium", "idea": "Two buttons dim an LED: one makes it brighter, the other makes it darker", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 2}}}
+{"difficulty": "medium", "idea": "Two OLED displays: the first shows the board's own temperature, the second shows the time since start", "expect": {"clarity": "clear", "parts": {"oled": 2}}}
+{"difficulty": "medium", "idea": "A metronome: a knob sets the beats per minute, an LED flashes on every beat and the OLED shows the speed", "expect": {"clarity": "clear", "parts": {"pot": 1, "led": 1, "oled": 1}}}
+{"difficulty": "hard", "idea": "A reaction time game: an LED lights after a random wait, I press a button as fast as I can, and the OLED shows my time and my best time", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 1, "oled": 1}}}
+{"difficulty": "hard", "idea": "A two player reflex game with two buttons, one for each player: when an LED lights up, the first player to press wins and the winner is shown on an OLED; pressing too early loses the round", "expect": {"clarity": "clear", "parts": {"led": 1, "button": 2, "oled": 1}}}
+{"difficulty": "hard", "idea": "A memory game with three LEDs and three buttons: the LEDs play a sequence that gets one step longer each round, I repeat it with the buttons, and the OLED shows the score", "expect": {"clarity": "clear", "parts": {"led": 3, "button": 3, "oled": 1}}}
+{"difficulty": "hard", "idea": "A paddle and ball game on an OLED where a knob moves the paddle and the score is shown in the corner", "expect": {"clarity": "clear", "parts": {"pot": 1, "oled": 1}}}
+{"difficulty": "hard", "idea": "A Wi-Fi clock: connect to my home Wi-Fi, get the time from the internet and show hours, minutes and seconds on an OLED", "expect": {"clarity": "clear", "parts": {"oled": 1}}}
+{"difficulty": "hard", "idea": "A web page served by the Pico over Wi-Fi with on and off links for two LEDs, so I can control them from my phone", "expect": {"clarity": "clear", "parts": {"led": 2}}}
+{"difficulty": "hard", "idea": "A number guessing game: turn a knob to choose a number from 1 to 100, press a button to guess, and the OLED says higher or lower and counts the tries", "expect": {"clarity": "clear", "parts": {"pot": 1, "button": 1, "oled": 1}}}
+{"difficulty": "hard", "idea": "A snake game on an OLED with four buttons for up, down, left and right, and the score shown when the game ends", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 4}}}
+{"difficulty": "hard", "idea": "A temperature logger: read the board's own temperature every 10 seconds, show the lowest, the highest and a small graph on an OLED, and a button clears the record", "expect": {"clarity": "clear", "parts": {"oled": 1, "button": 1}}}
+{"difficulty": "hard", "idea": "A code lock: enter a code of four presses with three buttons, the OLED shows a star for each press, a green LED lights if the code is right and a red LED if it is wrong", "expect": {"clarity": "clear", "parts": {"button": 3, "led": 2, "oled": 1}}}

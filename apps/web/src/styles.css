@@ -436,6 +436,14 @@ dialog.setup { width: min(680px, calc(100vw - 32px)); }
 .pull-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .pull-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pull-list code { background: var(--code-bg); padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; overflow-x: auto; white-space: nowrap; }
+/* ---------- Local model picker (Settings + setup, PLAN §13.2) ---------- */
+.local-models { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.local-models p { margin: 0; }
+.local-models select { width: 100%; max-width: 100%; }
+.model-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.model-row-actions .pull-progress { flex: 1; min-width: 180px; }
+.fit-text-warn { color: var(--warn); }
+.fit-text-bad { color: var(--bad); }
 .setup-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border); }
 .setup-nav { display: flex; gap: 8px; }
 

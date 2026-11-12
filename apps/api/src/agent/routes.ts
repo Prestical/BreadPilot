@@ -5,6 +5,7 @@ import { POWER_MODES, type PowerMode } from "@breadpilot/circuit-core";
 import { AgentError, approvePlan, createProject, deleteProject, isRunning, retryProject, setPower, stopProject, type AgentDeps } from "./pipeline";
 import { progressBus, type ProgressEvent } from "./progress";
 import { LLM_CHOICES, type Project } from "./project";
+import { catalogEntry } from "../models";
 
 const Power = z.enum(POWER_MODES as [PowerMode, ...PowerMode[]]);
 const CreateBody = z.object({ idea: z.string(), board: z.string().max(64).optional(), power: Power.optional(), llm: z.enum(LLM_CHOICES).optional() });
@@ -49,7 +50,8 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentDeps) {
 
   /** Which models a new project can use (the browser asks the user at the start). */
   app.get("/api/llm-options", async () => ({
-    local: { model: deps.llm.model },
+    // The model list's name for the prompt bar ("Qwen3 4B Instruct"), else the tag itself.
+    local: { model: deps.llm.model, name: catalogEntry(deps.llm.model)?.name ?? deps.llm.model },
     openai: deps.cloudLlm ? { available: true, model: deps.cloudLlm.model } : { available: false },
   }));
 

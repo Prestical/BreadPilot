@@ -19,7 +19,7 @@ import {
   type Settings,
   type SettingsStore,
 } from "../src/settings";
-import { registerSettingsRoutes } from "../src/settings-routes";
+import { registerSettingsRoutes, type SettingsWriter } from "../src/settings-routes";
 
 const KEY = `sk-proj-${"Ab1_-".repeat(30)}wxyz`;
 const OTHER_KEY = `sk-proj-${"Zz9".repeat(20)}`;
@@ -88,6 +88,19 @@ describe("settings.enc", () => {
     expect(store.get().browserAccess).toEqual(defaults.browserAccess);
     expect(store.get().setupDone).toBe(false); // an app from before the setup screen shows it once
     expect(store.get().tourDone).toBe(false);
+    expect(store.get().modelMemory).toEqual({}); // no measured models before 0.3
+  });
+
+  it("keeps measured model memory, and drops a damaged list without losing the other settings", async () => {
+    const measured = { "qwen3:8b": { bytes: 6_400_000_000, numCtx: 16384, at: "2026-11-05T10:00:00.000Z" } };
+    const good = join(dir, "memory.enc");
+    await writeFile(good, sealBox(dataKey, "BPST1", Buffer.from(JSON.stringify({ ...defaults, modelMemory: measured, setupDone: true }))));
+    expect((await fileSettings({ file: good, key: dataKey, defaults })).get().modelMemory).toEqual(measured);
+    const bad = join(dir, "memory-bad.enc");
+    await writeFile(bad, sealBox(dataKey, "BPST1", Buffer.from(JSON.stringify({ ...defaults, modelMemory: { "qwen3:8b": { bytes: -1 } }, setupDone: true }))));
+    const store = await fileSettings({ file: bad, key: dataKey, defaults });
+    expect(store.get().modelMemory).toEqual({});
+    expect(store.get().setupDone).toBe(true);
   });
 
   it("with no keyring to protect it, drops a stored key and never writes one", async () => {
@@ -117,6 +130,7 @@ describe("settings routes", () => {
   let checked: string[];
   let checkResult: KeyCheck;
   let applyError: Error | null;
+  let writer: SettingsWriter;
 
   beforeEach(async () => {
     store = memorySettings(defaults);
@@ -125,7 +139,7 @@ describe("settings routes", () => {
     checkResult = { ok: true, message: "The key works." };
     applyError = null;
     app = Fastify();
-    registerSettingsRoutes(app, {
+    writer = registerSettingsRoutes(app, {
       settings: store,
       openAiBaseUrl: "https://api.openai.example/v1",
       browser: () => ({ url: null, pairingUrl: null, error: null }),
@@ -228,6 +242,33 @@ describe("settings routes", () => {
     }
     expect(store.get()).toEqual(defaults);
     expect(applied).toEqual([]);
+  });
+
+  it("never lets the page write measured model memory", async () => {
+    const res = await put("/api/settings", { modelMemory: { "qwen3:8b": { bytes: 1, numCtx: 16384, at: "x" } } });
+    expect(res.statusCode).toBe(400);
+    expect(store.get().modelMemory).toEqual({});
+  });
+
+  it("code changes (measured memory) wait in the same queue as the page's saves, so neither is lost", async () => {
+    let release!: () => void;
+    const slow = new Promise<void>((r) => (release = r));
+    const realSet = store.set.bind(store);
+    let first = true;
+    store.set = async (next) => {
+      if (first) {
+        first = false;
+        await slow;
+      }
+      return realSet(next);
+    };
+    const pageSave = put("/api/settings", { local: { keepAliveMin: 7 } });
+    await new Promise((r) => setTimeout(r, 5));
+    const measured = writer.update((cur) => ({ ...cur, modelMemory: { "qwen3:8b": { bytes: 6e9, numCtx: 16384, at: "x" } } }));
+    release();
+    await Promise.all([pageSave, measured]);
+    expect(store.get().local.keepAliveMin).toBe(7);
+    expect(store.get().modelMemory["qwen3:8b"]?.bytes).toBe(6e9);
   });
 
   it("keeps the old settings when the new ones can't be applied (port taken)", async () => {

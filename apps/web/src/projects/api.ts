@@ -1,5 +1,5 @@
 import type { PowerMode } from "@breadpilot/circuit-core";
-import type { AiChoice, ApiProject, KeyCheck, LlmOptions, ProgressEvent, ProjectSummary, PullState, SettingsPatch, SettingsView } from "./types";
+import type { AiChoice, ApiProject, KeyCheck, LlmOptions, LocalModelsView, Measured, ProgressEvent, ProjectSummary, PullState, SettingsPatch, SettingsView } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -51,6 +51,11 @@ export const removeOpenAiKey = () => call<SettingsView>("DELETE", "/api/settings
 /** Downloads one of the two models in Settings through Ollama; poll getPulls for progress. */
 export const startPull = (model: string) => call<PullState>("POST", "/api/ollama/pull", { model });
 export const getPulls = async () => (await call<{ pulls: PullState[] }>("GET", "/api/ollama/pulls")).pulls;
+/** Local model list (PLAN §13.2): built-in sizes + the local Ollama; never contacts ollama.com. */
+export const getLocalModels = () => call<LocalModelsView>("GET", "/api/models/local");
+/** Loads the model once in the local Ollama and saves the memory it uses on this computer. */
+export const measureModel = (tag: string) => call<{ measured: Measured }>("POST", "/api/models/local/measure", { tag });
+export const removeModel = (tag: string) => call<null>("DELETE", `/api/models/local?tag=${encodeURIComponent(tag)}`);
 export const testOpenAiKey = (key?: string) => call<KeyCheck>("POST", "/api/settings/openai-key/test", key ? { key } : {});
 
 export interface WatchHandlers {

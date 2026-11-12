@@ -1,6 +1,10 @@
 // Agent eval (Milestone 4 acceptance + model comparison).
-//   npm run eval:agent -w @breadpilot/api -- [--file data/eval/agent-holdout.jsonl] [--only 3,7] [--model qwen3:8b] [--openai] [--limit 5] [--json /tmp/out.json]
+//   npm run eval:agent -w @breadpilot/api -- [--file data/eval/agent-holdout.jsonl] [--only 3,7] [--model qwen3:8b] [--openai] [--limit 5] [--json /tmp/out.json] [--think on|off]
+//   npm run eval:models -w @breadpilot/api -- --model qwen3.5:4b [--json out.json]
+//     = the 50-idea model test (data/eval/models.jsonl: 20 easy, 20 medium, 10 hard), PLAN §13.2.
 //   --openai: run every idea on OpenAI's model (OPENAI_API_KEY, OPENAI_MODEL in .env) to compare with the local one.
+//   --think: override the model list's `think` value (only sent to models Ollama says can think).
+// For a local model it also reports the memory the model used, as the local Ollama's /api/ps says.
 // Runs every idea in data/eval/agent.jsonl through the real pipeline (in-memory project store,
 // real LLM, real documentation search). Vague plans are auto-approved as-is.
 // Target: ≥ 90% of supported ideas end with a validated build (milestone gate). "Correct project"
@@ -10,7 +14,9 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { checkMicroPython, getBoard, validateBuild } from "@breadpilot/circuit-core";
-import { mistakeReport } from "./agent/eval-report";
+import { totalmem } from "node:os";
+import { byDifficulty, difficultyTable, mistakeReport, type Difficulty } from "./agent/eval-report";
+import { ollamaModels, sameTag, thinkSetting } from "./local-models";
 import { loadConfig } from "./config";
 import { devKey, openDataDir } from "./datadir";
 import { createLlm } from "./agent/llm";
@@ -21,12 +27,15 @@ import { hybridSearch } from "./rag/search";
 
 interface Case {
   idea: string;
+  /** Model tests (data/eval/models.jsonl): how hard the project is. */
+  difficulty?: Difficulty;
   /** outcome: "ready" (default) or "handoff" (e.g. more parts than fit). Unsupported ideas always expect a handoff. */
   expect: { clarity: "clear" | "vague" | "unsupported"; parts?: Record<string, number>; outcome?: "ready" | "handoff" };
 }
 
 interface Result {
   idea: string;
+  difficulty?: Difficulty;
   expectedClarity: string;
   clarity: string | undefined;
   state: Project["state"];
@@ -60,11 +69,21 @@ const only = arg("only")?.split(",").map(Number);
 const data = await openDataDir({ dir: config.DATA_DIR, key: await devKey(config.DATA_DIR) });
 const db = data.db;
 const embedder = openAiEmbedder(config.LLM_BASE_URL, config.EMBED_MODEL);
+const ollama = ollamaModels({ baseUrl: () => config.LLM_BASE_URL });
+const thinkArg = arg("think");
+if (thinkArg && thinkArg !== "on" && thinkArg !== "off") throw new Error("--think takes on or off");
+const catalogThink = thinkSetting(ollama);
+// --think forces a value (still only for models that can think); without it the model list decides.
+const think = async (): Promise<boolean | undefined> => {
+  if (!thinkArg) return catalogThink(model);
+  const caps = await ollama.capabilities(model).catch(() => [] as string[]);
+  return caps.includes("thinking") ? thinkArg === "on" : undefined;
+};
 
 const deps: AgentDeps = {
   llm: openai
     ? createLlm({ api: "openai", baseUrl: config.OPENAI_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.OPENAI_TIMEOUT_MS, apiKey: config.OPENAI_API_KEY.trim(), reasoningEffort: config.OPENAI_REASONING_EFFORT })
-    : createLlm({ api: config.LLM_API, baseUrl: config.LLM_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.LLM_TIMEOUT_MS }),
+    : createLlm({ api: config.LLM_API, baseUrl: config.LLM_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.LLM_TIMEOUT_MS, think }),
   store: memoryStore(),
   search: async (q) => (await hybridSearch(db, embedder, q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
 };
@@ -105,6 +124,7 @@ try {
     const correct = expectHandoff ? p.state === "HANDOFF" && !p.build : p.state === "READY" && validatedBuild && codeOk && partsMatch !== false;
     const r: Result = {
       idea: c.idea,
+      ...(c.difficulty ? { difficulty: c.difficulty } : {}),
       expectedClarity: c.expect.clarity,
       clarity: p.intake?.clarity,
       state: p.state,
@@ -124,7 +144,7 @@ try {
     results.push(r);
     const partsText = Object.entries(parts).map(([k, v]) => `${v}×${k}`).join(" ") || "-";
     console.log(
-      `${String(i + 1).padStart(2)}. ${r.correct ? "✓" : "✗"} ${r.state.padEnd(14)} ` +
+      `${String(i + 1).padStart(2)}. ${r.correct ? "✓" : "✗"} ${r.difficulty ? `[${r.difficulty}] ` : ""}${r.state.padEnd(14)} ` +
         `clarity ${r.clarity ?? "?"}${r.clarity === r.expectedClarity ? "" : ` (expected ${r.expectedClarity})`} · parts ${partsText}` +
         `${r.partsMatch === false ? " (≠ expected)" : ""} · code ${r.codeOk ? `ok after ${r.codeAttempts}` : r.codeAttempts ? "FAILED" : "-"} · ${r.seconds}s  ${c.idea}` +
         `${r.note ? `\n      note: ${r.note}` : ""}`,
@@ -149,15 +169,26 @@ try {
     codeFinal: pct(built.filter((r) => r.codeOk).length, built.length),
     avgSeconds: Math.round(avg * 10) / 10,
   };
+  const difficulty = byDifficulty(results);
+  // Memory, as the local Ollama measured it while the model was loaded for this run.
+  let memory: { bytes: number; contextLength: number | null; computerBytes: number } | null = null;
+  if (!openai) {
+    const run = (await ollama.running().catch(() => [])).find((m) => sameTag(m.tag, model));
+    if (run) memory = { bytes: run.bytes, contextLength: run.contextLength, computerBytes: totalmem() };
+  }
 
   console.log(`
 | Model | Correct project | Validated build | READY (code ok) | Clarity | Unsupported caught | Parts match | Code 1st try | Code final | Avg s/project |
 |---|---|---|---|---|---|---|---|---|---|
 | ${summary.model} | ${summary.correct} | ${summary.validatedBuild} | ${summary.ready} | ${summary.clarity} | ${summary.unsupportedCaught} | ${summary.partsMatch} | ${summary.codeFirstTry} | ${summary.codeFinal} | ${summary.avgSeconds} |`);
+  console.log(difficultyTable(difficulty));
+  if (memory) {
+    console.log(`\nMemory (local Ollama /api/ps): ${(memory.bytes / 1e9).toFixed(1)} GB at ${memory.contextLength ?? config.LLM_NUM_CTX} tokens of context · this computer ${Math.round(memory.computerBytes / 2 ** 30)} GB`);
+  } else if (!openai) console.log("\nMemory: the model wasn't loaded at the end of the run, so Ollama couldn't report it.");
 
   const out = arg("json");
   if (out) {
-    await writeFile(out, JSON.stringify({ summary, results }, null, 2));
+    await writeFile(out, JSON.stringify({ summary, difficulty, memory, results }, null, 2));
     console.log(`\nDetails written to ${out}`);
   }
   console.log(mistakeReport(results));

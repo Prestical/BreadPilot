@@ -636,10 +636,16 @@ describe("project API routes", () => {
 
   it("lists the models a new project can use", async () => {
     make(fakeLlm({}).llm);
-    expect((await app.inject({ method: "GET", url: "/api/llm-options" })).json()).toEqual({ local: { model: "fake" }, openai: { available: false } });
+    // A model that isn't in the model list is named by its tag.
+    expect((await app.inject({ method: "GET", url: "/api/llm-options" })).json()).toEqual({ local: { model: "fake", name: "fake" }, openai: { available: false } });
     await app.close();
     app = buildApp({ agent: deps(fakeLlm({}).llm, { cloudLlm: { ...fakeLlm({}).llm, model: "gpt-6-luna" } }), health: { checkDb: async () => ({ status: "ok", detail: "" }), listModels: async () => [], llmModel: "m", embedModel: "e" } });
     expect((await app.inject({ method: "GET", url: "/api/llm-options" })).json().openai).toEqual({ available: true, model: "gpt-6-luna" });
+  });
+
+  it("names a local model from the model list for the prompt bar", async () => {
+    make({ ...fakeLlm({}).llm, model: "qwen3:4b-instruct-2507-q4_K_M" });
+    expect((await app.inject({ method: "GET", url: "/api/llm-options" })).json().local).toEqual({ model: "qwen3:4b-instruct-2507-q4_K_M", name: "Qwen3 4B Instruct" });
   });
 
   it("creates, lists, fetches and exports a project", async () => {

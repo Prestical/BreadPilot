@@ -32,7 +32,15 @@ const TestBody = z.object({ key: z.string().optional() }).strict();
 const badKey = (key: string): string | null =>
   OPENAI_KEY.test(key) ? null : 'That doesn\'t look like an OpenAI secret key. It starts with "sk-" and has no spaces; copy it again from platform.openai.com.';
 
-export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRouteDeps): void {
+export interface SettingsWriter {
+  /**
+   * Changes the settings from code (e.g. a measured model size) in the same queue as the Settings
+   * screen's saves, so neither overwrites the other. `fn` gets the settings current at that moment.
+   */
+  update(fn: (current: Settings) => Settings): Promise<void>;
+}
+
+export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRouteDeps): SettingsWriter {
   const view = () => viewOf(deps.settings.get(), deps.browser(), deps.settings.keyRefused ?? null, deps.dataHome ?? null);
   const check = (key: string) => (deps.checkKey ?? ((k, m) => checkOpenAiKey(deps.openAiBaseUrl, k, m)))(key, deps.settings.get().openai.model);
 
@@ -43,17 +51,17 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
     queue = run.catch(() => {});
     return run;
   };
-  const save = (next: Settings) =>
-    change(async () => {
-      const prev = deps.settings.get();
-      await deps.apply(next, prev);
-      try {
-        await deps.settings.set(next);
-      } catch (err) {
-        await deps.apply(prev, next).catch(() => {});
-        throw err;
-      }
-    });
+  const commit = async (next: Settings) => {
+    const prev = deps.settings.get();
+    await deps.apply(next, prev);
+    try {
+      await deps.settings.set(next);
+    } catch (err) {
+      await deps.apply(prev, next).catch(() => {});
+      throw err;
+    }
+  };
+  const save = (next: Settings) => change(() => commit(next));
 
   app.get("/api/settings", async () => view());
 
@@ -101,4 +109,6 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsRoute
     if (problem) return { ok: false, message: problem } satisfies KeyCheck;
     return check(key);
   });
+
+  return { update: (fn) => change(() => commit(fn(deps.settings.get()))) };
 }

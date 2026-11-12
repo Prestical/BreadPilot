@@ -131,7 +131,57 @@ export interface KeyCheck {
   message: string;
 }
 
+/** One model's sizes as Ollama lists them, built into BreadPilot's model list (bytes). */
+export interface BuiltInSizes {
+  downloadBytes: number;
+  weightsBytes: number;
+  visionBytes: number;
+  draftBytes: number;
+  parameters: string | null;
+  quantization: string | null;
+}
+
+/** What Ollama measured on this computer after loading the model once. */
+export interface Measured {
+  bytes: number;
+  numCtx: number;
+  at: string;
+}
+
+export type FitKind = "fits" | "tight" | "too-big" | "unknown";
+export type Tier = "small" | "medium" | "large";
+
+/** One row of GET /api/models/local. */
+export interface LocalModel {
+  tag: string;
+  name: string;
+  family: string | null;
+  note: string | null;
+  default: boolean;
+  inCatalog: boolean;
+  installed: boolean;
+  installedBytes: number | null;
+  sizes: BuiltInSizes | null;
+  parameters: string | null;
+  quantization: string | null;
+  tier: Tier | null;
+  measured: Measured | null;
+  fit: { kind: FitKind; reason: string };
+  selected: boolean;
+}
+
+/** GET /api/models/local: BreadPilot's model list merged with the local Ollama. */
+export interface LocalModelsView {
+  totalMemoryBytes: number;
+  numCtx: number;
+  selected: string;
+  ollamaError: string | null;
+  models: LocalModel[];
+  others: LocalModel[];
+}
+
 export interface LlmOptions {
-  local: { model: string };
+  /** name: the model list's name for the tag (else the tag itself). */
+  local: { model: string; name?: string };
   openai: { available: true; model: string } | { available: false };
 }

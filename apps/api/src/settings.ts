@@ -37,6 +37,17 @@ const BrowserSchema = z.object({
   enabled: z.boolean(),
   port: z.number().int().min(1024).max(65535),
 });
+/**
+ * Memory a local model used on this computer, as Ollama's /api/ps reported it after loading it
+ * (PLAN §13.2). Kept per model tag; written only by the engine, never through a settings update.
+ */
+export const MeasuredSchema = z.object({
+  bytes: z.number().int().nonnegative(),
+  numCtx: z.number().int().positive(),
+  at: z.string().max(40),
+});
+const ModelMemorySchema = z.record(z.string().min(1).max(200), MeasuredSchema).refine((r) => Object.keys(r).length <= 200, "too many measured models");
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   local: LocalSchema,
@@ -46,6 +57,8 @@ export const SettingsSchema = z.object({
   setupDone: z.boolean(),
   /** The guided tour of the app was finished or skipped (it starts by itself only once). */
   tourDone: z.boolean(),
+  /** Measured memory per local model tag (engine only). */
+  modelMemory: ModelMemorySchema,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -77,6 +90,7 @@ export function defaultSettings(config: Config, opts: { withKey: boolean; setupD
     browserAccess: { enabled: false, port: 8080 },
     setupDone: opts.setupDone ?? false,
     tourDone: opts.setupDone ?? false,
+    modelMemory: {},
   };
 }
 
@@ -88,6 +102,7 @@ export function applyPatch(s: Settings, patch: SettingsPatch): Settings {
     browserAccess: { ...s.browserAccess, ...patch.browserAccess },
     setupDone: patch.setupDone ?? s.setupDone,
     tourDone: patch.tourDone ?? s.tourDone,
+    modelMemory: s.modelMemory,
   };
 }
 
@@ -163,6 +178,8 @@ export async function fileSettings(opts: { file: string; key: Uint8Array; defaul
       ...current,
       ...(typeof s.setupDone === "boolean" ? { setupDone: s.setupDone } : {}),
       ...(typeof s.tourDone === "boolean" ? { tourDone: s.tourDone } : {}),
+      // Measurements are only a convenience: a damaged list is dropped, not a reason to lose settings.
+      ...(ModelMemorySchema.safeParse(s.modelMemory).success ? { modelMemory: s.modelMemory } : {}),
       local: { ...current.local, ...s.local },
       openai: { ...current.openai, ...s.openai },
       browserAccess: { ...current.browserAccess, ...s.browserAccess },

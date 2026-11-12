@@ -66,6 +66,11 @@ export interface LlmConfig {
   reasoningEffort?: ReasoningEffort;
   /** Ollama only: how long it keeps the model in memory after a request (default "15m"). */
   keepAlive?: string;
+  /**
+   * Ollama only: the `think` field for this model (PLAN §13.2). Asked before each request; undefined =
+   * leave the field out (the model's own default), which is also what models without thinking get.
+   */
+  think?: () => Promise<boolean | undefined>;
   fetchImpl?: typeof fetch;
 }
 
@@ -134,8 +139,17 @@ export function createLlm(cfg: LlmConfig): LlmClient {
     const ollama = cfg.api === "ollama";
     const url = ollama ? `${root(cfg.baseUrl)}/api/chat` : `${root(cfg.baseUrl)}/v1/chat/completions`;
     const reasoning = !ollama && cfg.reasoningEffort !== undefined;
+    const think = ollama && cfg.think ? await cfg.think().catch(() => undefined) : undefined;
     const body = ollama
-      ? { model: cfg.model, messages, stream: false, format: schema, keep_alive: cfg.keepAlive ?? "15m", options: { num_ctx: cfg.numCtx, temperature, ...(maxTokens ? { num_predict: maxTokens } : {}) } }
+      ? {
+          model: cfg.model,
+          messages,
+          stream: false,
+          format: schema,
+          keep_alive: cfg.keepAlive ?? "15m",
+          ...(think === undefined ? {} : { think }),
+          options: { num_ctx: cfg.numCtx, temperature, ...(maxTokens ? { num_predict: maxTokens } : {}) },
+        }
       : reasoning
         ? {
             model: cfg.model,

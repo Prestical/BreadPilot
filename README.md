@@ -44,6 +44,7 @@ code you can flash to the board in one click. It runs on your own computer with 
 - [Demo](#demo)
 - [Quick start](#quick-start)
 - [Using the app](#using-the-app)
+- [Choosing a local model](#choosing-a-local-model)
 - [Supported hardware](#supported-hardware)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
@@ -86,8 +87,9 @@ https://github.com/user-attachments/assets/0161edb4-e6da-4555-9ad4-219627323e4f
    tested yet), `BreadPilot-…-Setup.exe` (Windows 10 and 11) or `BreadPilot-…-x86_64.AppImage` (Linux).
 2. **Install [Ollama](https://ollama.com/download)** for the free local AI, or skip it and use an
    OpenAI key instead.
-3. **Open BreadPilot.** A short setup checks Ollama, downloads the AI models with one click
-   (about 3 GB) and, if you like, takes an OpenAI key. A guided tour shows the rest.
+3. **Open BreadPilot.** A short setup checks Ollama, lets you pick and download a local AI model
+   with one click (the default is 2.5 GB) and, if you like, takes an OpenAI key. A guided tour shows
+   the rest.
 
 BreadPilot isn't signed with a paid developer certificate yet, so the first start needs one extra
 click:
@@ -146,6 +148,31 @@ The **⚡ Power** switch on the 3D view wires parts to the breadboard rails (def
 the Pico's pins; the code stays the same.
 
 BreadPilot follows your system's light or dark appearance.
+
+---
+
+## Choosing a local model
+
+Pick the local AI in the first-run setup or later in **⚙ Settings → Local AI**. The dropdown groups
+the models by size, and each one shows its download size, the memory it needs and a warning if it
+won't fit your computer:
+
+```
+Small (model under 4 GB)
+  Qwen3 4B Instruct · 2.5 GB · 4.9 GB memory (default, downloaded)
+Large (model 10 GB and more)
+  Gemma 4 31B · 20.4 GB · 18.7 GB+ memory · ⚠ too big for this computer
+```
+
+- **Sizes** are Ollama's own numbers, built into BreadPilot. The app doesn't go online to get them.
+- **Memory** is checked on your computer: after a download, BreadPilot loads the model once in your
+  local Ollama and saves how much memory it really uses. Until then it shows the least it needs
+  ("2.5 GB+"). Nothing leaves your computer.
+- **Pick a downloaded model** and it's used at once; for others press **Download and use**. The
+  model's name then shows on the button next to the idea box.
+- **Which one?** Start with the default. Bigger models may write better code but are slower and need
+  more memory; leave a few GB free for your system and the 3D view. Models with a warning may be very
+  slow or not start.
 
 ---
 
@@ -331,6 +358,12 @@ npm run eval:rag -w @breadpilot/api                                 # retrieval 
 
 # Agent eval (ideas in data/eval/)
 npm run eval:agent -w @breadpilot/api -- [--model <name>] [--openai] [--json <file>]
+
+# Model test: 50 ideas (20 easy, 20 medium, 10 hard), results per difficulty + the model's memory
+npm run eval:models -w @breadpilot/api -- --model <ollama tag> [--json <file>] [--think on|off]
+
+# Compare the built-in model sizes with ollama.com (--write updates them)
+npm run check:models -w @breadpilot/api [-- --write]
 ```
 
 Project states: `AWAIT_APPROVAL` (approve with `POST /api/projects/<id>/approve`, optionally

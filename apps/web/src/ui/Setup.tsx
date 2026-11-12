@@ -3,6 +3,7 @@ import * as api from "../projects/api";
 import type { SettingsView } from "../projects/types";
 import { useApp } from "../store";
 import { OpenAiSection } from "./Settings";
+import { LocalModels } from "./LocalModels";
 import { ModelDownloads } from "./ModelDownloads";
 
 
@@ -123,8 +124,9 @@ function ChooseAi({ view, onView, active }: { view: SettingsView | null; onView:
     <>
       <section className="settings-section">
         <h3>Local AI (free, private)</h3>
-        <p className="muted small">Runs on this computer through the Ollama app, so your projects never leave it. Slower, and its code has more mistakes. Needs about 3 GB of disk space and 4–5 GB of free memory.</p>
+        <p className="muted small">Runs on this computer through the Ollama app, so your projects never leave it. Slower, and its code has more mistakes. Pick a model below: each one shows its download size and, once downloaded, the memory it uses on this computer. The default is a good start.</p>
         {view ? <ModelDownloads local={view.local} active={active} /> : <p className="muted">Checking…</p>}
+        {view && <LocalModels active={active} onSaved={onView} />}
       </section>
       {view && <OpenAiSection view={view} onChange={onView} />}
       <p className="muted small settings-foot">You need at least one of the two to create projects. The examples and the 3D breadboard work without either.</p>

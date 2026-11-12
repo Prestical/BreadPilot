@@ -52,3 +52,57 @@ export function mistakeReport(results: AttemptRecord[]): string {
   if (design.length) out.push(`\nDesign repairs: ${design.length}`, ...design.map((d) => `  - ${d}`));
   return out.join("\n");
 }
+
+// ---------- per difficulty (model tests, PLAN §13.2) ----------
+
+export type Difficulty = "easy" | "medium" | "hard";
+export const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+
+export interface DifficultyRecord {
+  difficulty?: Difficulty;
+  correct: boolean;
+  validatedBuild: boolean;
+  codeOk: boolean;
+  codeAttempts: number;
+  seconds: number;
+}
+
+export interface DifficultyRow {
+  difficulty: Difficulty;
+  ideas: number;
+  correct: string;
+  codeFirstTry: string;
+  codeFinal: string;
+  avgSeconds: number;
+}
+
+const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "n/a");
+
+/** One row per difficulty that has ideas: correct projects, code right first try / in the end, speed. */
+export function byDifficulty(results: DifficultyRecord[]): DifficultyRow[] {
+  return DIFFICULTIES.flatMap((difficulty) => {
+    const rs = results.filter((r) => r.difficulty === difficulty);
+    if (!rs.length) return [];
+    const built = rs.filter((r) => r.validatedBuild);
+    return [
+      {
+        difficulty,
+        ideas: rs.length,
+        correct: pct(rs.filter((r) => r.correct).length, rs.length),
+        codeFirstTry: pct(built.filter((r) => r.codeOk && r.codeAttempts === 1).length, built.length),
+        codeFinal: pct(built.filter((r) => r.codeOk).length, built.length),
+        avgSeconds: Math.round((rs.reduce((n, r) => n + r.seconds, 0) / rs.length) * 10) / 10,
+      },
+    ];
+  });
+}
+
+export function difficultyTable(rows: DifficultyRow[]): string {
+  if (!rows.length) return "";
+  return [
+    "",
+    "| Difficulty | Ideas | Correct project | Code 1st try | Code final | Avg s/project |",
+    "|---|---|---|---|---|---|",
+    ...rows.map((r) => `| ${r.difficulty} | ${r.ideas} | ${r.correct} | ${r.codeFirstTry} | ${r.codeFinal} | ${r.avgSeconds} |`),
+  ].join("\n");
+}

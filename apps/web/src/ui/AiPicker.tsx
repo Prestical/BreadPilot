@@ -4,6 +4,7 @@ import { useApp } from "../store";
 import { useHealth } from "../useHealth";
 import { statusView } from "./status";
 import { modelName } from "./labels";
+import { localLabel } from "./modelList";
 
 interface Option {
   id: AiChoice;
@@ -16,7 +17,8 @@ interface Option {
 export const AI_OPTIONS: Option[] = [
   {
     id: "local",
-    label: () => "Local AI",
+    // The local model picked in Settings, e.g. "Local · Qwen3 4B Instruct".
+    label: (o) => localLabel(o),
     note: "Runs on your own computer, so your project never leaves it, but it is slower and its code has more mistakes.",
   },
   {

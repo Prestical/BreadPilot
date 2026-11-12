@@ -23,16 +23,20 @@ function Progress({ pull }: { pull: PullState }) {
 }
 
 /**
- * The local AI's state with one-click model downloads (D5): Ollama missing → its download page;
- * models missing → Download buttons with progress; ready → ✓. Rechecks by itself, so installing
- * Ollama or finishing a download shows up without a click. Used by the setup and by Settings.
+ * Ollama itself and the documentation-search model (D5): Ollama missing → its download page; search
+ * model missing → Download button with progress; ready → ✓. Chat models are picked and downloaded
+ * in the model list below it (LocalModels, PLAN §13.2). Rechecks by itself, so installing Ollama or
+ * finishing a download shows up without a click. Used by the setup and by Settings.
  */
 export function ModelDownloads({ local, active = true }: { local: SettingsView["local"]; active?: boolean }) {
   const [report, setReport] = useState<HealthReport | null>(null);
   const [pulls, setPulls] = useState<PullState[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const state = localAiState(report, local);
+  const all = localAiState(report, local);
+  // Only the search model here: chat models have their own list.
+  const searchMissing = all.kind === "missing" && local ? all.models.filter((m) => m === local.embedModel) : [];
+  const state = all.kind === "missing" ? (searchMissing.length ? { kind: "missing" as const, models: searchMissing } : { kind: "ready" as const }) : all;
   const pulling = pulls.some((p) => p.status === "pulling");
 
   useEffect(() => {
@@ -112,7 +116,7 @@ export function ModelDownloads({ local, active = true }: { local: SettingsView["
       {state.kind === "missing" && (
         <>
           <p>
-            <strong>Ollama is running.</strong> Download {state.models.length === 1 ? "this model" : "these models"} once (about 3 GB the first time):
+            <strong>Ollama is running.</strong> Download the documentation search model once (it finds the right datasheet pages for the AI):
           </p>
           <ul className="pull-list">
             {state.models.map((m) => {
@@ -150,7 +154,7 @@ export function ModelDownloads({ local, active = true }: { local: SettingsView["
       )}
       {state.kind === "ready" && (
         <p className="ok-line">
-          ✓ <strong>Local AI is ready</strong> ({local.model}).
+          ✓ <strong>Ollama is running</strong> and the documentation search model is ready.
         </p>
       )}
     </div>

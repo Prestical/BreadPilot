@@ -18,6 +18,7 @@ import { progressBus } from "./agent/progress";
 import { PortInUseError, type KeyCheck, type Settings, type SettingsStore } from "./settings";
 import { registerSettingsRoutes } from "./settings-routes";
 import { ollamaPuller, registerOllamaRoutes } from "./ollama";
+import { localModelService, ollamaModels, registerLocalModelRoutes, thinkSetting } from "./local-models";
 
 export interface StartOptions {
   config: Config;
@@ -78,7 +79,10 @@ interface Clients {
   listModels: () => Promise<string[]>;
 }
 
-function clientsFor(config: Config, s: Settings): Clients {
+/** `think` for a local model tag: the catalog's choice when Ollama says the model can think. */
+type ThinkFor = (tag: string) => Promise<boolean | undefined>;
+
+function clientsFor(config: Config, s: Settings, think: ThinkFor): Clients {
   const key = s.openai.apiKey.trim();
   return {
     llm: createLlm({
@@ -89,6 +93,7 @@ function clientsFor(config: Config, s: Settings): Clients {
       temperature: config.LLM_TEMPERATURE,
       timeoutMs: config.LLM_TIMEOUT_MS,
       keepAlive: `${s.local.keepAliveMin}m`,
+      think: () => think(s.local.model),
     }),
     // OpenAI's model, offered next to the local one only when a key is set.
     cloudLlm: key
@@ -112,7 +117,10 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
   const { config, db, settings } = opts;
   // The services log through the app, which needs the services: `log` is set once the app exists.
   let log: (msg: string) => void = () => {};
-  let clients = clientsFor(config, settings.get());
+  // The local Ollama on this computer: installed models, thinking support, memory (no internet).
+  const ollama = ollamaModels({ baseUrl: () => settings.get().local.baseUrl });
+  const think = thinkSetting(ollama);
+  let clients = clientsFor(config, settings.get(), think);
 
   // These objects stay the same; what they point to changes with the settings. A project that is
   // already running keeps the client it started with.
@@ -214,7 +222,7 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
       });
   };
 
-  registerSettingsRoutes(app, {
+  const settingsWriter = registerSettingsRoutes(app, {
     settings,
     openAiBaseUrl: config.OPENAI_BASE_URL,
     dataHome: opts.desktop ? process.platform : null,
@@ -235,22 +243,36 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
         }
       }
       browserError = null;
-      clients = clientsFor(config, next);
+      clients = clientsFor(config, next, think);
       agent.llm = clients.llm;
       agent.cloudLlm = clients.cloudLlm;
       if (next.local.embedModel !== prev.local.embedModel || next.local.baseUrl !== prev.local.baseUrl) attempt(1);
     },
   });
 
-  // Model downloads from the page; a new documentation-search model indexes the docs right away.
+  // The local model list (PLAN §13.2): sizes built into the catalog, memory measured by the local Ollama.
+  const localModels = localModelService({ settings, update: settingsWriter.update, ollama });
+  registerLocalModelRoutes(app, localModels);
+
+  // Model downloads from the page; a new documentation-search model indexes the docs right away,
+  // and a new chat model is measured (loaded once) unless its weights alone are too big for this
+  // computer, which could make it unusable while loading.
+  const measureAfterDownload = async (model: string) => {
+    const view = await localModels.list();
+    const entry = [...view.models, ...view.others].find((m) => m.tag === model);
+    if (!entry || entry.fit.kind === "too-big") return;
+    const m = await localModels.measure(model);
+    log(`ollama: ${model} uses ${m.bytes} bytes at ${m.numCtx} tokens of context`);
+  };
   const puller = ollamaPuller({
     baseUrl: () => settings.get().local.baseUrl,
     onDone: (model) => {
       log(`ollama: downloaded ${model}`);
       if (model === settings.get().local.embedModel) attempt(1);
+      else measureAfterDownload(model).catch((err: Error) => app.log.warn(`ollama: couldn't check ${model}'s memory: ${err.message}`));
     },
   });
-  registerOllamaRoutes(app, { puller, models: () => [settings.get().local.model, settings.get().local.embedModel] });
+  registerOllamaRoutes(app, { puller, models: localModels.downloadable });
 
   await migrate(db, config.MIGRATIONS_DIR, log);
   await app.listen({ host: "127.0.0.1", port: opts.port });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import * as api from "../projects/api";
 import type { KeyCheck, ReasoningEffort, SettingsView } from "../projects/types";
 import { useApp } from "../store";
+import { LocalModels } from "./LocalModels";
 import { ModelDownloads } from "./ModelDownloads";
 import { dataKeysText } from "./dataKeys";
 
@@ -271,6 +272,12 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
       }
     >
       <ModelDownloads local={view.local} />
+      <LocalModels
+        onSaved={(v) => {
+          onChange(v);
+          setForm(v.local);
+        }}
+      />
       <form className="settings-row" onSubmit={save}>
         <label className="field">
           Free its memory after (minutes)
@@ -281,7 +288,7 @@ function LocalAiSection({ view, onChange }: { view: SettingsView; onChange: (v: 
         </button>
       </form>
       <p id="keepalive-help" className="muted small">
-        While loaded, the local model uses 4–5 GB of memory. It's freed this long after its last answer; 0 frees it at once (the next answer then takes a few seconds longer to start).
+        While loaded, the local model uses the memory shown for it in the list. It's freed this long after its last answer; 0 frees it at once (the next answer then takes a few seconds longer to start).
       </p>
       <details className="settings-more">
         <summary>Advanced</summary>
