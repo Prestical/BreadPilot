@@ -43,6 +43,11 @@ describe("version numbers", () => {
     expect(isNewer("0.1.9", "0.2.0")).toBe(false);
     expect(isNewer("1.0.0", null)).toBe(false);
     expect(isNewer(null, "0.2.0")).toBe(false);
+    // A beta app (26/11/2026): the same version's release is newer; an older release isn't.
+    expect(isNewer("0.4.0", "0.4.0-beta")).toBe(true);
+    expect(isNewer("0.4.1", "0.4.0-beta.1")).toBe(true);
+    expect(isNewer("0.3.0", "0.4.0-beta")).toBe(false);
+    expect(isNewer("0.4.0-beta", "0.3.0")).toBe(false); // pre-release tags are never "latest"
   });
 });
 

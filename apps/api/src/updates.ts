@@ -32,10 +32,12 @@ export function parseVersion(v: string | null | undefined): [number, number, num
 
 export function isNewer(latest: string | null, current: string | null): boolean {
   const a = parseVersion(latest);
-  const b = parseVersion(current);
+  // A pre-release app ("0.4.0-beta") compares by its numbers, and is older than the same release.
+  const pre = /^(v?\d{1,6}\.\d{1,6}\.\d{1,6})-[0-9A-Za-z.-]+$/.exec(current?.trim() ?? "");
+  const b = parseVersion(pre ? pre[1] : current);
   if (!a || !b) return false;
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i]! > b[i]!;
-  return false;
+  return !!pre;
 }
 
 /**

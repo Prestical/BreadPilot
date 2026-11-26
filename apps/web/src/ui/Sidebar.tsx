@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import logo from "../assets/logo.png";
 import { DEMOS } from "../demos";
+import { APP_VERSION } from "../version";
 import { STATE_LABEL } from "../projects/progress";
 import { useApp } from "../store";
 import { UpdateNotice } from "./UpdateNotice";
@@ -45,7 +46,7 @@ export function Sidebar() {
       <div className="brand">
         <img className="logo" src={logo} alt="" width={30} height={30} />
         <span>BreadPilot</span>
-        <span className="board-chip">Pico 2 W</span>
+        <span className="board-chip" title="BreadPilot version">v{APP_VERSION}</span>
         <button type="button" className="icon-btn drawer-close" aria-label="Close the project list" onClick={() => setOpen(false)}>
           <Icon name="x" />
         </button>
