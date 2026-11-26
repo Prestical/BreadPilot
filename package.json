@@ -25,6 +25,14 @@
   "devDependencies": {
     "@types/node": "^22.15.0",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "4.1.12"
+  },
+  "overrides": {
+    "@fastify/static": {
+      "glob": {
+        ".": "14.0.4",
+        "minimatch": "11.0.5"
+      }
+    }
   }
 }

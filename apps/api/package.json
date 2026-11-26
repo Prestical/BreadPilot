@@ -25,10 +25,10 @@
     "@breadpilot/circuit-core": "*",
     "@electric-sql/pglite": "0.5.11",
     "@electric-sql/pglite-pgvector": "0.0.12",
-    "@fastify/static": "10.1.6",
+    "@fastify/static": "10.1.10",
     "fastify": "^5.4.0",
     "pdfjs-dist": "^4.10.38",
-    "zod": "^3.25.0"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

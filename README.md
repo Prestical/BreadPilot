@@ -374,6 +374,11 @@ npm test
   documents are indexed when it starts.
 - Only one program can use a data folder at a time (it holds `data.lock`): stop `npm run dev:api`
   before running the command-line tools below.
+- CI (`.github/workflows/ci.yml`) runs the type checks and all tests on Linux, macOS and Windows
+  for every push to `main`, every pull request and every version tag, and fails on any high or
+  critical `npm audit` finding.
+- `npm run mutation -w @breadpilot/circuit-core` runs mutation testing (Stryker) on the validator,
+  the netlist and the code checker; the report goes to `packages/circuit-core/reports/mutation/`.
 
 <details>
 <summary><strong>Building the installers</strong></summary>

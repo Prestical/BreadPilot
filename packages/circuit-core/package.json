@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "pretypecheck": "npm run gen:parts",
     "typecheck": "tsc -p tsconfig.json",
     "gen:pinout": "node --import tsx scripts/gen-pinout.ts",
     "gen:parts": "node --import tsx scripts/gen-parts.ts",
