@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { checkViewSpec, layoutProject, resolveBuild, type ResolvedPart, type ViewSpec } from "@breadpilot/circuit-core";
 import { holePos } from "../src/scene/coords";
 import { PACKS } from "@breadpilot/circuit-core";
-import { partShapes, segments, viewShapes, type ShapeNode } from "../src/scene/shapes";
+import { partShapes, viewShapes, type ShapeNode } from "../src/scene/shapes";
 import { previewFrame } from "../src/scene/PartPreview";
 import { BOARD, PICO, PITCH, colX } from "../src/scene/coords";
 import { boardPrint, MAT, matLines } from "../src/scene/textures";

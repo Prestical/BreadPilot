@@ -604,3 +604,21 @@ dialog.parts-dialog { width: min(820px, calc(100vw - 32px)); }
 .try-output { max-height: 160px; white-space: pre-wrap; }
 .try-error { color: var(--bad); }
 pre.code.numbered .ln-error { background: var(--bad-bg); outline: 1px solid var(--bad); outline-offset: -1px; }
+
+/* Examples (25/11/2026): how hard each one is. */
+.level-tag { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 0.66rem; font-weight: 650; line-height: 1.6; vertical-align: 1px; border: 1px solid transparent; }
+.level-tag.easy { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.level-tag.medium { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.level-tag.hard { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.level-tag.needs-testing { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+
+/* Hardware report card (26/11/2026): above the prompt box after Build for Pico, for projects with
+   parts not tried on a real Pico yet. */
+.report-card { position: relative; z-index: 6; width: min(640px, 100%); padding: 12px 40px 12px 14px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--glass); backdrop-filter: blur(10px); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; gap: 8px; }
+.report-card p { margin: 0; }
+.report-close { position: absolute; top: 8px; right: 8px; }
+.report-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.report-actions .link-btn { margin: 0; }
+.report-card .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.report-note { width: 100%; min-height: 0; font: inherit; font-size: 0.85rem; }
+.report-warn { color: var(--bad); font-weight: 600; }

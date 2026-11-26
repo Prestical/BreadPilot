@@ -1,8 +1,9 @@
 {
   "plan": { "line": "a 1.3 inch 128x64 OLED display (I2C) that shows text and simple drawings in one color. At most 2." },
   "words": {
-    "nouns": ["oled", "oleds", "display", "displays", "screen", "screens"],
-    "nounContext": { "except": ["oled", "oleds"], "notAfterComputer": true, "unlessUnsupported": "displays" }
+    "nouns": ["oled", "oleds", "display", "displays", "screen", "screens", "sh1106", "sh1106s", "sh1106 oled", "sh1106 display", "sh1106 screen", "1·3 inch oled", "1·3 inch oleds", "1·3 oled", "1·3 inch display", "1·3 inch screen", "1·3 display", "1·3 screen"],
+    "nounContext": { "except": ["oled", "oleds", "sh1106", "sh1106s"], "notAfterComputer": true, "unlessUnsupported": "displays" },
+    "genericUnlessNamed": ["oled-small"]
   },
   "names": { "label": ["an OLED display", "OLED displays"], "count": ["display", "displays"] },
   "code": {

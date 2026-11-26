@@ -1,9 +1,26 @@
-import { buildSteps, layoutProject, parseConnections, resolveBuild, type Build, type BuildStep, type PowerMode, type Resolved } from "@breadpilot/circuit-core";
+// The examples in the sidebar: projects built in BreadPilot and exported. For the v0.4.0 beta they are
+// the "needs testing" projects (user, 26/11/2026): ready-made projects with the parts not yet tried on
+// a real Pico, so testers can build them and send a hardware report without spending AI tokens.
+// examples.json keeps what each needs (its parts and pins, plan and code, from the exported project
+// files); the wiring comes from the layout engine for either power mode, the same as the original
+// project's. (The earlier easy, medium and hard examples are kept outside the repo for the full release.)
+import { buildSteps, layoutProject, resolveBuild, type BlockRequest, type Build, type BuildStep, type PowerMode, type Resolved } from "@breadpilot/circuit-core";
+import type { ApiProject, PlanPart } from "./projects/types";
+import RAW_EXAMPLES from "./examples/examples.json";
 
 export interface Demo {
   id: string;
   title: string;
   description: string;
+  /** The tag beside the title: a difficulty, or "Needs testing" for parts not yet tried on a real Pico. */
+  level: "Easy" | "Medium" | "Hard" | "Needs testing";
+  idea: string;
+  goal: string;
+  behavior: string[];
+  /** The plan's parts (kind, purpose, colour), as the plan shows them. */
+  parts: PlanPart[];
+  code: string;
+  explanation: string;
   /** The build for each power mode (breadboard rails or straight to the Pico's pins). */
   build: (power: PowerMode) => Build;
 }
@@ -14,58 +31,43 @@ export interface Project extends Omit<Demo, "build"> {
   resolved: Resolved;
 }
 
-/** Written by hand in the connection DSL (Milestone 2 acceptance: plays step by step in 3D). */
-function ledButtonByHand(power: PowerMode): Build {
-  // GND from pin 38 at the top; the button on GP18 so its wire isn't in the row next to GP16's.
-  const rails = `
-    #38(GND) -> #RR-(GND)
-    #21(GP16) -> #24j(R1.a)            // signal to the resistor
-    #28j(LED1.cathode) -> #RR-(GND)
-    #24(GP18) -> #30j(BTN1.1b)         // button input
-    #32j(BTN1.2b) -> #RR-(GND)
-  `;
-  // Direct to the Pico: no rails; each GND wire on its own GND pin (28 and 23).
-  const direct = `
-    #21(GP16) -> #24j(R1.a)
-    #28(GND) -> #28j(LED1.cathode)
-    #24(GP18) -> #30j(BTN1.1b)
-    #23(GND) -> #32j(BTN1.2b)
-  `;
-  const { wires, errors } = parseConnections(power === "direct" ? direct : rails);
-  if (errors.length) throw new Error(errors[0]!.message);
-  const colors = power === "direct" ? ["yellow", "black", "green", "black"] : ["black", "yellow", "black", "green", "black"];
-  return {
-    boardId: "pico-2-w",
-    parts: [
-      { ref: "R1", type: "resistor", legs: { a: "24h", b: "27h" }, props: { ohms: 330 } },
-      { ref: "LED1", type: "led-5mm", legs: { anode: "27g", cathode: "28g" }, props: { color: "red" } },
-      { ref: "BTN1", type: "button-6mm", legs: { "1a": "30e", "1b": "30f", "2a": "32e", "2b": "32f" } },
-    ],
-    wires: wires.map((w, i) => ({ ...w, color: colors[i]! })),
-    gpioModes: { GP16: "out", GP18: "in_pullup" },
-  };
+/** One entry of examples.json. */
+interface ExampleFile extends Omit<Demo, "build"> {
+  requests: BlockRequest[];
 }
 
-export const DEMOS: Demo[] = [
-  { id: "led-button", title: "LED + button", description: "Light an LED while a button is pressed.", build: ledButtonByHand },
-  { id: "blink", title: "Blinking LED", description: "The classic first project: one LED on GP16.", build: (power) => layoutProject([{ kind: "led" }], undefined, { power }).build },
-  {
-    id: "dimmer",
-    title: "Knob-controlled LED",
-    description: "Read a potentiometer and set the LED brightness.",
-    build: (power) => layoutProject([{ kind: "pot" }, { kind: "led", props: { color: "green" } }], undefined, { power }).build,
-  },
-  {
-    id: "oled",
-    title: "OLED display + button",
-    description: "Wire the 1.3\" I2C OLED (SH1106) and a button, e.g. to show a press counter.",
-    build: (power) => layoutProject([{ kind: "oled" }, { kind: "button" }], undefined, { power }).build,
-  },
-];
+export const DEMOS: Demo[] = (RAW_EXAMPLES as unknown as ExampleFile[]).map(({ requests, ...e }) => ({
+  ...e,
+  build: (power: PowerMode) => layoutProject(requests, undefined, { power }).build,
+}));
 
 const cache = new Map<string, Project>();
+const directOk = new Map<string, boolean>();
 
-export function loadProject(id: string, power: PowerMode = "rails"): Project {
+/**
+ * Whether an example can be wired straight to the Pico: the Pico's 3V3 pin has room for two wires, so
+ * an example with more powered parts (the sound board) is shown on the breadboard rails only.
+ */
+export function canWireDirect(id: string): boolean {
+  const hit = directOk.get(id);
+  if (hit !== undefined) return hit;
+  const demo = DEMOS.find((d) => d.id === id);
+  let ok = false;
+  try {
+    if (demo) buildSteps(demo.build("direct"));
+    ok = !!demo;
+  } catch {
+    ok = false;
+  }
+  directOk.set(id, ok);
+  return ok;
+}
+
+/** The power wiring an example is shown with: the chosen one, or the rails when it can't be direct. */
+export const examplePower = (id: string, power: PowerMode): PowerMode => (power === "direct" && !canWireDirect(id) ? "rails" : power);
+
+export function loadProject(id: string, chosen: PowerMode = "rails"): Project {
+  const power = examplePower(id, chosen);
   const key = `${id}:${power}`;
   const hit = cache.get(key);
   if (hit) return hit;
@@ -75,5 +77,41 @@ export function loadProject(id: string, power: PowerMode = "rails"): Project {
   const { resolved } = resolveBuild(build);
   const project = { ...demo, build, steps, resolved: resolved! };
   cache.set(key, project);
+  return project;
+}
+
+/** An example's id in the Code view (edits are kept per example, like per project). */
+export const EXAMPLE_PREFIX = "example:";
+
+const asProject = new Map<string, ApiProject>();
+
+/**
+ * An example as the Code view takes a project: its code, explanation and plan, ready, so the Code
+ * button, Try it, Edit and Build for Pico work as for a project the AI made. It has no project in
+ * the engine (no handoff bundle, no versions).
+ */
+export function exampleAsProject(id: string, chosen: PowerMode = "rails"): ApiProject | null {
+  const demo = DEMOS.find((d) => d.id === id);
+  if (!demo) return null;
+  const power = examplePower(id, chosen);
+  const key = `${id}:${power}`;
+  const hit = asProject.get(key);
+  if (hit) return hit;
+  const p = loadProject(id, power);
+  const project: ApiProject = {
+    id: `${EXAMPLE_PREFIX}${id}`,
+    idea: demo.idea,
+    board: p.build.boardId,
+    title: demo.title,
+    state: "READY",
+    running: false,
+    power,
+    plans: [{ title: demo.title, goal: demo.goal, behavior: demo.behavior, parts: demo.parts, questions: [], version: 1, approved: true }],
+    build: { build: p.build, steps: p.steps, code: demo.code, codeExplanation: demo.explanation, codeAttempts: 1, citations: [] },
+    events: [],
+    createdAt: "",
+    updatedAt: "",
+  };
+  asProject.set(key, project);
   return project;
 }

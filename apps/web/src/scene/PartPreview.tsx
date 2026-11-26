@@ -10,39 +10,26 @@ import { PartView } from "./Parts";
 import { StudioLights } from "./Studio";
 import { useDark } from "../ui/theme";
 
-/** A part with a piece lying on the mat beside the breadboard (the soil probe, the keypad). */
-const liesBeside = (view: ViewSpec | undefined) => view?.shape === "keypad" || view?.shape === "tethered" || (view?.shape === "upright-module" && !!view.features?.some((f) => f.type === "probe"));
+/** A part with a piece lying on the mat beside the breadboard (the soil probe on its wires). */
+const liesBeside = (view: ViewSpec | undefined) => view?.shape === "tethered";
 
 /** How far the camera stands back and the height it looks at (and how far sideways), from the part's own size (mm). */
 export function previewFrame(view: ViewSpec | undefined): { size: number; lookY: number; lookX?: number } {
   switch (view?.shape) {
     case "header-module":
       return { size: Math.max(40, Math.max(...view.board.size) * 2), lookY: 4 };
-    case "upright-module": {
-      const tall = view.board.size[1];
-      const probe = view.features?.some((f) => f.type === "probe");
-      return { size: Math.max(46, Math.max(...view.board.size) * 1.875) * (probe ? 1.5 : 1), lookY: probe ? tall / 4 : tall / 2 };
-    }
+    case "upright-module":
+      return { size: Math.max(46, Math.max(...view.board.size) * 1.875), lookY: view.board.size[1] / 2 };
     case "grid-sensor":
       return { size: Math.round(view.body.size[1] * 2.95), lookY: Math.round(view.body.size[1] / 2) };
-    case "keypad":
-      return { size: Math.max(...view.size) * 2.3, lookY: -4, lookX: view.size[0] * 0.55 };
-    case "seven-segment":
-      return { size: 42, lookY: 5 };
     case "to92":
       return { size: 30, lookY: 6 };
     case "tethered": {
       // across, and how tall, the thing on the wires is
-      const sizes: Record<typeof view.unit.type, [number, number]> = { servo: [33, 31], "dc-motor": [20, 20], "coin-motor": [10, 3], lcd: [80, 9], stepper: [68, 28], "soil-probe": [98, 6] };
+      const sizes: Record<typeof view.unit.type, [number, number]> = { "soil-probe": [98, 6] };
       const [wide, tall] = sizes[view.unit.type];
       return { size: 70 + wide * 1.7, lookY: tall / 2 - 4, lookX: 16 + wide / 2 };
     }
-    case "to220":
-      return { size: 44, lookY: 11 };
-    case "can-capacitor":
-      return { size: 34, lookY: view.height / 2 + 1 };
-    case "rgb-led":
-      return { size: 34, lookY: 7 };
     case "metal-can":
       return { size: 34, lookY: view.height / 2 + 1 };
     default:
@@ -74,7 +61,7 @@ export default function PartPreview({ kind, label }: { kind: string; label: stri
         <meshStandardMaterial color="#f3f1ea" roughness={0.85} />
       </mesh>
       {beside && (
-        <mesh position={[center[0] + size * 0.2, -BOARD.height - 1, center[2] - (view?.shape === "keypad" ? size * 0.15 : 0)]} raycast={() => null}>
+        <mesh position={[center[0] + size * 0.2, -BOARD.height - 1, center[2]]} raycast={() => null}>
           <boxGeometry args={[size * 1.1, 2, size * 1.05]} />
           <meshStandardMaterial color="#2c6e55" roughness={0.9} />
         </mesh>

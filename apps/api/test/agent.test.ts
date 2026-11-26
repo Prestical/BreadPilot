@@ -452,6 +452,9 @@ describe("behaviour simulator in the code stage (M18 18.7f)", () => {
     expect(calls.filter((c) => c.stage === "code")[1]!.messages.at(-1)!.content).toContain("The program stops with TypeError on line 10.");
     expect(p.build!.behaviour).toEqual({ ...fine, ok: true });
     expect(p.build!.codeHistory!.map((h) => h.behaviour?.ok)).toEqual([false, true]);
+    // 26/11/2026: the simulator has its own stage, so each code call is one "code ok" (the eval counts
+    // them as AI calls) and the simulator's finding isn't reported as the checker's.
+    expect(p.events.filter((e) => e.stage === "code" || e.stage === "simulate").map((e) => `${e.stage}:${e.status}`)).toEqual(["code:ok", "simulate:retry", "code:ok", "simulate:ok"]);
   });
 
   it("hands off, saying so, when the code keeps crashing", async () => {
@@ -543,11 +546,23 @@ describe("behaviour claims in the code stage (M18 18.7g)", () => {
     expect(behaviour.mock.calls[0]![2]).toEqual([]);
   });
 
-  it("hands off, saying the code didn't do what it said, when the claim keeps failing", async () => {
-    const { llm } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [INVERTED] });
+  it("a claim that still fails after one fix never hands off: the code is kept, the claim shown as a warning (26/11/2026)", async () => {
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [INVERTED] });
+    const p = await createProject(deps(llm, { behaviour: behaviourCheck }), "LED and button");
+    expect(p.state).toBe("READY");
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(2); // one fix, not four tries
+    expect(p.build!.behaviour!.ok).toBe(true);
+    expect(p.build!.behaviour!.findings.map((f) => [f.code, f.severity])).toEqual([["S006", "warning"]]);
+    expect(p.events.at(-1)).toMatchObject({ stage: "simulate", status: "ok", detail: expect.stringMatching(/^kept after a fix, with 1 claim\(s\) not confirmed/) });
+  }, 30_000);
+
+  it("a crash still gets every repair and hands off when it never stops crashing", async () => {
+    const crashes = { ...RIGHT, code: GOOD_CODE.code.replace("    time.sleep(0.01)\n", "    if button.value() == 0:\n        print(\"pressed \" + 1)\n    time.sleep(0.01)\n") };
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [crashes] });
     const p = await createProject(deps(llm, { behaviour: behaviourCheck }), "LED and button");
     expect(p.state).toBe("HANDOFF");
-    expect(p.handoffReason).toMatch(/didn't do what it said in the simulator after 4 tries/);
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(4);
+    expect(p.handoffReason).toMatch(/still crashed in the simulator after 4 tries/);
   }, 30_000);
 });
 

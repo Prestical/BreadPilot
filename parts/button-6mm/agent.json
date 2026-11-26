@@ -2,8 +2,8 @@
   "plan": { "line": "a push button the user presses." },
   "words": {
     "nouns": ["button", "buttons", "push-button", "push-buttons", "pushbutton", "pushbuttons", "switch", "switches"],
-    "nounContext": { "words": ["switch"] },
-    "impliedBy": { "words": ["press", "presses", "pressed", "pressing", "push", "pushes", "pushed", "click", "clicks", "clicked"] }
+    "nounContext": { "words": ["switch", "switches"] },
+    "impliedBy": { "words": ["press", "presses", "pressed", "pressing", "push", "pushes", "pushed", "click", "clicks", "clicked"], "unless": ["push it into", "push it in", "pushed into", "push into", "pushes into"] }
   },
   "names": { "label": ["a button", "buttons"], "count": ["button", "buttons"], "supports": "push buttons", "short": ["button", "buttons"] },
   "code": {

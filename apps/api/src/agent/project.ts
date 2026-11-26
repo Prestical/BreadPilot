@@ -10,7 +10,8 @@ export type LlmChoice = (typeof LLM_CHOICES)[number];
 export type ProjectState = "AWAIT_APPROVAL" | "READY" | "HANDOFF" | "FAILED";
 
 export interface StageEvent {
-  stage: "intake" | "plan" | "design" | "steps" | "code";
+  /** "simulate": the behaviour simulator's run of the code (M18 18.7f; its own stage since 26/11/2026). */
+  stage: "intake" | "plan" | "design" | "steps" | "code" | "simulate";
   status: "ok" | "retry" | "error";
   detail?: string;
   ms: number;

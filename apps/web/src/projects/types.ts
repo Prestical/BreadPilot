@@ -3,7 +3,7 @@
 import type { Build, BuildStep, CodeCheckReport, PowerMode } from "@breadpilot/circuit-core";
 
 export type ProjectState = "AWAIT_APPROVAL" | "READY" | "HANDOFF" | "FAILED";
-export type Stage = "intake" | "plan" | "design" | "steps" | "code";
+export type Stage = "intake" | "plan" | "design" | "steps" | "code" | "simulate";
 
 /** M18 18.7f: what the behaviour simulator found when it ran the code with the automatic test. */
 export interface BehaviourSummary {

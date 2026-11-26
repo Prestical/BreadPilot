@@ -1,6 +1,17 @@
+import { fileURLToPath } from "node:url";
+import { readPacks } from "../scripts/gen-parts";
+import { CATALOG } from "../src/catalog";
 import { parseConnections } from "../src/dsl";
+import { loadPack } from "../src/packs";
 import { validateBuild } from "../src/validate";
 import type { Build, GpioMode, Part } from "../src/types";
+
+/**
+ * Parts only the safety tests use (26/11/2026: the app ships only parts the engine can plan): a DC
+ * motor straight on a GPIO pin (current limits) and the HC-SR04, a 5 V sensor (5 V into a 3.3 V
+ * pin, the voltage divider). Loaded and checked like a pack, then added to the catalog for the tests.
+ */
+for (const pack of readPacks(fileURLToPath(new URL("./fixtures/parts", import.meta.url))).map(loadPack)) CATALOG[pack.part.id] = pack.part;
 
 /** Builds a Build from parts + DSL text. Throws on DSL syntax errors (tests should be explicit). */
 export function mk(parts: Part[], dsl: string, gpioModes: Record<string, GpioMode> = {}): Build {

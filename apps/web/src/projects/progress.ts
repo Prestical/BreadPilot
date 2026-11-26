@@ -14,7 +14,7 @@ const tries = (n?: number) => (n && n > 1 ? ` (try ${n})` : "");
 
 export function describeEvent(e: ProgressEvent): TimelineRow {
   const row = (text: string, tone: Tone, detail?: string): TimelineRow => ({ stage: e.stage, text, tone, ...(detail ? { detail } : {}) });
-  if (e.status === "error") return row(e.stage === "code" ? "The code still didn't match the wiring" : "Something went wrong", "bad", e.detail);
+  if (e.status === "error") return row(e.stage === "code" ? "The code still didn't match the wiring" : e.stage === "simulate" ? "The code still didn't work in the simulator" : "Something went wrong", "bad", e.detail);
   switch (e.stage) {
     case "intake":
       return e.status === "start" ? row("Reading your idea…", "busy") : row("Understood your idea", "ok");
@@ -30,6 +30,11 @@ export function describeEvent(e: ProgressEvent): TimelineRow {
       if (e.status === "start") return row(`Writing MicroPython${tries(e.attempt)}…`, "busy");
       if (e.status === "retry") return row("The code checker found problems; asking for a fix", "warn", e.detail);
       return row("Code matches the wiring", "ok");
+    case "simulate":
+      if (e.status === "start") return row("Running the code on a simulated copy of the circuit…", "busy");
+      if (e.status === "retry") return row("The simulator found a problem; asking for a fix", "warn", e.detail);
+      if (e.detail?.startsWith("not run")) return row("Couldn't run the code in the simulator", "warn", e.detail);
+      return row("Ran the code in the simulator", "ok", e.detail);
   }
 }
 

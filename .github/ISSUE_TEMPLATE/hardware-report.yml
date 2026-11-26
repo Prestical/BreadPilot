@@ -1,0 +1,60 @@
+name: Hardware report
+description: A BreadPilot project built on a real Raspberry Pi Pico 2 W, with parts not tried on real hardware yet.
+title: "Hardware report: "
+labels: ["hardware report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for building it on a real board. Reports like this one are how a part gets marked as tried on real hardware.
+        BreadPilot fills in the fields below; change anything that isn't right, then press **Create**.
+  - type: input
+    id: parts
+    attributes:
+      label: Parts not tried on real hardware yet
+      description: The parts in the project that this report is about.
+      placeholder: "Photoresistor (LDR, GL5528)"
+    validations:
+      required: true
+  - type: input
+    id: result
+    attributes:
+      label: Did it work?
+      description: "\"Works\" or \"Doesn't work\"."
+      placeholder: Works
+    validations:
+      required: true
+  - type: input
+    id: failed
+    attributes:
+      label: Parts that didn't work
+      description: Only when it didn't work. The other parts in the list worked.
+      placeholder: "Photoresistor (LDR, GL5528)"
+  - type: input
+    id: problem
+    attributes:
+      label: What went wrong
+      description: Only when it didn't work.
+      placeholder: "Nothing happened"
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What happened on the board. A photo of the breadboard helps a lot (drag it in here).
+  - type: input
+    id: project
+    attributes:
+      label: Project
+      description: The project's title in BreadPilot.
+  - type: input
+    id: version
+    attributes:
+      label: BreadPilot version and computer
+      placeholder: "0.4.0-beta.1, macOS"
+  - type: checkboxes
+    id: built
+    attributes:
+      label: Built for real
+      options:
+        - label: I wired it on a breadboard and ran it on a Raspberry Pi Pico 2 W, following BreadPilot's steps.
+          required: true

@@ -5,7 +5,8 @@ import { buildSteps, changeSteps, layoutProject, parseConnections, stableRequest
 import { describeEvent, timeline } from "../src/projects/progress";
 import type { ApiProject, ProgressEvent } from "../src/projects/types";
 import { emptyResolved, projectView } from "../src/projects/view";
-import { DEMOS, loadProject } from "../src/demos";
+import { canWireDirect, DEMOS, loadProject } from "../src/demos";
+import { ledButtonByHand } from "./fixtures/ledButton";
 
 const at = "2026-10-18T10:00:00Z";
 const ev = (stage: ProgressEvent["stage"], status: ProgressEvent["status"], extra: Partial<ProgressEvent> = {}): ProgressEvent => ({ type: "stage", stage, status, at, ...extra });
@@ -55,6 +56,14 @@ describe("progress timeline", () => {
     expect(describeEvent(ev("plan", "start", { attempt: 2 })).text).toBe("Revising the plan (try 2)…");
     expect(describeEvent(ev("design", "retry", { detail: "missing knob" }))).toMatchObject({ tone: "warn", detail: "missing knob" });
     expect(describeEvent(ev("plan", "error", { detail: "LLM unreachable" }))).toMatchObject({ tone: "bad", text: "Something went wrong" });
+  });
+
+  it("the simulator's run is its own row, not the code checker's (26/11/2026)", () => {
+    expect(describeEvent(ev("simulate", "start")).text).toBe("Running the code on a simulated copy of the circuit…");
+    expect(describeEvent(ev("simulate", "ok", { detail: "simulated 17 s: no problems found" }))).toMatchObject({ tone: "ok", text: "Ran the code in the simulator" });
+    expect(describeEvent(ev("simulate", "retry", { detail: "S001 TypeError" }))).toMatchObject({ tone: "warn", text: "The simulator found a problem; asking for a fix" });
+    expect(describeEvent(ev("simulate", "error"))).toMatchObject({ tone: "bad", text: "The code still didn't work in the simulator" });
+    expect(describeEvent(ev("simulate", "ok", { detail: "not run: worker exited" }))).toMatchObject({ tone: "warn", text: "Couldn't run the code in the simulator" });
   });
 });
 
@@ -212,14 +221,14 @@ describe("power wiring (breadboard rails ↔ direct to Pico)", () => {
       const rails = loadProject(d.id, "rails");
       const direct = loadProject(d.id, "direct");
       expect(railWires(rails.build), d.id).toBeGreaterThan(0);
-      expect(railWires(direct.build), d.id).toBe(0);
+      expect(railWires(direct.build), d.id).toBe(canWireDirect(d.id) ? 0 : railWires(rails.build)); // rails-only: shown on the rails
       expect(direct.build.parts, d.id).toEqual(rails.build.parts);
       expect(direct.steps.length, d.id).toBeGreaterThan(0); // buildSteps throws for unsafe builds
     }
   });
 
   it("the hand-written LED + button matches the layout engine's direct wiring", () => {
-    const hand = loadProject("led-button", "direct").build.wires.map((w) => [w.from, w.to]);
+    const hand = ledButtonByHand("direct").wires.map((w) => [w.from, w.to]);
     const auto = layoutProject([{ kind: "led" }, { kind: "button" }], undefined, { power: "direct" }).build.wires.map((w) => [w.from, w.to]);
     expect(JSON.stringify(hand).replace(/"label":"[^"]*",?/g, "")).toBe(JSON.stringify(auto).replace(/"label":"[^"]*",?/g, ""));
   });
@@ -234,11 +243,16 @@ describe("power wiring (breadboard rails ↔ direct to Pico)", () => {
     });
     try {
       const { useApp, activeBuild, currentPower } = await import("../src/store");
-      useApp.getState().openDemo("led-button");
-      await useApp.getState().setPower("direct");
-      expect(currentPower(useApp.getState())).toBe("direct");
-      expect(railWires(activeBuild(useApp.getState())!.build)).toBe(0);
-      expect(calls).toEqual([]); // examples switch locally
+      // (The examples list may be empty while the beta's projects are being made.)
+      if (DEMOS[0]) {
+        useApp.getState().openDemo(DEMOS[0].id);
+        await useApp.getState().setPower("direct");
+        expect(currentPower(useApp.getState())).toBe("direct");
+        expect(railWires(activeBuild(useApp.getState())!.build)).toBe(0);
+        expect(calls).toEqual([]); // examples switch locally
+      } else {
+        await useApp.getState().setPower("direct");
+      }
 
       await useApp.getState().openProject("p1");
       expect(currentPower(useApp.getState())).toBe("rails"); // the project keeps its own choice

@@ -45,7 +45,8 @@
         "senses light"
       ],
       "unlessNamed": [
-        "oled"
+        "oled",
+        "oled-small"
       ]
     }
   },

@@ -1,10 +1,12 @@
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { driversFor, type CodeIssue } from "@breadpilot/circuit-core";
+import { EXAMPLE_PREFIX } from "../demos";
 import { handoffUrl } from "../projects/api";
 import type { ApiProject, BehaviourSummary } from "../projects/types";
 import { checkDraft, editKey, insertIndent, loadEdit, saveEdit } from "./codeEdits";
 import { PlanView } from "../ui/StageOverlay";
 import { PicoBuild } from "./PicoBuild";
+import { setReportState, untestedParts } from "../ui/report";
 
 // M8 8.C3c: the live preview loads with the Code tab, MicroPython on its first Run.
 const TryIt = lazy(() => import("./TryIt"));
@@ -43,6 +45,8 @@ type View = "preview" | "edit";
 export function CodePanel({ p }: { p: ApiProject }) {
   const b = p.build!;
   const drivers = useMemo(() => driversFor(b.build.parts.map((x) => x.type)), [b.build]);
+  // Parts not tried on a real Pico yet: after Build for Pico, the report card asks how it went.
+  const untested = useMemo(() => untestedParts(b.build), [b.build]);
   const driverFiles = useMemo(() => Object.fromEntries(drivers.map((d) => [d.file, d.source])), [drivers]);
   // A line the preview stopped on (Try it → Show line): highlighted in the code until it changes.
   const [shownLine, setShownLine] = useState<number | null>(null);
@@ -202,7 +206,7 @@ export function CodePanel({ p }: { p: ApiProject }) {
 
         {!edited && b.behaviour && <BehaviourBlock behaviour={b.behaviour} />}
 
-        <PicoBuild title={p.title} code={draft} drivers={drivers} blocked={blocked} />
+        <PicoBuild title={p.title} code={draft} drivers={drivers} blocked={blocked} onBuilt={untested.length ? () => setReportState(p.id, "built") : undefined} />
 
         {b.codeExplanation && (
           <section>
@@ -262,9 +266,12 @@ export function CodePanel({ p }: { p: ApiProject }) {
           </details>
         )}
 
-        <a className="btn small-btn" href={handoffUrl(p.id)} download>
-          Download handoff bundle (.md)
-        </a>
+        {/* An example has no project in the engine, so no handoff bundle. */}
+        {!p.id.startsWith(EXAMPLE_PREFIX) && (
+          <a className="btn small-btn" href={handoffUrl(p.id)} download>
+            Download handoff bundle (.md)
+          </a>
+        )}
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { loadProject } from "../src/demos";
+import { ledButtonProject } from "./fixtures/ledButton";
 import { buildScene, clampPopup, keyPos, popupAnchor, POPUP } from "../src/scene/model";
 import { changeSteps, layoutProject, resolveBuild, stableRequests } from "@breadpilot/circuit-core";
 import { BOARD, holePos, PICO } from "../src/scene/coords";
 
 describe("guided build scene", () => {
-  const p = loadProject("led-button");
+  const p = ledButtonProject();
   const scene = (i: number) => buildScene(p.resolved, p.build.wires, p.steps, i, false);
 
   it("the hand-written LED + button build has 11 safe steps", () => {
@@ -55,7 +55,7 @@ describe("step pop-up anchor", () => {
   });
 
   it("every step of an example has an anchor (so the card always appears)", () => {
-    const p = loadProject("led-button");
+    const p = ledButtonProject();
     for (let i = 0; i < p.steps.length; i++) expect(popupAnchor(buildScene(p.resolved, p.build.wires, p.steps, i, false).focus), `step ${i}`).not.toBeNull();
   });
 });

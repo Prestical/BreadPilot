@@ -129,16 +129,20 @@ In order of preference:
 Find the existing model that looks most like the new part and **build on its code**: same
 helpers, same material values, same habits. Don't start from an empty function.
 
+The app only carries the shapes of supported parts. Shapes made for parts without a pack yet (a
+diode, capacitors, TO-220, RGB LED, 7-segment digit, keypad, servo, motors, LCD, stepper, and module
+features such as a relay or an LED matrix) are kept outside the repository with their models.
+
 | The new part looks like… | Start from (`shapes.ts`) |
 |---|---|
-| A round thing on two legs | `metalCan` (tilt switch), `photoDisc` (LDR), `bead` (thermistor), `canCapacitor`, `discCapacitor` |
-| Something lying between two holes | `axial` (resistor), `diode`, `glassAxial` (reed switch) |
-| A small transistor-like case | `to92`, `to220` |
+| A round thing on two legs | `metalCan` (tilt switch), `photoDisc` (LDR), `bead` (thermistor) |
+| Something lying between two holes | `axial` (resistor), `glassAxial` (reed switch) |
+| A small transistor-like case | `to92` |
 | A module standing on a bent header | `uprightModule` + `moduleFeature` (buzzer module, IR, flame, sound, touch, water sensors) |
 | A module lying flat on its header | `headerModule` (OLED) |
 | A boxed sensor on a row of legs | `gridSensor` (DHT11, DHT22) |
-| A part beside the breadboard, on wires | `tethered` (servo, motors, LCD, stepper), `keypad`, the soil `probe` feature |
-| An LED or lamp | `led`, `rgbLed`, the `lamp` and `emitter` features |
+| A part beside the breadboard, on wires | `tethered` (the soil probe) |
+| An LED or lamp | `led`, the `emitter` feature |
 | A switch or knob | `slideSwitch`, `button`, `knob` |
 | Digits, segments, a dot matrix | `sevenSegment`, the `digits` and `matrix` features |
 

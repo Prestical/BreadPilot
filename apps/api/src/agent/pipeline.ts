@@ -188,6 +188,11 @@ class Run {
     this.deps.log?.(`agent[${this.p.id.slice(0, 8)}] ${stage} ${status}${detail ? `: ${detail}` : ""} (${ms} ms)`);
   }
 
+  /** A stage that isn't an LLM call starts (the progress card shows it running). */
+  start(stage: Stage) {
+    this.deps.progress?.emit(this.p.id, { type: "stage", stage, status: "start", at: this.now() });
+  }
+
   /** Runs one LLM call within what's left of the time budget. */
   async llm<T>(stage: Stage, call: (opts: Pick<LlmCallOptions, "timeoutMs" | "signal">) => Promise<LlmResult<T>>): Promise<T> {
     const left = (this.deps.budgetMs ?? PROJECT_BUDGET_MS) - (performance.now() - this.started);
@@ -770,6 +775,9 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
   let previous: CodeIssue[] = [];
   // What the simulator found on the last try: a crash (S001) or a claim that didn't hold (S006).
   let simulated: "crash" | "claim" | null = null;
+  // A claim that didn't hold gets one fix (26/11/2026, user: correct code must not be sent back over
+  // and over or handed off because the AI described it wrongly). A crash is a real bug: full repairs.
+  let claimFixed = false;
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
     const out = await run.llm("code", (o) => clientFor(deps, p).json(codeSchemaFor(words), codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network), change, words), { ...o, maxTokens: MAX_TOKENS.code }));
     const check = checkMicroPython(out.code, layout.build, board);
@@ -796,11 +804,23 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
         p.state = "READY";
         return;
       }
+      if (behaviour && errors.every((f) => f.code === "S006") && (claimFixed || attempt === MAX_REPAIRS)) {
+        // The code runs; only the AI's own description of it didn't match, after a fix. Keep the
+        // code and show the claims as things to check, not as errors.
+        const kept: BehaviourSummary = { ...behaviour, ok: true, findings: behaviour.findings.map((f) => (f.code === "S006" ? { ...f, severity: "warning" as const } : f)) };
+        pb.behaviour = kept;
+        entry.behaviour = kept;
+        run.event("simulate", "ok", 0, `kept after a fix, with ${errors.length} claim(s) not confirmed: ${errors.map((f) => f.message).join(" | ")}`);
+        p.state = "READY";
+        return;
+      }
+      if (errors.every((f) => f.code === "S006")) claimFixed = true;
       simulated = errors.some((f) => f.code === "S001") ? "crash" : "claim";
       issues = errors.map((f) => ({ code: f.code, severity: "error" as const, message: f.message, ...(f.line ? { line: f.line } : {}) }));
     } else simulated = null;
     const problems = issues.filter((i) => i.severity === "error").map((i) => i.message);
-    run.event("code", attempt < MAX_REPAIRS ? "retry" : "error", 0, problems.join(" | "));
+    // The simulator's findings are its own stage's, the checker's the code stage's.
+    run.event(simulated ? "simulate" : "code", attempt < MAX_REPAIRS ? "retry" : "error", 0, problems.join(" | "));
     // The model gets its own wrong lines, the corrected lines and imports, and which mistakes repeat.
     fix = { code: out.code, problems: repairProblems(out.code, issues, previous), claims };
     previous = issues;
@@ -820,14 +840,19 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
 async function simulate(run: Run, deps: AgentDeps, code: string, build: Build, claims: { when: string; then: string }[]): Promise<BehaviourSummary | undefined> {
   if (!deps.behaviour) return undefined;
   const start = performance.now();
+  run.start("simulate");
   try {
     const r = await deps.behaviour(code, build, claims);
     const summary: BehaviourSummary = { ...r, ok: !r.findings.some((f) => f.severity === "error") };
-    const said = r.findings.map((f) => `${f.code} ${f.message}`);
-    run.event("code", summary.ok ? "ok" : "retry", Math.round(performance.now() - start), `simulated ${r.seconds} s: ${said.length ? said.join(" | ") : "no problems found"}`);
+    // A finding that sends the code back is reported by the caller (retry or error); a clean run here.
+    if (summary.ok) {
+      const warnings = r.findings.map((f) => `${f.code} ${f.message}`);
+      run.event("simulate", "ok", Math.round(performance.now() - start), `simulated ${r.seconds} s: ${warnings.length ? warnings.join(" | ") : "no problems found"}`);
+    }
     return summary;
   } catch (err) {
     deps.log?.(`behaviour simulator failed: ${(err as Error).message}`);
+    run.event("simulate", "ok", Math.round(performance.now() - start), `not run: ${(err as Error).message}`);
     return { ok: true, findings: [], notes: [`The simulator couldn't run this code (${(err as Error).message}); it wasn't tested.`], seconds: 0, ended: "not run" };
   }
 }

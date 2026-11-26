@@ -15,7 +15,7 @@ export const TOUR: TourStep[] = [
   { target: "model", title: "Pick the AI", text: "Local AI is free and private; OpenAI is stronger at code. The dot shows if it's ready: green is ready, yellow needs a look." },
   { target: "power", title: "Power wiring", text: "Power the parts through the breadboard's side rails, or with wires straight from the board." },
   { target: "view", title: "Pin labels", text: "Show or hide the pin names. “Reset view” next to it brings the camera back." },
-  { target: "examples", title: "Examples", text: "Finished builds to explore step by step. No AI needed." },
+  { target: "examples", title: "Examples", text: "Finished projects with parts that still need testing on a real board. Build one step by step, no AI needed, then tell us how it went." },
   { target: "tutorial", title: "New to breadboards?", text: "A short hands-on lesson on how a breadboard and the board's pins work." },
   { target: "new", title: "Your projects", text: "Start a new idea here. Every project is saved and listed below." },
   { target: "settings", title: "Settings", text: "The local AI, your OpenAI key, how the app looks and your privacy, each on its own tab. You can replay this tour from General." },

@@ -13,12 +13,8 @@ describe("engine build gate", () => {
     }
   });
 
-  it("stops a build whose only issue is a warning (W002: motor straight on a GPIO)", () => {
-    const b = build([{ ref: "M1", type: "dc-motor", legs: { a: "30g", b: "31g" } }], `#21(GP16) -> #30j(M1.a)\n#31j(M1.b) -> #38(GND)`, { GP16: "out" });
-    expect(() => assertEngineBuild(b, "generated layout")).toThrow(/generated layout has a warning the layout engine should never cause \(W002: /);
-  });
-
-  it("stops a floating input (W003)", () => {
+  // (26/11/2026: the DC motor case went with its pack; the floating input is a warning-only build too.)
+  it("stops a build whose only issue is a warning: a floating input (W003)", () => {
     const b = build([button], `#21(GP16) -> #30j(BTN1.1b)\n#32j(BTN1.2b) -> #38(GND)`, { GP16: "in" });
     expect(() => assertEngineBuild(b, "rails layout")).toThrow(/rails layout has a warning .*W003/);
   });

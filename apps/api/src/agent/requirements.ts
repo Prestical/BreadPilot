@@ -436,6 +436,8 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
   const fewer: Partial<Record<PartKind, number>> = {};
   const named = new Set<PartKind>();
   const impliedOnly: { kind: PartKind; unlessNamed: string[] }[] = [];
+  /** Kinds named with a size or model ("1.3 inch OLED", "SH1106"), not only a generic word. */
+  const specific = new Set<PartKind>();
   let onboard = false;
   // A word inside another part's phrase belongs to that phrase: "slide switch" is the slide switch,
   // not also a button ("switch"); "slider switch" isn't a potentiometer ("slider").
@@ -478,6 +480,7 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
         continue;
       }
       named.add(kind);
+      if (w.genericUnlessNamed && w.nouns.some((n) => /\d|\s/.test(n) && matches(t, wordsRe([n])).includes(i))) specific.add(kind);
       const count = numberBefore(t, i);
       if (count) counts.push(count);
       min = Math.max(min, count ? Math.min(count.n, count.or ?? count.n) : 1);
@@ -505,6 +508,16 @@ function partsOf(t: Text): { parts: Requirements["parts"]; removed: PartKind[]; 
         else if (c.n >= floor) Object.assign(need, { min: c.n, exact: c.n });
       }
       parts[kind] = need;
+    }
+  }
+  // A generic word ("the screen") is the display the idea named ("a 0.96 inch OLED … the screen
+  // shows"), not a second, other one: only a size or model ("1.3 inch OLED") asks for that one.
+  for (const pack of AGENT_PACKS) {
+    const kind = pack.meta.kind!;
+    const others = pack.agent!.words.genericUnlessNamed;
+    if (others?.some((k) => named.has(k as PartKind)) && !specific.has(kind)) {
+      delete parts[kind];
+      named.delete(kind);
     }
   }
   // Implied parts: "the display blinks" describes the named display, not an LED (principle 10).

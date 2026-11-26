@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { DEMOS } from "./demos";
+import { DEMOS, exampleAsProject } from "./demos";
 import { exportUrl } from "./projects/api";
 import { partsNeeded } from "./projects/parts";
 import { PowerToggle } from "./projects/PowerToggle";
@@ -9,6 +9,7 @@ import { activeBuild, rememberedProject, useApp } from "./store";
 import { TutorialPanel } from "./tutorial/TutorialPanel";
 import { tutorialScene } from "./tutorial/scene";
 import { CodeSide } from "./ui/CodeSide";
+import { ReportCard } from "./ui/ReportCard";
 import { PromptBar } from "./ui/PromptBar";
 import { SettingsDialog } from "./ui/Settings";
 import { SetupDialog } from "./ui/Setup";
@@ -64,8 +65,11 @@ export function App() {
   const viewVersion = useApp((s) => s.viewVersion);
   const view = mode === "build" ? activeBuild({ source, agent, power, allSteps, viewVersion }) : null;
   const project = source.kind === "agent" && agent.project?.id === source.id ? agent.project : null;
+  // An example has its code too (25/11/2026): the Code view, Try it and Build for Pico work for it.
+  const example = mode === "build" && source.kind === "demo" ? exampleAsProject(source.id, power) : null;
+  const codeProject = project ?? example;
   // An older version (M9) is only looked at: its code isn't opened in the Code panel.
-  const hasCode = mode === "build" && !!project?.build?.code && !agent.busy && viewVersion === null;
+  const hasCode = mode === "build" && !!codeProject?.build?.code && !agent.busy && viewVersion === null;
   const showCode = hasCode && codeOpen;
 
   const { model, resolved } = useMemo(() => {
@@ -198,13 +202,15 @@ export function App() {
             <StageOverlay />
             {narrow && stepCard}
             {showSteps && <StepStrip steps={view.steps} />}
+            {/* After Build for Pico, a project with untested parts asks how it went on the real board. */}
+            {codeProject && codeProject.state === "READY" && !agent.busy && <ReportCard project={codeProject} />}
             <PromptBar />
             <p className="view-help small">Drag to rotate · scroll to zoom · right-drag to pan · hover a hole for its connections</p>
           </div>
         )}
 
         {/* Slides over the whole stage from the right; stays mounted so it can slide back out. */}
-        {hasCode && project && <CodeSide p={project} open={showCode} />}
+        {hasCode && codeProject && <CodeSide p={codeProject} open={showCode} />}
 
         {hover && (
           <div className="tooltip" style={{ left: hover.x + 14, top: hover.y + 14 }} role="tooltip">

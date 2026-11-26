@@ -30,12 +30,12 @@ describe("part packs", () => {
     expect(readFileSync(PARTS_TS_PATH, "utf8")).toBe(partsModule());
   });
 
-  it("the 32 packs make up the catalog, with the OLED's driver", () => {
+  it("the 30 packs make up the catalog, with the OLED's driver (the DC motor and HC-SR04 are test fixtures only)", () => {
     expect(PACKS.map((p) => p.meta.id)).toEqual([
       "led-5mm", "button-6mm", "slide-switch", "tilt-switch", "reed-switch", "touch-sensor", "hall-sensor", "potentiometer", "photoresistor",
       "light-sensor-bh1750", "ntc-thermistor", "water-level-sensor", "soil-moisture-sensor", "oled-sh1106-i2c", "oled-ssd1306-i2c", "dht11", "dht22",
       "ds18b20", "ir-obstacle-sensor", "bme280", "flame-sensor", "sound-sensor", "vibration-sensor", "line-sensor", "passive-buzzer",
-      "active-buzzer", "vibration-motor-module", "rtc-ds3231", "mpu6050", "resistor", "dc-motor", "hc-sr04",
+      "active-buzzer", "vibration-motor-module", "rtc-ds3231", "mpu6050", "resistor",
     ]);
     for (const p of PACKS) expect(p.part, p.meta.id).toBe(CATALOG[p.meta.id]);
     expect(Object.keys(CATALOG).sort()).toEqual(PACKS.map((p) => p.meta.id).sort());
@@ -105,8 +105,6 @@ describe("part packs", () => {
       "rtc-ds3231": ["part.legs[4].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddress",  "part.specs.accuracyPpm",  "layout.max"],
       mpu6050: ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddresses",  "part.specs.ranges",  "layout.max"],
       resistor: ["part.specs.maxPowerW"],
-      "dc-motor": ["part.elements[0].currentMa",  "part.specs.currentMa"],
-      "hc-sr04": ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.currentMa"],
     });
   });
 });

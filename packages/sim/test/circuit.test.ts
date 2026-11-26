@@ -70,6 +70,11 @@ describe("engine blocks: inputs read what the wiring gives", () => {
     expect([look(engine(["touch"]), { sensors: { TCH1: 0 } }, pins).pin(16).level, look(engine(["touch"]), { sensors: { TCH1: 1 } }, pins).pin(16).level]).toEqual([0, 1]);
   });
 
+  it("line sensor: triggered means over a black line, which reads 1 (0 over a light surface)", () => {
+    const pins = { 16: { mode: "in" as const, pull: 0 } };
+    expect([look(engine(["line"]), { sensors: { LN1: 0 } }, pins).pin(16).level, look(engine(["line"]), { sensors: { LN1: 1 } }, pins).pin(16).level]).toEqual([0, 1]);
+  });
+
   it("water level sensor: its analog output is the sensed fraction of its supply", () => {
     expect(look(engine(["water-level"]), { sensors: { WL1: 0.4 } }, { 26: { mode: "in", pull: 0 } }).adc(0)).toBeCloseTo(1.32, 2);
   });

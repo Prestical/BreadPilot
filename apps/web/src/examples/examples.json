@@ -1,0 +1,649 @@
+[
+ {
+  "id": "test-0-96-oled",
+  "level": "Needs testing",
+  "title": "0.96\" OLED",
+  "description": "Show “Hello!” and a counter on a 0.96-inch SSD1306 OLED display.",
+  "idea": "The 0.96 inch SSD1306 OLED shows \"Hello!\" and a counter that goes up every second",
+  "goal": "Show “Hello!” and a counter on a 0.96-inch SSD1306 OLED display.",
+  "behavior": [
+   "The display shows “Hello!” and the counter, starting at 0.",
+   "The counter increases by one every second."
+  ],
+  "parts": [
+   {
+    "kind": "oled-small",
+    "purpose": "show “Hello!” and the counter."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "oled-small",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin, I2C\nfrom ssd1306 import SSD1306_I2C\nimport time\n\n# Set up the OLED screen using the wired I2C pins.\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\noled = SSD1306_I2C(128, 64, i2c)\n\n# Start the counter at zero.\ncounter = 0\n\n# Show the greeting and current counter once each second.\nwhile True:\n    oled.fill(0)\n    oled.title(\"Hello!\")\n    oled.center_text(\"Hello!\", 20)\n    oled.center_text(\"Count: \" + str(counter), 40)\n    oled.show()\n    time.sleep(1)\n    counter += 1",
+  "explanation": "The program shows “Hello!” and a counter on the OLED, starting at 0. It updates the display and increases the counter once every second."
+ },
+ {
+  "id": "test-active-buzzer",
+  "level": "Needs testing",
+  "title": "Active buzzer",
+  "description": "Make an active buzzer beep twice every three seconds.",
+  "idea": "The active buzzer module beeps twice every 3 seconds",
+  "goal": "Make an active buzzer beep twice every three seconds.",
+  "behavior": [
+   "The buzzer beeps twice, with a short pause between beeps.",
+   "It waits until the next three-second cycle and repeats."
+  ],
+  "parts": [
+   {
+    "kind": "active-buzzer",
+    "purpose": "beep twice each cycle"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "active-buzzer",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set the beep and pause times in seconds.\nBEEP_TIME = 0.2\nSHORT_PAUSE = 0.2\nCYCLE_WAIT = 2.4\n\n# Set up the buzzer so it starts quiet.\nbuzzer = Pin(16, Pin.OUT, value=1)\n\n# Beep twice, then wait for the next three-second cycle.\nwhile True:\n    buzzer.value(0)\n    time.sleep(BEEP_TIME)\n    buzzer.value(1)\n    time.sleep(SHORT_PAUSE)\n    buzzer.value(0)\n    time.sleep(BEEP_TIME)\n    buzzer.value(1)\n    time.sleep(CYCLE_WAIT)\n",
+  "explanation": "The buzzer beeps twice, with a short pause between beeps. It stays quiet for the rest of the three-second cycle, and the pin is HIGH whenever the buzzer is quiet."
+ },
+ {
+  "id": "test-bh1750-light-sensor",
+  "level": "Needs testing",
+  "title": "BH1750 light sensor",
+  "description": "Use the Pico’s built-in LED to show when the BH1750 measures less than 20 lux.",
+  "idea": "The Pico's own LED turns on when the BH1750 measures less than 20 lux, for example when you cover it with your hand.",
+  "goal": "Use the Pico’s built-in LED to show when the BH1750 measures less than 20 lux.",
+  "behavior": [
+   "The Pico’s built-in LED turns on when the BH1750 measures less than 20 lux.",
+   "The LED turns off when the light level is 20 lux or higher."
+  ],
+  "parts": [
+   {
+    "kind": "bh1750",
+    "purpose": "measure light level in lux, including when covered by a hand."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "bh1750",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin, I2C\nimport time\n\n# Set the light level that turns the LED on.\nLOW_LIGHT_LIMIT = 20\n\n# Set up the I2C connection and the built-in LED.\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\nled = Pin(\"LED\", Pin.OUT)\n\n# Find the sensor address and start continuous high-resolution readings.\nif 0x23 in i2c.scan():\n    sensor_address = 0x23\nelse:\n    sensor_address = 0x5C\ni2c.writeto(sensor_address, b\"\\x10\")\ntime.sleep_ms(180)\n\n# Read the light level and update the LED repeatedly.\nwhile True:\n    data = i2c.readfrom(sensor_address, 2)\n    lux = (data[0] << 8 | data[1]) / 1.2\n    if lux < LOW_LIGHT_LIMIT:\n        led.on()\n    else:\n        led.off()\n    time.sleep(0.12)",
+  "explanation": "The program reads the BH1750 light sensor over I2C and converts its reading to lux. The built-in LED turns on below 20 lux and turns off at 20 lux or higher."
+ },
+ {
+  "id": "test-bme280",
+  "level": "Needs testing",
+  "title": "BME280",
+  "description": "Turn on the Pico’s built-in LED when the BME280 temperature rises 2 °C above its starting temperature.",
+  "idea": "The Pico's own LED turns on when the BME280's temperature is 2 °C higher than when the program started, for example when you hold it between your fingers",
+  "goal": "Turn on the Pico’s built-in LED when the BME280 temperature rises 2 °C above its starting temperature.",
+  "behavior": [
+   "At startup, the program records the BME280 temperature.",
+   "The Pico’s built-in LED turns on when the temperature is at least 2 °C above that starting temperature.",
+   "The LED turns off if the temperature falls below the threshold."
+  ],
+  "parts": [
+   {
+    "kind": "bme280",
+    "purpose": "measure temperature changes in the air near the sensor, including warming from your fingers."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "bme280",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin, I2C\nfrom bme280 import BME280\nimport time\n\n# Set the temperature rise needed to turn on the LED.\nRISE_LIMIT = 2.0\n\n# Set up the BME280 sensor and the Pico's built-in LED.\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\nsensor = BME280(i2c)\nled = Pin(\"LED\", Pin.OUT)\n\n# Record the starting temperature and begin with the LED off.\nt, p, h = sensor.read()\nstarting_temperature = t\nled.off()\n\n# Check the temperature and update the LED about once a second.\nwhile True:\n    t, p, h = sensor.read()\n    if t >= starting_temperature + RISE_LIMIT:\n        led.on()\n    else:\n        led.off()\n    time.sleep(1)",
+  "explanation": "At startup, the program records the BME280 temperature as the starting temperature. It checks the sensor about once a second and turns the built-in LED on when the temperature is at least 2 °C higher, turning it off again when it falls below that point."
+ },
+ {
+  "id": "test-dht22",
+  "level": "Needs testing",
+  "title": "DHT22",
+  "description": "Turn on the Pico’s built-in LED when humidity rises at least 10 percentage points above the startup reading.",
+  "idea": "The Pico's own LED turns on when the DHT22's humidity is 10 % higher than when the program started, for example when you breathe on it",
+  "goal": "Turn on the Pico’s built-in LED when humidity rises at least 10 percentage points above the startup reading.",
+  "behavior": [
+   "At startup, the Pico records the DHT22 humidity as the baseline.",
+   "The Pico checks humidity no more than once every 2 seconds.",
+   "The built-in LED turns on when humidity is at least 10 percentage points above the baseline; otherwise, it stays off."
+  ],
+  "parts": [
+   {
+    "kind": "dht22",
+    "purpose": "Measure the air’s humidity near the Pico."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "dht22",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport dht\nimport time\n\n# Set up the sensor and the built-in LED.\nsensor = dht.DHT22(Pin(16))\nled = Pin(\"LED\", Pin.OUT)\n\n# Wait before the first reading and prepare to save the startup humidity.\ntime.sleep(1)\nbaseline = None\n\n# Read humidity at least two seconds apart and control the LED.\nwhile True:\n    try:\n        sensor.measure()\n        humidity = sensor.humidity()\n\n        # Save the first good reading as the baseline.\n        if baseline is None:\n            baseline = humidity\n\n        # Turn on the LED only when humidity rises by 10 points or more.\n        if humidity >= baseline + 10:\n            led.value(1)\n        else:\n            led.value(0)\n    except OSError:\n        # Ignore a failed reading and try again in the next round.\n        pass\n\n    # Leave enough time before measuring again.\n    time.sleep(2)\n",
+  "explanation": "The program waits one second, then saves the first successful humidity reading as its baseline. It checks again every two seconds and turns on the built-in LED when humidity is at least 10 percentage points above that baseline; failed readings are retried."
+ },
+ {
+  "id": "test-ds18b20",
+  "level": "Needs testing",
+  "title": "DS18B20",
+  "description": "Turn on the Pico’s built-in LED when the DS18B20 reads at least 2 °C above the temperature at startup.",
+  "idea": "The Pico's own LED turns on when the DS18B20's temperature is 2 °C higher than when the program started, for example when you hold it between your fingers",
+  "goal": "Turn on the Pico’s built-in LED when the DS18B20 reads at least 2 °C above the temperature at startup.",
+  "behavior": [
+   "At startup, the program records the DS18B20’s temperature.",
+   "The built-in LED turns on when the temperature reaches 2 °C or more above that starting temperature."
+  ],
+  "parts": [
+   {
+    "kind": "ds18b20",
+    "purpose": "measure temperature changes from startup, such as when held between your fingers."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "ds18b20",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport onewire\nimport ds18x20\nimport time\n\n# Set the temperature rise needed to turn on the LED.\nRISE_LIMIT = 2.0\n\n# Set up the sensor on GP16 and the built-in LED.\now = onewire.OneWire(Pin(16))\nds = ds18x20.DS18X20(ow)\nroms = ds.scan()\nled = Pin(\"LED\", Pin.OUT)\n\n# Keep the LED off if no sensor is found.\nif not roms:\n    led.value(0)\n    while True:\n        time.sleep(1)\n\n# Read the starting temperature to use as the reference.\nds.convert_temp()\ntime.sleep_ms(750)\nstart_temp = ds.read_temp(roms[0])\n\n# Read the sensor and turn on the LED after a 2 degree rise.\nwhile True:\n    ds.convert_temp()\n    time.sleep_ms(750)\n    current_temp = ds.read_temp(roms[0])\n    if current_temp >= start_temp + RISE_LIMIT:\n        led.value(1)\n    else:\n        led.value(0)\n    time.sleep(0.1)",
+  "explanation": "The program records the DS18B20 temperature at startup as its reference. It then checks the temperature at least 750 milliseconds apart and turns on the built-in LED when the reading is 2 °C or more above that reference."
+ },
+ {
+  "id": "test-ds3231-clock",
+  "level": "Needs testing",
+  "title": "DS3231 clock",
+  "description": "Set the DS3231 to 12:00:00, then blink the Pico’s built-in LED whenever the seconds change.",
+  "idea": "The program sets the DS3231 real-time clock to 12:00:00, then the Pico's own LED blinks once each time the clock's seconds change",
+  "goal": "Set the DS3231 to 12:00:00, then blink the Pico’s built-in LED whenever the seconds change.",
+  "behavior": [
+   "When the program starts, it sets the DS3231 clock to 12:00:00.",
+   "The Pico’s built-in LED blinks once each time the clock’s seconds value changes."
+  ],
+  "parts": [
+   {
+    "kind": "rtc",
+    "purpose": "keep and report the time on the DS3231 clock module."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "rtc",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin, I2C\nfrom ds3231 import DS3231\nimport time\n\n# Set how long the LED stays lit for each blink.\nBLINK_TIME = 0.1\n\n# Set up the clock on I2C0 and the Pico's built-in LED.\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\nclock = DS3231(i2c)\nled = Pin(\"LED\", Pin.OUT)\n\n# Set the clock to noon on the current date.\nclock.set_time(2026, 11, 26, 12, 0, 0)\nprevious_second = clock.time()[5]\n\n# Blink once whenever the clock's seconds value changes.\nwhile True:\n    current_second = clock.time()[5]\n    if current_second != previous_second:\n        led.on()\n        time.sleep(BLINK_TIME)\n        led.off()\n        previous_second = current_second\n    time.sleep(0.05)\n",
+  "explanation": "The program sets the DS3231 to 12:00:00 on November 26, 2026, then checks its seconds value. The Pico's built-in LED blinks briefly whenever that value changes."
+ },
+ {
+  "id": "test-flame-sensor",
+  "level": "Needs testing",
+  "title": "Flame sensor",
+  "description": "Use the Pico’s built-in LED to show when the flame sensor detects a flame.",
+  "idea": "The Pico's own LED turns on while the flame sensor sees a flame",
+  "goal": "Use the Pico’s built-in LED to show when the flame sensor detects a flame.",
+  "behavior": [
+   "The Pico’s LED turns on while the sensor sees a flame.",
+   "The LED turns off when the sensor no longer sees a flame."
+  ],
+  "parts": [
+   {
+    "kind": "flame",
+    "purpose": "detect a small flame nearby; this is not a fire alarm."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "flame",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how often the sensor is checked.\nCHECK_DELAY = 0.05\n\n# Set up the flame sensor input and the Pico's built-in LED.\nflame_sensor = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\n\n# Turn the LED on when the sensor detects a flame.\nwhile True:\n    if flame_sensor.value() == 0:\n        led.on()\n    else:\n        led.off()\n    time.sleep(CHECK_DELAY)",
+  "explanation": "The program checks the flame sensor repeatedly. Its output is 0 when it detects a flame, so the built-in LED turns on then and turns off otherwise."
+ },
+ {
+  "id": "test-hall-sensor",
+  "level": "Needs testing",
+  "title": "Hall sensor",
+  "description": "Turn on the Pico’s built-in LED when a magnet is near the Hall sensor.",
+  "idea": "The Pico's own LED turns on while a magnet is near the Hall sensor",
+  "goal": "Turn on the Pico’s built-in LED when a magnet is near the Hall sensor.",
+  "behavior": [
+   "When the Hall sensor detects a nearby magnet, the Pico’s built-in LED turns on.",
+   "When the magnet moves away, the LED turns off."
+  ],
+  "parts": [
+   {
+    "kind": "hall",
+    "purpose": "detect a nearby magnet and control the LED automatically (use its D0 output)"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "hall",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how often the sensor is checked.\nCHECK_DELAY = 0.05\n\n# Set up the Hall sensor and the Pico's built-in LED.\nhall_sensor = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\n\n# Remember the sensor's reading when no magnet is nearby.\nidle = hall_sensor.value()\n\n# Turn the LED on when the sensor reading differs from its idle reading.\nwhile True:\n    if hall_sensor.value() != idle:\n        led.on()\n    else:\n        led.off()\n    time.sleep(CHECK_DELAY)",
+  "explanation": "The program records the Hall sensor's reading at startup with no magnet nearby. It turns the built-in LED on when the sensor reading changes, and turns it off when the reading returns to its idle value."
+ },
+ {
+  "id": "test-ir-obstacle-sensor",
+  "level": "Needs testing",
+  "title": "IR obstacle sensor",
+  "description": "Turn on the Pico’s built-in LED when the IR obstacle sensor detects something in front of it.",
+  "idea": "the Pico's own LED turns on while something is in front of the IR obstacle sensor",
+  "goal": "Turn on the Pico’s built-in LED when the IR obstacle sensor detects something in front of it.",
+  "behavior": [
+   "When something is in front of the sensor, the built-in LED turns on.",
+   "When nothing is detected, the built-in LED turns off."
+  ],
+  "parts": [
+   {
+    "kind": "obstacle",
+    "purpose": "detect something in front of the Pico"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "obstacle",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how often to check the sensor.\nCHECK_DELAY = 0.05\n\n# Set up the obstacle sensor and the Pico's built-in LED.\nsensor = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\n\n# Turn the LED on when an obstacle is detected, and off when the way is clear.\nwhile True:\n    if sensor.value() == 0:\n        led.on()\n    else:\n        led.off()\n    time.sleep(CHECK_DELAY)",
+  "explanation": "The program checks the IR sensor repeatedly. It turns the built-in LED on when the sensor detects an obstacle, and off when the way is clear."
+ },
+ {
+  "id": "test-line-sensor",
+  "level": "Needs testing",
+  "title": "Line sensor",
+  "description": "Turn on the Pico’s built-in LED when the line sensor detects a black line.",
+  "idea": "The Pico's own LED turns on while the line tracking sensor is over a black line",
+  "goal": "Turn on the Pico’s built-in LED when the line sensor detects a black line.",
+  "behavior": [
+   "The Pico’s built-in LED turns on over a black line.",
+   "The LED turns off over a light surface."
+  ],
+  "parts": [
+   {
+    "kind": "line",
+    "purpose": "detect the black line beneath the sensor, held close to the surface (about 1–15 mm)"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "line",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how often the sensor is checked.\nCHECK_DELAY = 0.05\n\n# Set up the line sensor and the Pico's built-in LED.\nsensor = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\n\n# Turn the LED on for black and off for a light surface.\nwhile True:\n    if sensor.value() == 1:\n        led.on()\n    else:\n        led.off()\n    time.sleep(CHECK_DELAY)",
+  "explanation": "The program checks the line sensor repeatedly. Its reading of 1 turns on the built-in LED, while a reading of 0 turns it off."
+ },
+ {
+  "id": "test-mpu-6050",
+  "level": "Needs testing",
+  "title": "MPU-6050",
+  "description": "Turn on the Pico’s built-in LED when the MPU-6050 tilts more than 30 degrees from flat.",
+  "idea": "The Pico's own LED turns on when the MPU-6050 leans more than 30 degrees from flat",
+  "goal": "Turn on the Pico’s built-in LED when the MPU-6050 tilts more than 30 degrees from flat.",
+  "behavior": [
+   "The Pico checks the MPU-6050’s tilt.",
+   "The built-in LED turns on when the tilt is more than 30 degrees from flat.",
+   "The LED turns off when the tilt returns to 30 degrees or less."
+  ],
+  "parts": [
+   {
+    "kind": "imu",
+    "purpose": "measure tilt from flat using the accelerometer."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "imu",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin, I2C\nfrom mpu6050 import MPU6050\nimport time\nimport math\n\n# Set the tilt limit in degrees\nTILT_LIMIT = 30\n\n# Set up the motion sensor and built-in LED\ni2c = I2C(0, sda=Pin(16), scl=Pin(17), freq=400000)\nmpu = MPU6050(i2c)\nled = Pin(\"LED\", Pin.OUT)\n\n# Check the tilt and update the LED\nwhile True:\n    x, y, z = mpu.acceleration()\n    tilt = math.degrees(math.atan2(math.sqrt(x * x + y * y), abs(z)))\n    led.value(1 if tilt > TILT_LIMIT else 0)\n    time.sleep(0.1)",
+  "explanation": "The program reads the MPU-6050 acceleration and calculates how far it is tilted from flat. The built-in LED turns on above 30 degrees and turns off at 30 degrees or less."
+ },
+ {
+  "id": "test-ntc-thermistor",
+  "level": "Needs testing",
+  "title": "NTC thermistor",
+  "description": "Turn on the Pico’s built-in LED when the NTC thermistor gets at least 2 °C warmer than it was at startup.",
+  "idea": "The Pico's own LED turns on when the NTC thermistor's temperature is 2 °C higher than when the program started, for example when you hold it between your fingers.",
+  "goal": "Turn on the Pico’s built-in LED when the NTC thermistor gets at least 2 °C warmer than it was at startup.",
+  "behavior": [
+   "The program records the thermistor’s temperature when it starts.",
+   "The built-in LED turns on when the temperature is at least 2 °C above that starting temperature.",
+   "The LED turns off if the temperature drops below the threshold."
+  ],
+  "parts": [
+   {
+    "kind": "ntc",
+    "purpose": "measure temperature changes from the startup reading"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "ntc",
+    "pin": "GP26"
+   }
+  ],
+  "code": "from machine import Pin, ADC\nimport math\nimport time\n\n# Set the temperature change needed to turn on the LED.\nTEMP_CHANGE = 2.0\n\n# Set up the thermistor input and the Pico's built-in LED.\nthermistor = ADC(26)\nled = Pin(\"LED\", Pin.OUT)\n\n# Take five readings to find the starting temperature.\ntotal = 0.0\ncount = 0\nfor sample in range(5):\n    value = thermistor.read_u16()\n    if value != 0:\n        resistance = 10000 * (65535 - value) / value\n        temperature = 1 / (1 / 298.15 + math.log(resistance / 10000) / 3950) - 273.15\n        total += temperature\n        count += 1\n    time.sleep(0.05)\nstart_temperature = total / count\n\n# Keep checking the temperature and set the LED to match the threshold.\nwhile True:\n    total = 0.0\n    count = 0\n    for sample in range(5):\n        value = thermistor.read_u16()\n        if value != 0:\n            resistance = 10000 * (65535 - value) / value\n            temperature = 1 / (1 / 298.15 + math.log(resistance / 10000) / 3950) - 273.15\n            total += temperature\n            count += 1\n        time.sleep(0.02)\n\n    # Turn the LED on when warm enough, and off when it cools down.\n    if count > 0 and total / count >= start_temperature + TEMP_CHANGE:\n        led.on()\n    else:\n        led.off()\n    time.sleep(0.1)",
+  "explanation": "The program averages five thermistor readings at startup to record the starting temperature. It keeps averaging readings and turns the built-in LED on when the temperature is at least 2 °C warmer, turning it off again if the temperature falls below that threshold."
+ },
+ {
+  "id": "test-photoresistor",
+  "level": "Needs testing",
+  "title": "Photoresistor",
+  "description": "Turn on the Pico’s built-in LED when the photoresistor detects darkness.",
+  "idea": "The Pico's own LED turns on when the photoresistor gets dark, for example when you cover it with your hand",
+  "goal": "Turn on the Pico’s built-in LED when the photoresistor detects darkness.",
+  "behavior": [
+   "The built-in LED turns on when the area around the photoresistor gets dark.",
+   "The built-in LED turns off when the area gets brighter."
+  ],
+  "parts": [
+   {
+    "kind": "ldr",
+    "purpose": "detect darkness and brighter light around it"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "ldr",
+    "pin": "GP26"
+   }
+  ],
+  "code": "from machine import Pin, ADC\nimport time\n\n# Set the light level below which the area is treated as dark.\nDARK_THRESHOLD = 20000\n\n# Set up the photoresistor input and the Pico's built-in LED.\nlight_sensor = ADC(26)\nled = Pin(\"LED\", Pin.OUT)\n\n# Turn on the LED in darkness and turn it off in brighter light.\nwhile True:\n    light_level = light_sensor.read_u16()\n    led.value(1 if light_level < DARK_THRESHOLD else 0)\n    time.sleep(0.1)",
+  "explanation": "The program reads the photoresistor on GP26 and compares its reading with a threshold. The built-in LED turns on when the reading is below the threshold (darker) and turns off when it is above the threshold (brighter). Adjust DARK_THRESHOLD if needed for your room."
+ },
+ {
+  "id": "test-reed-switch",
+  "level": "Needs testing",
+  "title": "Reed switch",
+  "description": "Turn on the Pico’s built-in LED when a magnet is near the reed switch.",
+  "idea": "The Pico's own LED turns on while a magnet is near the reed switch",
+  "goal": "Turn on the Pico’s built-in LED when a magnet is near the reed switch.",
+  "behavior": [
+   "When a magnet is near the reed switch, the built-in LED turns on.",
+   "When the magnet moves away, the LED turns off."
+  ],
+  "parts": [
+   {
+    "kind": "reed",
+    "purpose": "detect when a magnet is nearby."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "reed",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how long to wait before confirming a switch change.\nDEBOUNCE_DELAY = 0.02\n\n# Set up the reed switch and the Pico's built-in LED.\nreed = Pin(16, Pin.IN, Pin.PULL_UP)\nled = Pin(\"LED\", Pin.OUT)\nlast_state = reed.value()\nled.value(1 if last_state == 0 else 0)\n\n# Check the switch and update the LED.\nwhile True:\n    current_state = reed.value()\n    if current_state != last_state:\n        time.sleep(DEBOUNCE_DELAY)\n        current_state = reed.value()\n        if current_state != last_state:\n            last_state = current_state\n    led.value(1 if last_state == 0 else 0)\n    time.sleep(0.01)",
+  "explanation": "The program checks the reed switch repeatedly and waits 20 ms to confirm a change. It turns the built-in LED on when the switch closes near a magnet, and off when the magnet moves away."
+ },
+ {
+  "id": "test-soil-moisture-sensor",
+  "level": "Needs testing",
+  "title": "Soil moisture sensor",
+  "description": "Turn on the Pico’s onboard LED when the soil sensor detects much wetter soil than it did at startup.",
+  "idea": "The Pico's own LED turns on when the capacitive soil moisture sensor reads much wetter than when the program started, for example when you put it in damp soil.",
+  "goal": "Turn on the Pico’s onboard LED when the soil sensor detects much wetter soil than it did at startup.",
+  "behavior": [
+   "At startup, the program records the soil sensor reading as the baseline.",
+   "The sensor reading goes down as the soil gets wetter.",
+   "The onboard LED turns on when the reading drops enough below the baseline, and turns off otherwise."
+  ],
+  "parts": [
+   {
+    "kind": "soil",
+    "purpose": "measure how wet the soil is in the plant pot."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "soil",
+    "pin": "GP26"
+   }
+  ],
+  "code": "from machine import Pin, ADC\nimport time\n\n# Set how much lower the reading must be to count as much wetter.\nWET_DROP = 5000\n\n# Set up the soil sensor and the Pico's built-in LED.\nsoil = ADC(26)\nled = Pin(\"LED\", Pin.OUT)\n\n# Record the starting soil reading as the baseline.\nbaseline = soil.read_u16()\n\n# Keep checking the soil and control the LED.\nwhile True:\n    reading = soil.read_u16()\n    if reading <= baseline - WET_DROP:\n        led.on()\n    else:\n        led.off()\n    time.sleep(0.2)",
+  "explanation": "The program records the soil sensor reading at startup, then checks it repeatedly. Because wetter soil gives a lower reading, the built-in LED turns on when the reading is at least 5000 counts below the startup baseline; otherwise, it stays off. Adjust WET_DROP to change how much wetter the soil must get."
+ },
+ {
+  "id": "test-sound-sensor",
+  "level": "Needs testing",
+  "title": "Sound sensor",
+  "description": "Toggle the Pico’s built-in LED with each clap detected by the sound sensor.",
+  "idea": "The Pico's own LED turns on or off with each clap the sound sensor hears",
+  "goal": "Toggle the Pico’s built-in LED with each clap detected by the sound sensor.",
+  "behavior": [
+   "The built-in LED starts off.",
+   "When the sound sensor detects a clap, the LED switches on or off.",
+   "The project waits briefly before detecting another clap, to help prevent one clap from toggling the LED twice."
+  ],
+  "parts": [
+   {
+    "kind": "sound-sensor",
+    "purpose": "detect claps and other loud sounds above its set level"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "sound-sensor",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set up the sound sensor and built-in LED.\nsound_sensor = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\nled.value(0)\n\n# Record when the sound sensor detects a clap.\nclap_detected = False\n\ndef detect_clap(pin):\n    global clap_detected\n    clap_detected = True\n\n# Watch for the sensor's brief low signal when a clap happens.\nsound_sensor.irq(trigger=Pin.IRQ_FALLING, handler=detect_clap)\n\n# Toggle the LED once per clap, then wait briefly to avoid repeats.\nwhile True:\n    if clap_detected:\n        clap_detected = False\n        led.toggle()\n        time.sleep_ms(200)\n        clap_detected = False\n    time.sleep_ms(1)",
+  "explanation": "The program starts with the built-in LED off and watches GP16 for a clap. Each detected clap toggles the LED, followed by a 200 ms pause to help prevent one clap from being counted twice."
+ },
+ {
+  "id": "test-tilt-switch",
+  "level": "Needs testing",
+  "title": "Tilt switch",
+  "description": "Turn on the Pico's built-in LED when the ball tilt switch is tilted.",
+  "idea": "The Pico's own LED turns on while the ball tilt switch is tilted",
+  "goal": "Turn on the Pico's built-in LED when the ball tilt switch is tilted.",
+  "behavior": [
+   "When the switch is tilted, the built-in LED turns on.",
+   "When the switch is upright, the built-in LED turns off."
+  ],
+  "parts": [
+   {
+    "kind": "tilt",
+    "purpose": "detect when the project is tilted or upright."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "tilt",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set up the tilt switch and the built-in LED.\ntilt = Pin(16, Pin.IN, Pin.PULL_UP)\nled = Pin(\"LED\", Pin.OUT)\n\n# Check that the switch reading stays steady for about 50 ms.\nwhile True:\n    reading = tilt.value()\n    time.sleep(0.05)\n    if tilt.value() == reading:\n        # Turn the LED on when tilted, and off when upright.\n        led.value(reading)\n    time.sleep(0.01)\n",
+  "explanation": "The program checks the tilt switch and waits about 50 ms to confirm its reading is steady. It turns on the Pico’s built-in LED when the switch is tilted and turns it off when upright."
+ },
+ {
+  "id": "test-touch-sensor",
+  "level": "Needs testing",
+  "title": "Touch sensor",
+  "description": "Toggle the Pico’s built-in LED each time you touch the sensor.",
+  "idea": "The Pico's own LED turns on or off each time you touch the touch sensor",
+  "goal": "Toggle the Pico’s built-in LED each time you touch the sensor.",
+  "behavior": [
+   "The built-in LED starts off.",
+   "Each new touch switches the LED to the opposite state.",
+   "The LED stays in that state until the next touch."
+  ],
+  "parts": [
+   {
+    "kind": "touch",
+    "purpose": "toggle the built-in LED when touched once per touch event; release before touching again to toggle it again."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "touch",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how long to wait after each check.\nCHECK_DELAY = 0.02\n\n# Set up the touch sensor and start the built-in LED off.\ntouch = Pin(16, Pin.IN)\nled = Pin(\"LED\", Pin.OUT)\nled.value(0)\n\n# Let the sensor measure the untouched pad, then record its state.\ntime.sleep(0.5)\nprevious_touch = touch.value()\n\n# Toggle the LED once when a new touch begins.\nwhile True:\n    current_touch = touch.value()\n    if current_touch == 1 and previous_touch == 0:\n        led.toggle()\n    previous_touch = current_touch\n    time.sleep(CHECK_DELAY)",
+  "explanation": "The program starts the built-in LED off and waits half a second for the touch sensor to settle with the pad untouched. It toggles the LED when it detects a new touch, then waits for the pad to be released before detecting another touch."
+ },
+ {
+  "id": "test-vibration-motor",
+  "level": "Needs testing",
+  "title": "Vibration motor",
+  "description": "Run the vibration motor for half a second every 3 seconds.",
+  "idea": "The vibration motor module vibrates for half a second every 3 seconds",
+  "goal": "Run the vibration motor for half a second every 3 seconds.",
+  "behavior": [
+   "The motor stays off for 2.5 seconds.",
+   "The motor vibrates for half a second.",
+   "This cycle repeats."
+  ],
+  "parts": [
+   {
+    "kind": "vibration-motor",
+    "purpose": "vibrate on a repeating timer"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "vibration-motor",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set the motor timing in seconds.\nON_TIME = 0.5\nOFF_TIME = 2.5\n\n# Set up the motor and make sure it starts off.\nmotor = Pin(16, Pin.OUT, value=0)\n\n# Repeat the vibration cycle and stop the motor if the loop exits.\ntry:\n    while True:\n        motor.value(1)\n        time.sleep(ON_TIME)\n        motor.value(0)\n        time.sleep(OFF_TIME)\nfinally:\n    motor.value(0)",
+  "explanation": "The motor vibrates for half a second, then stays off for 2.5 seconds. This cycle repeats, and the motor is turned off if the program exits."
+ },
+ {
+  "id": "test-vibration-sensor",
+  "level": "Needs testing",
+  "title": "Vibration sensor",
+  "description": "Blink the Pico’s built-in LED three times when a knock is detected.",
+  "idea": "The Pico's own LED blinks 3 times when the vibration sensor feels a knock",
+  "goal": "Blink the Pico’s built-in LED three times when a knock is detected.",
+  "behavior": [
+   "When the vibration sensor detects a knock, the Pico’s built-in LED blinks three times."
+  ],
+  "parts": [
+   {
+    "kind": "vibration",
+    "purpose": "detect knocks or shaking near the Pico"
+   }
+  ],
+  "requests": [
+   {
+    "kind": "vibration",
+    "pin": "GP16"
+   }
+  ],
+  "code": "from machine import Pin\nimport time\n\n# Set how long each blink lasts and how long to ignore repeat knocks.\nBLINK_DELAY = 0.15\nIGNORE_TIME = 200\n\n# Read the sensor's idle value, and set up the built-in LED.\nvibration = Pin(16, Pin.IN)\nidle = vibration.value()\nled = Pin(\"LED\", Pin.OUT)\nled.value(0)\n\n# Watch for a sensor value that differs from its idle value.\nwhile True:\n    if vibration.value() != idle:\n        # Blink the built-in LED three times for the knock.\n        for _ in range(3):\n            led.value(1)\n            time.sleep(BLINK_DELAY)\n            led.value(0)\n            time.sleep(BLINK_DELAY)\n\n        # Ignore brief repeats, then wait for the sensor to return to idle.\n        time.sleep_ms(IGNORE_TIME)\n        while vibration.value() != idle:\n            time.sleep_ms(1)\n\n    # Check the sensor often so short signals are less likely to be missed.\n    time.sleep_ms(1)",
+  "explanation": "The program records the vibration sensor’s value while it is still, then watches for a different value. When it detects a knock, the built-in LED blinks three times and the program briefly ignores the sensor before watching again."
+ },
+ {
+  "id": "test-water-level-sensor",
+  "level": "Needs testing",
+  "title": "Water level sensor",
+  "description": "Turn on the Pico’s built-in LED when the water rises past the chosen threshold.",
+  "idea": "The Pico's own LED turns on when the water level sensor is dipped more than a third of the way into a glass of water",
+  "goal": "Turn on the Pico’s built-in LED when the water rises past the chosen threshold.",
+  "behavior": [
+   "The water-level sensor checks how much of its sensing area is wet.",
+   "The built-in LED turns on above the threshold and off below it."
+  ],
+  "parts": [
+   {
+    "kind": "water-level",
+    "purpose": "detect how much of the sensor is submerged in water; only the striped end may get wet."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "water-level",
+    "pin": "GP26"
+   }
+  ],
+  "code": "from machine import Pin, ADC\nimport time\n\n# Set the reading that marks the one-third water level.\n# Replace 20000 with your sensor's measured reading at that level.\nWATER_THRESHOLD = 20000\n\n# Set up the water sensor and the Pico's built-in LED.\nwater_sensor = ADC(26)\nled = Pin(\"LED\", Pin.OUT)\n\n# Read the sensor and turn the LED on above the threshold.\nwhile True:\n    water_reading = water_sensor.read_u16()\n    print(water_reading)\n    led.value(1 if water_reading > WATER_THRESHOLD else 0)\n    time.sleep(0.2)",
+  "explanation": "The program reads the water sensor and turns the built-in LED on when its reading is above the threshold. Sensor readings vary, so use the printed values to find the reading when water reaches one-third of the sensing area, then set WATER_THRESHOLD to that value."
+ },
+ {
+  "id": "test-sound-board",
+  "level": "Needs testing",
+  "title": "Sound board",
+  "description": "Use four sensors to trigger different sounds from passive and active buzzer modules.",
+  "idea": "A sound board with only these parts: a passive buzzer module, an active buzzer module, a reed switch, a sound sensor, a line tracking sensor and a vibration sensor. No display. Each sensor gives its own signal. A magnet on the reed switch plays a high tone on the passive buzzer, and a clap plays a low tone. A black line under the line sensor plays a short melody. A knock on the vibration sensor makes the active buzzer beep twice.",
+  "goal": "Use four sensors to trigger different sounds from passive and active buzzer modules.",
+  "behavior": [
+   "When a magnet is near the reed switch, the passive buzzer plays a high tone.",
+   "When the sound sensor detects a clap, the passive buzzer plays a low tone.",
+   "When the line sensor detects a black line beneath it, the passive buzzer plays a short melody.",
+   "When the vibration sensor detects a knock, the active buzzer beeps twice."
+  ],
+  "parts": [
+   {
+    "kind": "buzzer",
+    "purpose": "play the high tone, low tone, and melody for the reed, sound, and line sensors."
+   },
+   {
+    "kind": "active-buzzer",
+    "purpose": "beep twice when a knock is detected."
+   },
+   {
+    "kind": "reed",
+    "purpose": "detect a nearby magnet."
+   },
+   {
+    "kind": "sound-sensor",
+    "purpose": "detect a clap or other loud sound."
+   },
+   {
+    "kind": "line",
+    "purpose": "detect a black line beneath the sensor."
+   },
+   {
+    "kind": "vibration",
+    "purpose": "detect a knock or shake."
+   }
+  ],
+  "requests": [
+   {
+    "kind": "buzzer",
+    "pin": "GP16"
+   },
+   {
+    "kind": "active-buzzer",
+    "pin": "GP18"
+   },
+   {
+    "kind": "reed",
+    "pin": "GP20"
+   },
+   {
+    "kind": "sound-sensor",
+    "pin": "GP22"
+   },
+   {
+    "kind": "line",
+    "pin": "GP17"
+   },
+   {
+    "kind": "vibration",
+    "pin": "GP21"
+   }
+  ],
+  "code": "from machine import Pin, PWM\nimport time\n\n# Set up the passive buzzer quiet and prepare the input sensors.\nPin(16, Pin.OUT, value=1)\nreed = Pin(20, Pin.IN, Pin.PULL_UP)\nsound = Pin(22, Pin.IN)\nline = Pin(17, Pin.IN)\nvibration = Pin(21, Pin.IN)\nbuzzer = Pin(18, Pin.OUT, value=1)\n\n# Remember sensor states and prepare flags for quick sensor interrupts.\nreed_old = reed.value()\nline_old = line.value()\nvibration_idle = vibration.value()\nsound_hit = False\nvibration_hit = False\n\ndef sound_irq(pin):\n    global sound_hit\n    sound_hit = True\n\ndef vibration_irq(pin):\n    global vibration_hit\n    vibration_hit = True\n\n# Watch for brief sound and vibration signals between loop checks.\nsound.irq(trigger=Pin.IRQ_FALLING, handler=sound_irq)\nvibration.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=vibration_irq)\n\n# Play one passive-buzzer note, then put its pin back in the quiet state.\ndef play_note(frequency, duration):\n    pwm = PWM(Pin(16))\n    pwm.freq(frequency)\n    pwm.duty_u16(32768)\n    time.sleep_ms(duration)\n    pwm.deinit()\n    Pin(16, Pin.OUT, value=1)\n\n# Check sensors often and play the sound for each new trigger.\nwhile True:\n    reed_now = reed.value()\n    line_now = line.value()\n    if reed_now != reed_old:\n        time.sleep_ms(20)\n        reed_now = reed.value()\n        if reed_now == 0:\n            play_note(1000, 250)\n        reed_old = reed_now\n    if sound_hit:\n        sound_hit = False\n        play_note(262, 300)\n        time.sleep_ms(200)\n    if line_now != line_old:\n        if line_now == 1:\n            play_note(1047, 150)\n            play_note(784, 150)\n            play_note(880, 150)\n        line_old = line_now\n    if vibration_hit:\n        vibration_hit = False\n        if vibration.value() != vibration_idle:\n            buzzer.value(0)\n            time.sleep_ms(120)\n            buzzer.value(1)\n            time.sleep_ms(120)\n            buzzer.value(0)\n            time.sleep_ms(120)\n            buzzer.value(1)\n            time.sleep_ms(200)\n    time.sleep_ms(1)",
+  "explanation": "The program watches the four sensors and plays the matching sound when each one is triggered. The line sensor plays a short, higher-pitched melody through the passive buzzer, and a vibration triggers two beeps from the active buzzer."
+ }
+]

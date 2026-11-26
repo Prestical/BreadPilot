@@ -532,3 +532,41 @@ describe("pre-release parts: named or asked for by what they sense", () => {
     expect(() => layoutProject([{ kind: "oled" }, { kind: "bme280" }, { kind: "rtc" }])).toThrow(/3 I2C parts can't be connected: each one needs its own I2C bus for now, and the Pico 2 W has two/);
   });
 });
+
+describe("one display, named once (26/11/2026)", () => {
+  const kinds = (idea: string) => Object.keys(analyzeIdea(idea).parts).sort();
+
+  it("a generic word after the 0.96 inch OLED is that display, not also the 1.3 inch one", () => {
+    expect(kinds(`A 0.96 inch SSD1306 OLED. No other display and no buttons. The screen shows the time.`)).toEqual(["oled-small"]);
+    // Read from a real idea that was refused for "3 I2C parts": the screen and "switches between" added parts.
+    const clock = `A desk clock with only these parts: a 0.96 inch SSD1306 OLED, a DS3231 real-time clock, a photoresistor, a DHT22 sensor, a ball tilt switch and a flame sensor. No other display and no buttons. The screen shows the time and the room temperature and humidity. It dims in the dark. Tipping the board switches between the time page and the climate page. If the flame sensor sees a flame, the screen shows "FIRE!" in big letters.`;
+    expect(kinds(clock)).toEqual(["dht22", "flame", "ldr", "oled-small", "rtc", "tilt"]);
+  });
+
+  it("a size or model still asks for the 1.3 inch display next to the 0.96 inch one; a plain screen alone is the 1.3 inch", () => {
+    expect(kinds(`A 0.96" OLED and a 1.3" OLED show the time.`)).toEqual(["oled", "oled-small"]);
+    expect(kinds(`An SH1106 display and an SSD1306 display.`)).toEqual(["oled", "oled-small"]);
+    expect(kinds(`A screen shows the time.`)).toEqual(["oled"]);
+  });
+
+  it("the 0.96 inch display blinking is the display, not an LED", () => {
+    expect(kinds(`A 0.96 inch OLED shows the time and the screen blinks.`)).toEqual(["oled-small"]);
+  });
+
+  it('"switches" is a button only as a thing, not as a verb', () => {
+    expect(analyzeIdea(`Two switches turn two LEDs on.`).parts.button).toEqual({ min: 2, exact: 2 });
+    expect(kinds(`Tilting the board switches the LED on.`)).toEqual(["led", "tilt"]);
+  });
+});
+
+describe("words that describe a named part don't add another (26/11/2026)", () => {
+  const kinds = (idea: string) => Object.keys(analyzeIdea(idea).parts).sort();
+  it('"tilted" with an MPU-6050 is the MPU-6050, not also a tilt switch', () => {
+    expect(kinds(`The Pico's own LED turns on when the MPU-6050 is tilted more than 30 degrees`)).toEqual(["imu"]);
+    expect(kinds(`An LED turns on when the board is tilted`)).toEqual(["led", "tilt"]);
+  });
+  it('"push it into the soil" is not a button', () => {
+    expect(kinds(`The Pico's own LED turns on when the capacitive soil moisture sensor reads much wetter, for example when you push it into damp soil.`)).toEqual(["soil"]);
+    expect(kinds(`Push to turn the LED on`)).toEqual(["button", "led"]);
+  });
+});

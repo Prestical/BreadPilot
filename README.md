@@ -36,7 +36,8 @@
 
 BreadPilot turns an idea like *"blink an LED when I press a button"* into a checked circuit for
 the **Raspberry Pi Pico 2 W**, numbered wiring steps in an interactive 3D scene, and MicroPython
-code, built into one file you drag onto the board. It runs on your own computer with a local AI model.
+code that is tested on a simulated copy of the circuit, then built into one file you drag onto the
+board. It runs on your own computer with a local AI model.
 
 > **The AI writes words; code checks the physics.** The AI only understands your idea and drafts
 > text and code. Pin choices, breadboard layout and every safety rule are plain code, so a step is
@@ -52,6 +53,8 @@ code, built into one file you drag onto the board. It runs on your own computer 
 | **Checked wiring** | Code picks the pins, places the parts and draws every wire, then a validator checks for shorts, missing resistors, 5 V on a GPIO and more. |
 | **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
 | **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
+| **Tested by running it** | Before a project is ready, its code runs on a simulated copy of the circuit (MicroPython 1.29, the Pico's own version) while each button is pressed, each knob turned and each sensor changed. A crash, or code that doesn't do what it says, goes back to the AI to fix. |
+| **Try it** | Run the code live in the Code view before flashing: the OLED screen animates, LEDs light and buzzers show their tone while you hold buttons and move knob and sensor sliders. |
 | **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
 | **Local first** | A desktop app for macOS, Windows and Linux, with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
 
@@ -72,7 +75,10 @@ A tour of BreadPilot 0.3.0, from an idea to a working board (click to watch on Y
 ## Quick start
 
 1. **Download BreadPilot** for your computer from the
-   [latest release](https://github.com/Prestical/BreadPilot/releases/latest):
+   [latest release](https://github.com/Prestical/BreadPilot/releases/latest). Versions marked
+   **Pre-release** on the [Releases](https://github.com/Prestical/BreadPilot/releases) page are betas:
+   the newest features, before the full release.
+   Files:
    `BreadPilot-…-arm64.dmg` (Mac with Apple silicon), `BreadPilot-…-x64.dmg` (Intel Mac, not
    tested yet), `BreadPilot-…-Setup.exe` (Windows 10 and 11) or `BreadPilot-…-x86_64.AppImage` (Linux).
 2. **Install [Ollama](https://ollama.com/download)** for the free local AI, or skip it and use an
@@ -86,24 +92,9 @@ click:
 
 | System | First start |
 |---|---|
-| **macOS** | See the steps below. |
+| **macOS** | Drag BreadPilot into Applications and open it. If macOS says it "could not verify" BreadPilot, click **Done**, then **System Settings → Privacy & Security → Open Anyway**. On macOS 14 and older: right-click the app → **Open**. |
 | **Windows** | Run the setup (no administrator rights needed). If Windows says "Windows protected your PC", click **More info → Run anyway**. |
 | **Linux** | Make the AppImage executable (`chmod +x BreadPilot-*.AppImage`) and run it. If it doesn't start, install FUSE (`sudo apt install libfuse2`, on Ubuntu 24.04 `libfuse2t64`). BreadPilot keeps its key in your keyring (GNOME Keyring or KWallet). |
-
-**macOS, first start** (macOS 15 Sequoia and newer):
-
-1. Open the `.dmg` and drag **BreadPilot** into **Applications**.
-2. Open BreadPilot from Applications. macOS says *"Apple could not verify 'BreadPilot' is free of
-   malware…"*. Click **Done** (not *Move to Trash*).
-3. Open **System Settings → Privacy & Security**, scroll down to *"'BreadPilot' was blocked…"* and
-   click **Open Anyway** (it's shown for about an hour after step 2). Enter your Mac password if asked.
-4. Click **Open** in the last question. From then on BreadPilot opens normally, also after updates
-   installed the same way.
-
-On macOS 14 and older: right-click BreadPilot in Applications → **Open** → **Open**.
-
-This is macOS's check for apps without a paid Apple Developer ID; it isn't a password for
-BreadPilot. BreadPilot never asks for your keychain password (see [Your data](#your-data)).
 
 Your projects are saved encrypted on your computer (see [Your data](#your-data)). The OpenAI key,
 if you add one in **Settings**, is stored encrypted too and only ever sent to OpenAI.
@@ -125,13 +116,16 @@ npm run dev:desktop
 
 ## Using the app
 
-1. **Type an idea** in the box at the bottom (or pick an example) and press Enter.
+1. **Type an idea** in the box at the bottom and press Enter, or open one of the three examples
+   (easy, medium, hard), which come with their code.
 2. **Watch the progress card**: reading the idea → plan → parts → safety check → code.
 3. **Approve the plan** if asked, or type a change in the same box.
 4. **Build step by step.** Use *Next / Back*, the step strip or the ← → keys. The first step lists
    what you need; power always goes in last.
-5. **Open `</> Code`** to read, copy, edit or download `main.py`, then press **Build for Pico**:
-   hold BOOTSEL while plugging the Pico in, and drag the file onto the drive that appears.
+5. **Open `</> Code`** to read, copy, edit or download `main.py`. **Try it** runs the code on a
+   simulated copy of the circuit first: the screen, LEDs and buzzer react while you press the
+   buttons and move the knobs and sensors. Then press **Build for Pico**: hold BOOTSEL while
+   plugging the Pico in, and drag the file onto the drive that appears.
 
 New to breadboards? **Breadboard & Pico 101** in the sidebar is a short interactive tutorial.
 The **Power** switch on the 3D view wires parts to the breadboard rails (default) or straight to
@@ -168,66 +162,48 @@ Large (model 10 GB and more)
 
 ## Supported hardware
 
-**Tried on hardware:** ✅ means built on a real Pico 2 W from BreadPilot's own steps and code; ❌ means not tested in real project yet. The
-others are the most common versions of each part, described from their usual values; they pass all
-of BreadPilot's checks but haven't been built yet. Reports are welcome (GitHub issues).
+Everything runs from the Pico's 3.3 V. Up to three analog parts (GP26-GP28) and two I2C parts per
+project. Resistors and pull-ups are added for you.
 
-Everything runs from the Pico's 3.3 V. Analog parts share the Pico's three ADC pins (GP26-GP28), so a
-project can have at most three of them. Each I2C part gets its own I2C bus for now, so a project can
-have at most two I2C parts.
+**Board:** Raspberry Pi Pico 2 W / 2 WH (its own LED, temperature sensor and Wi-Fi included).
 
-**The board**
-
-| Part | Notes |
+| Basic parts | Notes |
 |---|---|
-| Raspberry Pi Pico 2 W / 2 WH | Its on-board LED, temperature sensor and Wi-Fi need no extra parts. |
+| LED (5 mm) | Red, green, yellow, blue or white |
+| Push button (6 mm) | |
+| Slide switch (IC206) | On/off |
+| Ball tilt switch (SW-520D) | Tilt and shake |
+| Reed switch | A magnet near |
+| Potentiometer (10 kΩ) | Knob |
+| Passive buzzer module (MH-FMD) | Tones and melodies |
+| Active buzzer module | One fixed beep |
+| Vibration motor module | Coin motor |
 
-**Basic parts**
+| Sensors | Notes |
+|---|---|
+| DHT11 | Temperature and humidity |
+| DHT22 (AM2302) | Temperature and humidity, wider range |
+| DS18B20 (TO-92) | Temperature (keep it dry) |
+| NTC thermistor (10 kΩ) | Temperature |
+| Photoresistor (GL5528) | Light |
+| Touch sensor (TTP223) | Touch |
+| Hall sensor (KY-024) | Magnet |
+| IR obstacle sensor (FC-51) | Something in front |
+| Line tracking sensor (TCRT5000) | Line or surface |
+| Flame sensor | Flame |
+| Sound sensor | Claps and loud sounds |
+| Vibration sensor (SW-420) | Knocks and shaking |
+| Water level sensor | Water depth |
+| Capacitive soil moisture sensor (v1.2) | Soil moisture |
 
-| Part | Notes | Tried |
-|---|---|:-:|
-| LED (5 mm) | Red, green, yellow, blue or white. Its resistor is added for you. | ✅ |
-| Push button (6 mm) | Read with the Pico's internal pull-up. | ✅ |
-| Slide switch (IC206, 3 legs) | On/off input: middle leg to a GPIO with the internal pull-up, one outer leg to GND. | ✅ |
-| Ball tilt switch (SW-520D) | Closed while upright, open when tilted or shaken. | ❌ |
-| Reed switch | Closes while a magnet is near. | ❌ |
-| Potentiometer (10 kΩ knob) | Analog input. | ✅ |
-| Passive buzzer module (MH-FMD, 3 pins) | Tones and melodies with PWM. **Power from 3.3 V only** (the module sounds while its I/O pin is low). | ✅ |
-| Active buzzer module (3 pins) | One fixed beep, on/off. **Power from 3.3 V only**, like the passive module. | ❌ |
-| Vibration motor module (3 pins) | A coin motor switched by the module's own transistor. | ❌ |
-
-**Sensors**
-
-| Part | Notes | Tried |
-|---|---|:-:|
-| DHT11 temperature and humidity sensor | Air temperature and humidity. Its 10 kΩ pull-up resistor is added for you. One reading every 2 s at most. | ✅ |
-| DHT22 (AM2302) | Like the DHT11, with a wider range (−40 to 80 °C) and better accuracy. | ❌ |
-| DS18B20 temperature sensor (TO-92) | −55 to 125 °C over one data wire (1-Wire). Its 4.7 kΩ pull-up is added for you. The bare part must stay dry. | ❌ |
-| NTC thermistor (10 kΩ, B 3950) | Temperature through a voltage divider (its 10 kΩ resistor is added for you); analog. | ❌ |
-| Photoresistor (GL5528) | Light level through a voltage divider (its 10 kΩ resistor is added for you); analog. | ❌ |
-| Touch sensor (TTP223) | A touch pad; high while touched. | ❌ |
-| Hall sensor (KY-024) | Notices a magnet (its digital output is used). | ❌ |
-| IR obstacle sensor (FC-51) | Something within about 2-30 cm in front: yes or no. | ❌ |
-| Line tracking sensor (TCRT5000) | A light or a black surface 1-15 mm in front (its digital output is used). | ❌ |
-| Flame sensor (3 pins) | The infrared light of a small flame. A learning sensor, not a fire alarm. | ❌ |
-| Sound sensor (3 pins) | Claps and loud sounds: yes or no. It can't record. | ❌ |
-| Vibration sensor (SW-420) | Knocks and shaking. | ❌ |
-| Water level sensor (3 pins) | How deep its strips are in water, or simply wet or dry; analog. | ❌ |
-| Capacitive soil moisture sensor (v1.2) | How wet the soil is; analog, on its 3-wire cable. | ❌ |
-
-**I2C modules** (their drivers are included in the Pico build)
-
-| Part | Notes | Tried |
-|---|---|:-:|
-| 1.3" I2C OLED (SH1106, 128x64) | Up to 2. **Power from 3.3 V only.** Driver `sh1106.py`. | ✅ |
-| 0.96" I2C OLED (SSD1306, 128x64) | Up to 2. **Power from 3.3 V only.** Driver `ssd1306.py`, with the same drawing helpers as the 1.3" one. | ❌ |
-| BME280 / BMP280 pressure sensor (6 pins) | Air pressure, temperature and (BME280) humidity; altitude from the pressure. **3.3 V only** (no regulator). Driver `bme280.py`. | ❌ |
-| MPU-6050 accelerometer and gyroscope (GY-521) | Tilt, shaking and turning speed. Driver `mpu6050.py`. | ❌ |
-| DS3231 real-time clock (ZS-042) | Keeps the date and time on its coin cell while the Pico is off. **Power from 3.3 V only.** Driver `ds3231.py`. | ❌ |
-| BH1750 light sensor (GY-302) | Light in lux. Needs no driver. | ❌ |
-
-Ideas that need other parts (motors, servos, distance sensors, other displays…) get a **handoff bundle**: the plan,
-validated wiring and requirements as Markdown, ready to paste into a stronger assistant.
+| I2C modules | Notes |
+|---|---|
+| 1.3" OLED (SH1106, 128x64) | Display |
+| 0.96" OLED (SSD1306, 128x64) | Display |
+| BME280 / BMP280 | Pressure, temperature, humidity |
+| MPU-6050 (GY-521) | Tilt and motion |
+| DS3231 (ZS-042) | Real-time clock |
+| BH1750 (GY-302) | Light in lux |
 
 ---
 
@@ -246,9 +222,12 @@ flowchart LR
     E -->|safe| F[Build steps<br/>in 3D]
     F --> G[AI: write<br/>MicroPython]
     G --> H{Code checker}
-    H -->|problem, up to 3 tries| G
-    H -->|passes| I([Build for Pico<br/>.uf2])
-    H -->|still failing| J([Handoff bundle])
+    H -->|problem| G
+    H -->|passes| S{Simulated<br/>test run}
+    S -->|crash or a claim<br/>that didn't hold| G
+    S -->|passes| T[Try it<br/>in the Code view]
+    T --> I([Build for Pico<br/>.uf2])
+    H -->|still failing after 4 tries| J([Handoff bundle])
 ```
 
 | Stage | Who does it |
@@ -261,14 +240,14 @@ flowchart LR
 
 ### What the checks don't cover
 
-The circuit validator and the code checker catch many beginner mistakes, but passing them doesn't
-prove that a project works or is safe. They don't cover:
+The circuit validator, the code checker and the simulated test run catch many beginner mistakes,
+but passing them doesn't prove that a project works or is safe. They don't cover:
 
 | Area | Not checked |
 |---|---|
 | The real board | The checks see the wiring BreadPilot drew, not the breadboard on your desk: a wire one hole off, a loose or broken jumper, a bent leg, a resistor of another value or a damaged part. Compare the board with the 3D view before plugging in USB. |
-| What the code does | The behaviour simulator runs the program on a simulated copy of its circuit while a fixed test presses each button, turns each knob and changes each sensor. It catches crashes, and code that doesn't do what the AI says it does (such as a button that works the wrong way round). One test run isn't every situation: logic that only shows after many presses, at other sensor values or after a long time can pass. A claim the AI words loosely checks little: when working programs were broken on purpose, about 6 in 10 were caught, and fewer with the small local model. Wi-Fi, the internet and sound aren't simulated, the simulator uses double-precision numbers where the Pico uses single, and code edited in the code panel isn't simulated. |
-| Part facts | Parts marked ❌ in [Supported hardware](#supported-hardware) are described from the usual values of the most common module, not from a datasheet. Modules with the same name can differ in pin order, voltage or active level: follow the labels on your board. |
+| What the code does | The behaviour simulator runs the program on a simulated copy of its circuit while a fixed test presses each button, turns each knob and changes each sensor. It catches crashes, and code that doesn't do what the AI says it does (such as a button that works the wrong way round). One test run isn't every situation: logic that only shows after many presses, at other sensor values or after a long time can pass. A claim the AI words loosely checks little: when working programs were broken on purpose, about 6 in 10 were caught, and fewer with the small local model. A claim that still doesn't hold after one fix is shown as a thing to check, not an error. Wi-Fi, the internet and sound aren't simulated, sensor readings are plausible values rather than measurements, and the simulator uses double-precision numbers where the Pico uses single. Code you edit is checked and can be run in **Try it**, but it doesn't get the automatic test run. |
+| Part facts | Some parts are described from the usual values of the most common module, not from a datasheet. Modules with the same name can differ in pin order, voltage or active level: follow the labels on your board. |
 | Currents | GPIO and resistor currents are counted through resistors and LEDs in series. Current a module takes through its signal pins isn't counted, module supply currents are typical values, and code that changes a pin's drive strength isn't checked. |
 | Power | Projects run from the Pico's 3.3 V pin and USB. Batteries, external supplies, 5 V modules and mains are not supported, so they aren't checked. |
 | Handoff bundles | Parts in a handoff bundle that BreadPilot doesn't support, and code another assistant writes from it, are not checked. |
@@ -282,9 +261,11 @@ flowchart TB
     subgraph Page["Page in the BreadPilot window"]
         UI[React app<br/>3D workbench · steps · code]
         CC1[circuit-core<br/>re-checks every build]
+        TRY[Try it<br/>simulator in a Web Worker]
     end
     subgraph App["Desktop app (Electron)"]
         API[api in a background process<br/>Fastify · agent pipeline · RAG · serves the page]
+        SIM[behaviour simulator<br/>MicroPython WebAssembly]
         DB[(PGlite + pgvector in memory<br/>saved as one encrypted file)]
     end
     LLM[Ollama on your machine<br/>or OpenAI, optional]
@@ -292,6 +273,8 @@ flowchart TB
     DOCS[[docs/hardware<br/>datasheets]]
 
     UI <-- launch token --> API
+    UI --> TRY
+    API --> SIM
     API <--> DB
     API <--> LLM
     PARTS -. built into .-> CC1
@@ -301,6 +284,10 @@ flowchart TB
 
 - **Part packs** (`parts/`) are built into the app: the AI gets their exact facts in its prompts,
   and the layout, validator and checker read the same data.
+- **The behaviour simulator** (`packages/sim`) runs the program on MicroPython's official WebAssembly
+  build with a simulated `machine` module, the circuit's electrical model and register-level copies of
+  the I2C and 1-Wire chips, so the parts' real drivers run unchanged. The pipeline runs it on a
+  virtual clock; **Try it** runs the same code live in the page, in real time.
 - **Documentation search (RAG)** indexes the datasheets and the verified pinout when the API starts
   (hybrid vector + full-text search) and adds the most relevant paragraphs to the code prompt.
 - **The database** is PGlite (Postgres compiled to WebAssembly) running inside the app. It is
@@ -318,8 +305,10 @@ BreadPilot/
 │   ├── web/              React + Vite + react-three-fiber: 3D workbench, steps, code panel
 │   └── api/              Fastify: agent pipeline, documentation search, projects, PGlite database
 ├── packages/
-│   └── circuit-core/     Shared TypeScript: connection format, validator, layout, steps,
+│   ├── circuit-core/     Shared TypeScript: connection format, validator, layout, steps,
 │                         code checker, part pack loader, UF2 builder
+│   └── sim/              Behaviour simulator: MicroPython WebAssembly, simulated circuit and
+│                         chips, the automatic test run and its findings, Try it
 ├── parts/                Part packs: one folder per part
 ├── data/                 Verified board and breadboard data, tutorial, eval sets, firmware
 ├── docs/                 Datasheets and MicroPython source facts
@@ -334,7 +323,7 @@ Every part is **one folder** in `parts/`. The engine has no code for any particu
 
 ```text
 parts/oled-sh1106-i2c/
-├── pack.json       id, review status, plan name, driver
+├── pack.json       id, review status, plan name, driver, whether it was tried on a real Pico
 ├── part.json       legs, elements, specs: every fact with its source (datasheet page, …)
 ├── layout.json     how it sits on the breadboard and is wired
 ├── text.json       build-step texts and names in the app
@@ -348,7 +337,9 @@ parts/oled-sh1106-i2c/
 
 Packs are **data only** and are **reviewed by a person**; a pack marked `draft` is left out. A part
 that needs something the engine doesn't support yet (1-Wire, SPI, UART, servo pulses, a new 3D
-shape) needs that added to the engine once. Full format: [`parts/README.md`](parts/README.md).
+shape) needs that added to the engine once. A part that talks over I2C or 1-Wire also needs a
+simulated chip in `packages/sim/src/chips.mjs`, so the automatic test run and **Try it** can run its
+driver. Full format: [`parts/README.md`](parts/README.md).
 
 ---
 
@@ -388,7 +379,11 @@ npm test
   the app exported). Without those options it runs the automatic test (each button pressed, held and
   pressed twice; each knob swept; each sensor changed) and lists the findings: S001 crash, S002 a loop
   that never gives time back, S003 nothing reacts to the inputs, S004 an input never read, S005 a
-  display that never shows anything.
+  display that never shows anything, S006 a claim in the AI's answer that didn't happen. `--all`
+  runs every saved project and lists the findings of each.
+- `npm run eval:mutants -w @breadpilot/sim -- <eval json>` breaks each claimed program of an agent
+  eval run on purpose (the button test inverted, the knob reversed) and counts how many the claims
+  catch.
 
 <details>
 <summary><strong>Building the installers</strong></summary>
@@ -517,6 +512,10 @@ places) with the keychain entry "BreadPilot Dev data key".
 Contributions are welcome: bug reports, new part packs, documentation and fixes. A new part is
 usually just one folder in `parts/` (see [Adding a new part](#adding-a-new-part)). Run
 `npm run typecheck` and `npm test` before opening a pull request.
+
+Built a project on a real board? A
+[hardware report](https://github.com/Prestical/BreadPilot/issues/new?template=hardware-report.yml)
+(the app opens it for you after **Build for Pico**) is one of the most useful contributions.
 
 ---
 

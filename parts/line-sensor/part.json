@@ -50,7 +50,7 @@
   ],
   "specs": {
     "activeLevel": {
-      "value": "low over a light surface",
+      "value": "high over a black line (low over a light surface)",
       "src": {
         "typical": true,
         "note": "typical for TCRT5000 comparator boards"

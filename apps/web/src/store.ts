@@ -4,7 +4,7 @@ import type { HoverInfo } from "./scene/Workbench";
 import type { Target } from "./scene/targets";
 import { CHAPTERS } from "./tutorial/chapters";
 import { checkClick, checkWire, type Feedback } from "./tutorial/engine";
-import { loadProject } from "./demos";
+import { examplePower, loadProject } from "./demos";
 import * as api from "./projects/api";
 import type { SettingsTab } from "./ui/settingsTabs";
 
@@ -168,6 +168,7 @@ export function rememberedProject(): string | null {
 /** The power wiring shown now: the open agent project's own choice, otherwise the preference. */
 export function currentPower(s: Pick<AppState, "source" | "agent" | "power">): PowerMode {
   const p = s.agent.project;
+  if (s.source.kind === "demo") return examplePower(s.source.id, s.power);
   return s.source.kind === "agent" && p && p.id === s.source.id ? (p.power ?? "rails") : s.power;
 }
 

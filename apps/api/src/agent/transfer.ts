@@ -115,7 +115,7 @@ const ProjectShape = z.object({
   failure: text(4000).optional(),
   resumeFrom: z.enum(["intake", "plan", "build"]).optional(),
   events: z
-    .array(z.object({ stage: z.enum(["intake", "plan", "design", "steps", "code"]), status: z.enum(["ok", "retry", "error"]), detail: text(4000).optional(), ms: z.number().min(0), at }))
+    .array(z.object({ stage: z.enum(["intake", "plan", "design", "steps", "code", "simulate"]), status: z.enum(["ok", "retry", "error"]), detail: text(4000).optional(), ms: z.number().min(0), at }))
     .max(5000)
     .default([]),
   createdAt: at,

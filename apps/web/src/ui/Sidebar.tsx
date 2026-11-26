@@ -134,19 +134,31 @@ export function Sidebar() {
             </ul>
           )}
         </section>
-        <section data-tour="examples">
-          <p className="side-head">Examples</p>
-          <ul className="plist">
-            {DEMOS.map((d) => (
-              <li key={d.id}>
-                <button type="button" disabled={busy} className={building && source.kind === "demo" && source.id === d.id ? "current" : ""} onClick={() => openDemo(d.id)}>
-                  <span className="ptitle">{d.title}</span>
-                  <span className="muted small">{d.description}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div data-tour="examples">
+        {[
+          { title: "Components that need testing in real builds", list: DEMOS.filter((d) => d.level === "Needs testing"), tag: false },
+          { title: "Examples", list: DEMOS.filter((d) => d.level !== "Needs testing"), tag: true },
+        ]
+          .filter((g) => g.list.length > 0)
+          .map((g) => (
+            <section key={g.title}>
+              <p className="side-head">{g.title}</p>
+              <ul className="plist">
+                {g.list.map((d) => (
+                  <li key={d.id}>
+                    <button type="button" disabled={busy} className={building && source.kind === "demo" && source.id === d.id ? "current" : ""} onClick={() => openDemo(d.id)}>
+                      <span className="ptitle">
+                        {d.title}
+                        {g.tag && <> <span className={`level-tag ${d.level.toLowerCase().replace(" ", "-")}`}>{d.level}</span></>}
+                      </span>
+                      <span className="muted small">{d.description}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
 
       <KeyringNotice />

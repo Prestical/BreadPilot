@@ -31,13 +31,15 @@ interface Props {
   drivers: DriverFile[];
   /** null = ready; otherwise why the build is disabled. */
   blocked: string | null;
+  /** After a UF2 was made (the hardware report card may then ask how it went). */
+  onBuilt?: () => void;
 }
 
 /**
  * "Build for Pico": one UF2 with MicroPython v1.29.0 + main.py (+ driver files). The user holds
  * BOOTSEL, plugs the Pico in and drops the file on the drive that appears; it restarts and runs.
  */
-export function PicoBuild({ title, code, drivers, blocked }: Props) {
+export function PicoBuild({ title, code, drivers, blocked, onBuilt }: Props) {
   const [state, setState] = useState<{ busy: boolean; error?: string; done?: { file: string; kb: number } }>({ busy: false });
 
   const build = async () => {
@@ -48,6 +50,7 @@ export function PicoBuild({ title, code, drivers, blocked }: Props) {
       const file = uf2Name(title);
       save(file, result.uf2);
       setState({ busy: false, done: { file, kb: Math.round(result.uf2.length / 1024) } });
+      onBuilt?.();
     } catch (err) {
       setState({ busy: false, error: (err as Error).message });
     }

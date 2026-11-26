@@ -31,7 +31,8 @@
       "unlessNamed": [
         "button",
         "slide-switch",
-        "oled"
+        "oled",
+        "oled-small"
       ]
     },
     "claims": [
