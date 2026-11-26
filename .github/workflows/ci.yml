@@ -33,9 +33,9 @@ jobs:
       - name: Keep line endings as committed
         run: git config --global core.autocrlf false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -49,17 +49,19 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # CI runners are slower than a laptop and run the simulator tests side by side: a small test can
+      # wait more than vitest's 5 s default for a turn, so CI allows 30 s per test.
       - name: Tests
-        run: npm test
+        run: npm test -- --testTimeout=30000
 
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
