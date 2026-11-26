@@ -82,11 +82,31 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   // rebinding") and then read and change projects as if it were this page, so other Host names
   // are refused. Changes (POST/DELETE...) sent by another website are refused too: browsers name
   // the sending page in Origin, and a request from the app itself carries the app's own origin.
+  // "Own" means the same host AND port: another program's page on this computer (a dev server on
+  // 127.0.0.1:3000, say) is the same site to a browser, which sends it our cookie too, but it isn't
+  // this app (security review 16/11/2026).
   const hosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
   const hostOk = (value: string | undefined) => {
     if (!value) return false;
     const name = value.toLowerCase().replace(/:\d+$/, "");
-    return hosts.has(name) || name.endsWith(".localhost");
+    return hosts.has(name);
+  };
+  /** host:port as a browser writes it (lowercase, no default port), or undefined if it can't be read. */
+  const hostPort = (value: string) => {
+    try {
+      return new URL(`http://${value}`).host;
+    } catch {
+      return undefined;
+    }
+  };
+  const sameOrigin = (origin: string, host: string | undefined) => {
+    try {
+      const o = new URL(origin);
+      if (o.protocol !== "http:") return false;
+      return host !== undefined && o.host === hostPort(host);
+    } catch {
+      return false; // "null" or garbage
+    }
   };
   app.addHook("onRequest", async (req, reply) => {
     if (!hostOk(req.headers.host)) {
@@ -103,15 +123,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       }
     }
     if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return;
+    // Sec-Fetch-Site: "same-origin" = this page, "none" = typed by the user; "same-site" is another
+    // port on this computer, "cross-site" another website. Tools without it (curl) still need the token.
+    const site = req.headers["sec-fetch-site"];
     const origin = req.headers.origin;
-    let fromOtherSite = req.headers["sec-fetch-site"] === "cross-site";
-    if (origin !== undefined) {
-      try {
-        fromOtherSite ||= !hostOk(new URL(origin).host);
-      } catch {
-        fromOtherSite = true; // "null" or garbage
-      }
-    }
+    let fromOtherSite = site !== undefined && site !== "same-origin" && site !== "none";
+    if (origin !== undefined) fromOtherSite ||= !sameOrigin(origin, req.headers.host);
     if (fromOtherSite) {
       return reply.status(403).send({ code: "FOREIGN_ORIGIN", message: "Changes are only accepted from the BreadPilot page itself." } satisfies ApiError);
     }

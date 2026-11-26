@@ -10,6 +10,7 @@
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { stageLock } from "./stage-lock.mjs";
 
 const DESKTOP = resolve(import.meta.dirname, "..");
 const REPO = resolve(DESKTOP, "../..");
@@ -82,7 +83,17 @@ async function prune(dir) {
   return removed;
 }
 
-const installedVersion = async (pkg) => JSON.parse(await readFile(join(REPO, "node_modules", pkg, "package.json"), "utf8")).version;
+/**
+ * The version package-lock.json gives `pkg`, checked against the installed copy the tests ran with:
+ * a node_modules changed by hand (or not installed from the lock) stops the build.
+ */
+async function lockedVersion(rootLock, pkg) {
+  const locked = rootLock.packages?.[`node_modules/${pkg}`]?.version;
+  const installed = JSON.parse(await readFile(join(REPO, "node_modules", pkg, "package.json"), "utf8")).version;
+  if (!locked) throw new Error(`${pkg} is not in package-lock.json: run npm install.`);
+  if (locked !== installed) throw new Error(`${pkg}: node_modules has ${installed} but package-lock.json has ${locked}: run npm ci.`);
+  return locked;
+}
 
 async function main() {
   const desktopPkg = JSON.parse(await readFile(join(DESKTOP, "package.json"), "utf8"));
@@ -116,7 +127,8 @@ async function main() {
 
   // The app's package.json: written from scratch (no workspace paths, scripts or emails), with the
   // engine's packages at exactly the versions the tests ran with.
-  const dependencies = Object.fromEntries(await Promise.all(ENGINE_PACKAGES.map(async (p) => [p, await installedVersion(p)])));
+  const rootLock = JSON.parse(await readFile(join(REPO, "package-lock.json"), "utf8"));
+  const dependencies = Object.fromEntries(await Promise.all(ENGINE_PACKAGES.map(async (p) => [p, await lockedVersion(rootLock, p)])));
   const pkg = {
     name: "breadpilot",
     productName: "BreadPilot",
@@ -134,13 +146,19 @@ async function main() {
   };
   await writeFile(join(STAGE, "package.json"), `${JSON.stringify(pkg, null, 2)}\n`);
 
-  // Production packages only, no install scripts, no optional native extras (pdfjs's canvas: the
-  // engine only reads text), no lock file in the app.
-  execFileSync("npm", ["install", "--omit=dev", "--omit=optional", "--ignore-scripts", "--no-audit", "--no-fund", "--no-package-lock", "--workspaces=false"], {
+  // Every package, down to dependencies of dependencies, at the version and hash in the repository's
+  // package-lock.json (npm ci refuses anything else). Production packages only, no install scripts,
+  // no optional native extras (pdfjs's canvas: the engine only reads text). The lock file itself
+  // isn't shipped.
+  const lock = stageLock(rootLock, dependencies, { name: pkg.name, version: pkg.version });
+  await writeFile(join(STAGE, "package-lock.json"), `${JSON.stringify(lock, null, 2)}\n`);
+  execFileSync("npm", ["ci", "--omit=dev", "--omit=optional", "--ignore-scripts", "--no-audit", "--no-fund", "--workspaces=false"], {
     cwd: STAGE,
     stdio: "inherit",
     env: { ...process.env, npm_config_cache: process.env.npm_config_cache ?? join(process.env.TMPDIR ?? "/tmp", "breadpilot-npm-cache") },
   });
+  await rm(join(STAGE, "package-lock.json"));
+  await rm(join(STAGE, "node_modules/.package-lock.json"), { force: true });
 
   const pruned = await prune(join(STAGE, "node_modules"));
 
