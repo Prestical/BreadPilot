@@ -1,0 +1,70 @@
+{
+  "plan": {
+    "line": "a reed switch: a glass tube whose contact closes while a magnet is near (a few centimetres). Use it to notice a magnet: a door or window opening, a lid, a counter turning past a magnet."
+  },
+  "words": {
+    "nouns": [
+      "reed switch",
+      "reed switches",
+      "reed sensor",
+      "reed sensors",
+      "magnetic switch",
+      "magnetic switches",
+      "magnet switch",
+      "magnet switches",
+      "door sensor",
+      "door sensors",
+      "window sensor",
+      "window sensors"
+    ],
+    "impliedBy": {
+      "words": [
+        "magnet",
+        "magnets",
+        "magnetic",
+        "door opens",
+        "door opened",
+        "door is open",
+        "doors open",
+        "window opens",
+        "window opened",
+        "window is open",
+        "lid opens",
+        "lid is open"
+      ],
+      "unless": [
+        "reed switch",
+        "magnetic switch",
+        "hall sensor",
+        "hall effect",
+        "magnetic sensor",
+        "magnet sensor"
+      ]
+    }
+  },
+  "names": {
+    "label": [
+      "a reed switch",
+      "reed switches"
+    ],
+    "count": [
+      "reed switch",
+      "reed switches"
+    ],
+    "supports": "reed switches (magnet sensors)",
+    "short": [
+      "reed switch",
+      "reed switches"
+    ]
+  },
+  "code": {
+    "pinLine": "reed switch {ref} on {gpio}: Pin({g}, Pin.IN, Pin.PULL_UP). value() is 0 while a magnet is near (the contact is closed) and 1 without a magnet. Read it every time round the loop; it doesn't bounce much, but wait about 20 ms before counting a change.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN, Pin.PULL_UP)  (0 = magnet near)` |"
+    ],
+    "ragQuery": "GPIO digital input with pull-up resistor"
+  }
+}

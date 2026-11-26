@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine",
+      "layout": [
+        {
+          "kind": "bh1750"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "next to the OLED display: one I2C bus each",
+      "layout": [
+        {
+          "kind": "bh1750"
+        },
+        {
+          "kind": "oled"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "SDA and SCL swapped in the pin modes",
+      "layout": [
+        {
+          "kind": "bh1750"
+        }
+      ],
+      "modes": {
+        "GP16": "i2c0_scl",
+        "GP17": "i2c0_sda"
+      },
+      "expect": [
+        "E009",
+        "E009",
+        "E015",
+        "E015"
+      ]
+    }
+  ]
+}

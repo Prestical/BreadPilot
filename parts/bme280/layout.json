@@ -1,0 +1,85 @@
+{
+  "name": "pressure sensor",
+  "height": 6,
+  "reach": [1, 1],
+  "max": {
+    "value": 2,
+    "src": {
+      "typical": true,
+      "note": "each board answers at 0x76 unless SDO is moved, so each needs its own I2C bus for now"
+    }
+  },
+  "maxMessage": "{n} BME280 sensors can't be connected: they answer at the same I2C address, and the Pico has two I2C buses, so at most 2.",
+  "pins": {
+    "bus": {
+      "need": "i2c-pair"
+    }
+  },
+  "parts": [
+    {
+      "ref": "BME",
+      "type": "self",
+      "legs": {
+        "vcc": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "scl": [
+          2,
+          "f"
+        ],
+        "sda": [
+          3,
+          "f"
+        ],
+        "csb": [
+          4,
+          "f"
+        ],
+        "sdo": [
+          5,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "BME",
+  "wires": [
+    {
+      "power": [
+        0,
+        "j",
+        "BME.vcc"
+      ]
+    },
+    {
+      "ground": [
+        1,
+        "j",
+        "BME.gnd"
+      ]
+    },
+    {
+      "pin": "bus.scl",
+      "to": [
+        2,
+        "j",
+        "BME.scl"
+      ],
+      "color": "yellow"
+    },
+    {
+      "pin": "bus.sda",
+      "to": [
+        3,
+        "j",
+        "BME.sda"
+      ],
+      "color": "blue"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "plan": {
+    "line": "a BME280 pressure sensor module (I2C): measures air pressure (300-1100 hPa), temperature and humidity; from the pressure it can estimate altitude and help forecast the weather. The cheaper BMP280 looks the same but has no humidity. Uses one I2C bus (at most 2 I2C parts)."
+  },
+  "words": {
+    "nouns": [
+      "bme280",
+      "bme280s",
+      "bmp280",
+      "bmp280s",
+      "barometer",
+      "barometers",
+      "pressure sensor",
+      "pressure sensors",
+      "air pressure sensor",
+      "air pressure sensors",
+      "altimeter",
+      "altimeters",
+      "barometric sensor",
+      "barometric sensors"
+    ],
+    "claims": [
+      "bme280",
+      "pressure",
+      "temperature-sensor"
+    ]
+  },
+  "names": {
+    "label": [
+      "a BME280 pressure sensor",
+      "BME280 pressure sensors"
+    ],
+    "count": [
+      "pressure sensor",
+      "pressure sensors"
+    ],
+    "supports": "BME280/BMP280 pressure sensors",
+    "short": [
+      "pressure sensor",
+      "pressure sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "BME280 pressure sensor {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000) and sensor{n} = BME280(i2c{n}). t, p, h = sensor{n}.read() gives temperature in C, pressure in hPa and humidity in % (h is None on a BMP280, so check before printing it). sensor{n}.altitude() estimates metres above sea level from the pressure (weather moves it by tens of metres). A new reading is ready about every second.",
+    "imports": [
+      "from machine import Pin, I2C",
+      "from bme280 import BME280"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `sensor = BME280(i2c); t, p, h = sensor.read()` |"
+    ],
+    "moduleRule": "bme280 when a pressure sensor is listed",
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

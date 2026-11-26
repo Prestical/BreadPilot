@@ -1,0 +1,23 @@
+{
+  "place": {
+    "title": "Place {ref} (real-time clock)",
+    "text": "Push {ref}'s 6 header pins into column f, one pin per row: 32K into {hole.32k}, SQW into {hole.sqw}, SCL into {hole.scl}, SDA into {hole.sda}, VCC into {hole.vcc}, GND into {hole.gnd}. The board stands up with its chips facing the centre channel; its coin cell is on the back.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. 32K and SQW get no wire."
+  },
+  "why": "{ref} counts the time with its own very steady crystal and keeps counting on its coin cell when the Pico is off. The Pico reads the time over I2C: SDA (data) and SCL (clock).",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its I2C lines stay at the Pico's 3.3 V.",
+    "i2c_sda": "{pin} is the I2C{bus} data line (SDA): the Pico and {ref} send their bytes on this wire.",
+    "i2c_scl": "{pin} is the I2C{bus} clock line (SCL): it sets the pace for the data on SDA."
+  },
+  "names": {
+    "shop": [
+      "DS3231 real-time clock module (ZS-042, with coin cell)",
+      "DS3231 real-time clock modules (ZS-042, with coin cells)"
+    ],
+    "plan": "Real-time clock (DS3231, I2C)",
+    "greeting": "a real-time clock",
+    "driver": "clock driver"
+  }
+}

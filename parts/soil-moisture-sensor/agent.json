@@ -1,0 +1,47 @@
+{
+  "plan": {
+    "line": "a capacitive soil moisture sensor (v1.2) on its 3-wire cable: tells how wet the soil in a plant pot is (a reading that goes down as the soil gets wetter; find the dry and wet values by testing). It has no bare metal, so it can stay in the soil. Uses one of the three ADC pins (shared with knobs)."
+  },
+  "words": {
+    "nouns": [
+      "soil moisture sensor",
+      "soil moisture sensors",
+      "soil sensor",
+      "soil sensors",
+      "moisture sensor",
+      "moisture sensors",
+      "capacitive soil sensor",
+      "hygrometer probe",
+      "soil moisture",
+      "soil humidity"
+    ],
+    "claims": [
+      "moisture"
+    ]
+  },
+  "names": {
+    "label": [
+      "a soil moisture sensor",
+      "soil moisture sensors"
+    ],
+    "count": [
+      "soil moisture sensor",
+      "soil moisture sensors"
+    ],
+    "supports": "capacitive soil moisture sensors",
+    "short": [
+      "soil sensor",
+      "soil sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "soil moisture sensor {ref} on {gpio}: ADC({g}). read_u16() is higher in dry soil (or air) and lower in wet soil; typical values on 3.3 V are around 50000 in air and 25000 in water, but every sensor differs: read it once in air and once in a glass of water, and scale between them (wet % = (dry - v) * 100 // (dry - wet)). Not Pin({g}): a Pin has no read_u16().",
+    "imports": [
+      "from machine import ADC"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (read_u16(): lower = wetter)` |"
+    ],
+    "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
+  }
+}

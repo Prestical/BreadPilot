@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (DS18B20 temperature sensor)",
+    "text": "Push {ref}'s 3 legs into column f, one leg per row, with its flat side (the printed one) facing you: GND into hole {hole.gnd}, DQ into {hole.dq} and VDD into {hole.vdd}.",
+    "tip": "It looks like a small transistor: check the print says DS18B20. Wired the wrong way round it gets hot within seconds; unplug it then."
+  },
+  "why": "{ref} measures temperature (−55 to 125 °C, ±0.5 °C) and sends it to the Pico over one data wire (1-Wire). The 4.7 kΩ resistor holds that wire at 3.3 V while nothing pulls it low.",
+  "wire": {
+    "ground": "This connects {ref}'s GND leg to ground.",
+    "power": "This powers {ref} with 3.3 V. The pull-up resistor in this row gets 3.3 V too, so the data line rests at 3.3 V.",
+    "in": "{pin} is {ref}'s 1-Wire data line: the Pico and the sensor take turns pulling it low to talk."
+  },
+  "names": {
+    "shop": [
+      "DS18B20 temperature sensor (TO-92)",
+      "DS18B20 temperature sensors (TO-92)"
+    ],
+    "plan": "DS18B20 temperature sensor",
+    "greeting": "a DS18B20 sensor"
+  }
+}

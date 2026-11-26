@@ -1,6 +1,7 @@
 {
   "name": "LED",
   "height": 5,
+  "reach": [0, 1],
   "pins": { "signal": { "need": "gpio", "mode": "out" } },
   "parts": [
     { "ref": "R", "type": "resistor", "legs": { "a": [0, "h"], "b": [3, "h"] }, "props": { "ohms": { "request": "ohms", "default": 330 } } },

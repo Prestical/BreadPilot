@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (vibration motor module)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: IN into hole {hole.in}, VCC into {hole.vcc} and GND into {hole.gnd}. The round motor faces up.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} is a small coin motor with an off-centre weight: it buzzes and shakes while it runs. The transistor on the module switches it, so the Pico pin only gives the signal.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref}'s motor from 3.3 V (it shakes a bit less than on 5 V, but never puts 5 V near the Pico).",
+    "out": "{pin} switches {ref}: 1 runs the motor, 0 stops it."
+  },
+  "names": {
+    "shop": [
+      "vibration motor module (3 pins)",
+      "vibration motor modules (3 pins)"
+    ],
+    "plan": "Vibration motor",
+    "greeting": "a vibration motor"
+  }
+}

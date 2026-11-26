@@ -1,0 +1,39 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine (divider inside the block)",
+      "layout": [
+        {
+          "kind": "ldr"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "with a knob: two of the three ADC pins",
+      "layout": [
+        {
+          "kind": "ldr"
+        },
+        {
+          "kind": "pot"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "the reading's pin set as a digital input",
+      "layout": [
+        {
+          "kind": "ldr"
+        }
+      ],
+      "modes": {
+        "GP26": "in"
+      },
+      "expect": [
+        "E008"
+      ]
+    }
+  ]
+}

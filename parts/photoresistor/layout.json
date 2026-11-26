@@ -1,0 +1,16 @@
+{
+  "name": "light sensor",
+  "height": 5,
+  "reach": [1, 0],
+  "pins": { "signal": { "need": "adc", "mode": "adc" } },
+  "parts": [
+    { "ref": "LDR", "type": "self", "legs": { "a": [0, "f"], "b": [1, "f"] } },
+    { "ref": "R", "type": "resistor", "legs": { "a": [1, "h"], "b": [4, "h"] }, "props": { "ohms": { "default": 10000 } } }
+  ],
+  "main": "LDR",
+  "wires": [
+    { "ground": [4, "j", "R.b"] },
+    { "pin": "signal", "to": [1, "j", "LDR.b"] },
+    { "power": [0, "j", "LDR.a"] }
+  ]
+}

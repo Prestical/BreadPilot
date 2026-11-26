@@ -1,0 +1,49 @@
+{
+  "plan": {
+    "line": "a water level sensor: a board with bare metal strips that gives a rough reading of how deep it is in water (0 to about 4 cm), or simply whether it is wet (rain, a leak, a full cup). Only the striped end may get wet. It rusts if left in water for days. Uses one of the three ADC pins (shared with knobs)."
+  },
+  "words": {
+    "nouns": [
+      "water level sensor",
+      "water level sensors",
+      "water sensor",
+      "water sensors",
+      "rain sensor",
+      "rain sensors",
+      "leak sensor",
+      "leak sensors",
+      "water detector",
+      "water detectors",
+      "liquid level sensor",
+      "liquid level sensors"
+    ],
+    "claims": [
+      "water"
+    ]
+  },
+  "names": {
+    "label": [
+      "a water level sensor",
+      "water level sensors"
+    ],
+    "count": [
+      "water level sensor",
+      "water level sensors"
+    ],
+    "supports": "water level sensors",
+    "short": [
+      "water sensor",
+      "water sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "water level sensor {ref} on {gpio}: ADC({g}). read_u16() is near 0 when dry and rises as more of its strips are under water (not linear: find the levels by printing readings with the sensor dry, half in and fully in water). Not Pin({g}): a Pin has no read_u16().",
+    "imports": [
+      "from machine import ADC"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (read_u16(): dry ≈ 0, deeper = higher)` |"
+    ],
+    "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
+  }
+}

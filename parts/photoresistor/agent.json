@@ -1,0 +1,49 @@
+{
+  "plan": {
+    "line": "a photoresistor (LDR) that measures how bright it is around it; a 10 kΩ resistor is added automatically. Brighter light gives a higher reading. Use it for light and dark: a night light, a light meter, a sunrise alarm. Uses one of the three ADC pins (shared with knobs)."
+  },
+  "words": {
+    "nouns": [
+      "photoresistor",
+      "photoresistors",
+      "ldr",
+      "ldrs",
+      "light sensor",
+      "light sensors",
+      "light-dependent resistor",
+      "photocell",
+      "photocells",
+      "light meter",
+      "light meters"
+    ],
+    "claims": [
+      "light",
+      "light-level"
+    ]
+  },
+  "names": {
+    "label": [
+      "a light sensor (photoresistor)",
+      "light sensors (photoresistors)"
+    ],
+    "count": [
+      "light sensor",
+      "light sensors"
+    ],
+    "supports": "light sensors (photoresistors)",
+    "short": [
+      "light sensor",
+      "light sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "light sensor (photoresistor) {ref} on {gpio}: ADC({g}). read_u16() gives 0..65535: higher in brighter light, lower in the dark (often about 5000 in a dark room and over 50000 in daylight, depending on the room). Not Pin({g}): a Pin has no read_u16(). Find the dark/bright threshold by printing the readings first, or compare with a reading taken at start.",
+    "imports": [
+      "from machine import ADC"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (read_u16(): brighter = higher)` |"
+    ],
+    "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
+  }
+}

@@ -30,12 +30,21 @@ describe("part packs", () => {
     expect(readFileSync(PARTS_TS_PATH, "utf8")).toBe(partsModule());
   });
 
-  it("the 10 packs make up the catalog, with the OLED's driver", () => {
-    expect(PACKS.map((p) => p.meta.id)).toEqual(["led-5mm", "button-6mm", "slide-switch", "potentiometer", "oled-sh1106-i2c", "dht11", "passive-buzzer", "resistor", "dc-motor", "hc-sr04"]);
+  it("the 32 packs make up the catalog, with the OLED's driver", () => {
+    expect(PACKS.map((p) => p.meta.id)).toEqual([
+      "led-5mm", "button-6mm", "slide-switch", "tilt-switch", "reed-switch", "touch-sensor", "hall-sensor", "potentiometer", "photoresistor",
+      "light-sensor-bh1750", "ntc-thermistor", "water-level-sensor", "soil-moisture-sensor", "oled-sh1106-i2c", "oled-ssd1306-i2c", "dht11", "dht22",
+      "ds18b20", "ir-obstacle-sensor", "bme280", "flame-sensor", "sound-sensor", "vibration-sensor", "line-sensor", "passive-buzzer",
+      "active-buzzer", "vibration-motor-module", "rtc-ds3231", "mpu6050", "resistor", "dc-motor", "hc-sr04",
+    ]);
     for (const p of PACKS) expect(p.part, p.meta.id).toBe(CATALOG[p.meta.id]);
     expect(Object.keys(CATALOG).sort()).toEqual(PACKS.map((p) => p.meta.id).sort());
     expect(driversFor(["oled-sh1106-i2c"])[0]!.source).toBe(readFileSync(new URL("../../../parts/oled-sh1106-i2c/driver/sh1106.py", import.meta.url), "utf8"));
-    expect(PACKS.map((p) => p.meta.kind).filter(Boolean)).toEqual(["led", "button", "slide-switch", "pot", "oled", "dht11", "buzzer"]);
+    expect(PACKS.map((p) => p.meta.kind).filter(Boolean)).toEqual([
+      "led", "button", "slide-switch", "tilt", "reed", "touch", "hall", "pot", "ldr", "bh1750", "ntc", "water-level", "soil", "oled", "oled-small",
+      "dht11", "dht22", "ds18b20", "obstacle", "bme280", "flame", "sound-sensor", "vibration", "line", "buzzer", "active-buzzer", "vibration-motor",
+      "rtc", "imu",
+    ]);
   });
 
   // A document is either in docs/hardware/ (free to republish) or listed in the part's reference.md
@@ -63,17 +72,41 @@ describe("part packs", () => {
   });
 
   it("facts without a datasheet are listed as unverified", () => {
+    // M17 (17-19/11/2026): the new parts are the most common modules, from typical values until a
+    // datasheet page or a real build confirms them.
     expect(Object.fromEntries(PACKS.map((p) => [p.meta.id, unverifiedFacts(p).map((f) => f.path)]))).toEqual({
-      "led-5mm": ["part.specs.forwardVoltage", "part.specs.maxCurrentMa"],
+      "led-5mm": ["part.specs.forwardVoltage",  "part.specs.maxCurrentMa"],
       "button-6mm": [],
       "slide-switch": [],
+      "tilt-switch": [],
+      "reed-switch": [],
+      "touch-sensor": ["part.legs[1].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      "hall-sensor": ["part.legs[2].voltageRange",  "part.elements[0].currentMa"],
       potentiometer: [],
+      photoresistor: ["part.specs.resistanceAt10LuxOhms",  "part.specs.darkResistanceOhms"],
+      "light-sensor-bh1750": ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddresses",  "part.specs.luxRange",  "layout.max"],
+      "ntc-thermistor": ["part.specs.resistanceAt25COhms",  "part.specs.betaK"],
+      "water-level-sensor": ["part.legs[1].voltageRange",  "part.elements[0].currentMa"],
+      "soil-moisture-sensor": ["part.legs[1].voltageRange",  "part.elements[0].currentMa"],
       "oled-sh1106-i2c": ["code.display.font"],
+      "oled-ssd1306-i2c": ["part.legs[1].voltageRange",  "part.elements[0].currentMa",  "part.specs.controller",  "part.specs.resolution",  "part.specs.headerOrder",  "part.specs.i2cAddresses",  "layout.max",  "code.display.width",  "code.display.height",  "code.display.font"],
       dht11: [],
-      "passive-buzzer": ["part.legs[2].voltageRange", "part.elements[0].currentMa"],
+      dht22: ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.legOrder",  "part.specs.minReadIntervalS",  "part.specs.temperatureRangeC",  "part.specs.humidityRangeRH",  "part.specs.temperatureAccuracyC",  "part.specs.humidityAccuracyRH"],
+      ds18b20: ["part.legs[2].voltageRange",  "part.elements[0].currentMa",  "part.specs.legOrder",  "part.specs.temperatureRangeC",  "part.specs.temperatureAccuracyC",  "part.specs.conversionMs"],
+      "ir-obstacle-sensor": ["part.legs[2].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      bme280: ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddresses",  "part.specs.pressureRangeHpa",  "part.specs.humidity",  "layout.max"],
+      "flame-sensor": ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      "sound-sensor": ["part.legs[2].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      "vibration-sensor": ["part.legs[0].voltageRange",  "part.elements[0].currentMa"],
+      "line-sensor": ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      "passive-buzzer": ["part.legs[2].voltageRange",  "part.elements[0].currentMa"],
+      "active-buzzer": ["part.legs[2].voltageRange",  "part.elements[0].currentMa",  "part.specs.pinOrder",  "part.specs.activeLevel",  "part.specs.toneHz"],
+      "vibration-motor-module": ["part.legs[1].voltageRange",  "part.elements[0].currentMa",  "part.specs.activeLevel"],
+      "rtc-ds3231": ["part.legs[4].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddress",  "part.specs.accuracyPpm",  "layout.max"],
+      mpu6050: ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.i2cAddresses",  "part.specs.ranges",  "layout.max"],
       resistor: [],
-      "dc-motor": ["part.elements[0].currentMa", "part.specs.currentMa"],
-      "hc-sr04": ["part.legs[0].voltageRange", "part.elements[0].currentMa", "part.specs.currentMa"],
+      "dc-motor": ["part.elements[0].currentMa",  "part.specs.currentMa"],
+      "hc-sr04": ["part.legs[0].voltageRange",  "part.elements[0].currentMa",  "part.specs.currentMa"],
     });
   });
 });

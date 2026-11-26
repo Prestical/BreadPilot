@@ -1,0 +1,49 @@
+{
+  "plan": {
+    "line": "an IR obstacle sensor (FC-51): says yes or no, is something in front of it, about 2 to 30 cm away (set with its small screw). Its output is LOW while something is in front. It can't measure the distance, and dark or shiny surfaces are seen less well."
+  },
+  "words": {
+    "nouns": [
+      "obstacle sensor",
+      "obstacle sensors",
+      "ir sensor",
+      "ir sensors",
+      "infrared sensor",
+      "infrared sensors",
+      "ir obstacle sensor",
+      "ir obstacle sensors",
+      "fc-51",
+      "fc51",
+      "proximity sensor",
+      "proximity sensors"
+    ],
+    "claims": [
+      "nearby"
+    ]
+  },
+  "names": {
+    "label": [
+      "an IR obstacle sensor",
+      "IR obstacle sensors"
+    ],
+    "count": [
+      "obstacle sensor",
+      "obstacle sensors"
+    ],
+    "supports": "IR obstacle sensors",
+    "short": [
+      "obstacle sensor",
+      "obstacle sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "IR obstacle sensor {ref} on {gpio}: Pin({g}, Pin.IN). value() is 0 while something is in front of it (about 2-30 cm, set with its screw) and 1 when the way is clear. It only says yes or no: it can't measure how far.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (0 = something in front)` |"
+    ],
+    "ragQuery": "GPIO digital input"
+  }
+}

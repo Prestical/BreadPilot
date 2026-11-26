@@ -1,0 +1,44 @@
+{
+  "name": "reed switch",
+  "height": 8,
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in_pullup"
+    }
+  },
+  "parts": [
+    {
+      "ref": "REED",
+      "type": "self",
+      "legs": {
+        "a": [
+          0,
+          "f"
+        ],
+        "b": [
+          7,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "REED",
+  "wires": [
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "REED.a"
+      ]
+    },
+    {
+      "ground": [
+        7,
+        "j",
+        "REED.b"
+      ]
+    }
+  ]
+}

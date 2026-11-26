@@ -1,0 +1,13 @@
+{
+  "shape": "glass-axial",
+  "legs": [
+    "a",
+    "b"
+  ],
+  "size": [
+    14,
+    1.15
+  ],
+  "glass": "#bfe8d6",
+  "note": "Not measured: the usual size of this part."
+}

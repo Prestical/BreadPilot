@@ -1,0 +1,63 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "ao",
+    "gnd",
+    "vcc",
+    "do"
+  ],
+  "board": {
+    "size": [
+      15,
+      30
+    ],
+    "color": "#22252b",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "led",
+      "at": [
+        -5,
+        9.5
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "led",
+      "at": [
+        5,
+        9.5
+      ],
+      "color": "#35d04f"
+    },
+    {
+      "type": "chip",
+      "at": [
+        0,
+        13
+      ]
+    },
+    {
+      "type": "trimmer",
+      "at": [
+        0,
+        21
+      ]
+    },
+    {
+      "type": "to92",
+      "at": [
+        0,
+        31.5
+      ]
+    }
+  ],
+  "labels": [
+    "A0",
+    "G",
+    "+",
+    "D0"
+  ]
+}

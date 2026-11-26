@@ -1,0 +1,56 @@
+{
+  "name": "flame sensor",
+  "height": 3,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "FLM",
+      "type": "self",
+      "legs": {
+        "vcc": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "do": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "FLM",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "FLM.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        2,
+        "j",
+        "FLM.do"
+      ]
+    },
+    {
+      "power": [
+        0,
+        "j",
+        "FLM.vcc"
+      ]
+    }
+  ]
+}

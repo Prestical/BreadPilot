@@ -1,0 +1,45 @@
+{
+  "name": "tilt switch",
+  "height": 2,
+  "reach": [1, 1],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in_pullup"
+    }
+  },
+  "parts": [
+    {
+      "ref": "TILT",
+      "type": "self",
+      "legs": {
+        "a": [
+          0,
+          "f"
+        ],
+        "b": [
+          1,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "TILT",
+  "wires": [
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "TILT.a"
+      ]
+    },
+    {
+      "ground": [
+        1,
+        "j",
+        "TILT.b"
+      ]
+    }
+  ]
+}

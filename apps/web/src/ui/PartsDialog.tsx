@@ -14,8 +14,19 @@ const BoardPreview = lazy(() => import("../scene/BoardPreview"));
 /** The parts the AI can put in a plan, in the packs' order. */
 export const SUPPORTED_PARTS = PACKS.filter((p) => p.meta.kind && p.agent).map((p) => {
   const line = p.agent!.plan.line;
-  return { kind: p.meta.kind!, name: p.part.name, text: line.charAt(0).toUpperCase() + line.slice(1) };
+  const i2c = p.part.legs.some((l) => l.kind === "i2c_sda");
+  return { kind: p.meta.kind!, name: p.part.name, category: p.part.category, i2c, text: line.charAt(0).toUpperCase() + line.slice(1) };
 });
+
+/**
+ * The supported parts in three lists (M17, 31 parts): every card is its own 3D canvas and a browser
+ * keeps only about 16 alive, so one list shows at most 14.
+ */
+export const SUPPORTED_GROUPS = [
+  { id: "supported", label: "Supported", parts: SUPPORTED_PARTS.filter((p) => !p.i2c && p.category !== "sensor") },
+  { id: "supported-sensors", label: "Supported sensors", parts: SUPPORTED_PARTS.filter((p) => !p.i2c && p.category === "sensor") },
+  { id: "supported-i2c", label: "Supported I2C modules", parts: SUPPORTED_PARTS.filter((p) => p.i2c) },
+].filter((g) => g.parts.length > 0);
 
 export function PartsDialog() {
   const open = useApp((s) => s.partsOpen);
@@ -24,6 +35,7 @@ export function PartsDialog() {
   // One list at a time: every preview is its own 3D canvas, and a browser keeps only about 16 alive.
   const [list, setList] = useState("supported");
   const upcoming = UPCOMING_GROUPS.find((g) => g.id === list);
+  const supported = SUPPORTED_GROUPS.find((g) => g.id === list);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -40,11 +52,13 @@ export function PartsDialog() {
         </button>
       </header>
       <div className="settings-body">
-        {UPCOMING_GROUPS.length > 0 && (
+        {(UPCOMING_GROUPS.length > 0 || SUPPORTED_GROUPS.length > 1) && (
           <div className="parts-switch" role="group" aria-label="Which parts to show">
-            <button type="button" aria-pressed={list === "supported"} onClick={() => setList("supported")}>
-              Supported <span className="muted">{SUPPORTED_PARTS.length}</span>
-            </button>
+            {SUPPORTED_GROUPS.map((g) => (
+              <button key={g.id} type="button" aria-pressed={list === g.id} onClick={() => setList(g.id)}>
+                {g.label} <span className="muted">{g.parts.length}</span>
+              </button>
+            ))}
             {UPCOMING_GROUPS.map((g) => (
               <button key={g.id} type="button" aria-pressed={list === g.id} onClick={() => setList(g.id)}>
                 {g.label} <span className="muted">{g.models.length}</span>
@@ -76,9 +90,9 @@ export function PartsDialog() {
             ))}
           </ul>
         )}
-        {open && list !== "boards" && !upcoming && (
+        {open && supported && (
           <ul className="parts-grid">
-            {SUPPORTED_PARTS.map((p) => (
+            {supported.parts.map((p) => (
               <li key={p.kind} className="part-card">
                 <div className="part-3d">
                   <Suspense fallback={<span className="muted small">Loading…</span>}>

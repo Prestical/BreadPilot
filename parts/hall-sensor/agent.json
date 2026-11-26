@@ -1,0 +1,48 @@
+{
+  "plan": {
+    "line": "a Hall sensor module (KY-024): notices a magnet near its black sensor (a few centimetres, set with its screw) and switches its D0 output. Works through plastic or wood, with no moving parts. Its A0 output isn't used."
+  },
+  "words": {
+    "nouns": [
+      "hall sensor",
+      "hall sensors",
+      "hall effect sensor",
+      "hall effect sensors",
+      "hall-effect sensor",
+      "hall-effect sensors",
+      "ky-024",
+      "magnetic sensor",
+      "magnetic sensors",
+      "magnet sensor",
+      "magnet sensors"
+    ],
+    "claims": [
+      "hall"
+    ]
+  },
+  "names": {
+    "label": [
+      "a Hall sensor (magnet)",
+      "Hall sensors (magnet)"
+    ],
+    "count": [
+      "Hall sensor",
+      "Hall sensors"
+    ],
+    "supports": "Hall sensors (KY-024)",
+    "short": [
+      "Hall sensor",
+      "Hall sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "Hall sensor {ref} on {gpio}: Pin({g}, Pin.IN). D0 changes while a magnet is near (on most KY-024 boards it reads 0 then; on some 1). Read the value once at the start without a magnet (idle = pin.value()) and treat any other value as \"magnet near\". The module drives the line itself: no pull-up.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (changes while a magnet is near)` |"
+    ],
+    "ragQuery": "GPIO digital input"
+  }
+}

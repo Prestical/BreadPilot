@@ -1,0 +1,22 @@
+{
+  "place": {
+    "title": "Place {ref} (BH1750 light sensor)",
+    "text": "Push {ref}'s 5 header pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, SCL into {hole.scl}, SDA into {hole.sda}, ADDR into {hole.addr}. The board lies over the left half of the breadboard, its sensor facing up.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. ADDR gets no wire."
+  },
+  "why": "{ref} measures light in lux (the unit of a light meter) with its small sensor chip. The Pico asks for each value over I2C: two wires, SDA (data) and SCL (clock).",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its I2C lines stay at the Pico's 3.3 V.",
+    "i2c_sda": "{pin} is the I2C{bus} data line (SDA): the Pico and {ref} send their bytes on this wire.",
+    "i2c_scl": "{pin} is the I2C{bus} clock line (SCL): it sets the pace for the data on SDA."
+  },
+  "names": {
+    "shop": [
+      "BH1750 light sensor module (GY-302)",
+      "BH1750 light sensor modules (GY-302)"
+    ],
+    "plan": "BH1750 light sensor (I2C)",
+    "greeting": "a BH1750 light sensor"
+  }
+}

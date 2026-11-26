@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (line tracking sensor)",
+    "text": "Push {ref}'s 4 pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, D0 into {hole.do}, A0 into {hole.ao}. The black sensor with its two lenses is at the top.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. A0 gets no wire."
+  },
+  "why": "{ref} shines infrared light onto the surface in front of it and measures how much comes back: a light surface reflects it, a black line doesn't. Its comparator turns that into D0, and its second LED shows it.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its outputs are never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s D0 output: 0 over a light surface, 1 over black (on most boards). The module drives this line itself."
+  },
+  "names": {
+    "shop": [
+      "line tracking sensor module (TCRT5000)",
+      "line tracking sensor modules (TCRT5000)"
+    ],
+    "plan": "Line tracking sensor",
+    "greeting": "a line sensor"
+  }
+}

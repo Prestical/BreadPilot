@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "ntc-thermistor",
+  "order": 34,
+  "kind": "ntc",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-17"
+  }
+}

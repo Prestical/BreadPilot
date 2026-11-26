@@ -1,0 +1,49 @@
+{
+  "plan": {
+    "line": "a DS3231 real-time clock module (I2C): keeps the date and time accurately (about a minute a year), even while the Pico is unplugged (on its coin cell). Use it for clocks, alarms and timetables that must keep running without Wi-Fi. Uses one I2C bus (at most 2 I2C parts)."
+  },
+  "words": {
+    "nouns": [
+      "rtc",
+      "rtcs",
+      "real-time clock",
+      "real-time clocks",
+      "real time clock",
+      "real time clocks",
+      "ds3231",
+      "ds3231s",
+      "clock module",
+      "clock modules",
+      "rtc module",
+      "rtc modules"
+    ]
+  },
+  "names": {
+    "label": [
+      "a DS3231 real-time clock",
+      "DS3231 real-time clocks"
+    ],
+    "count": [
+      "real-time clock",
+      "real-time clocks"
+    ],
+    "supports": "DS3231 real-time clocks",
+    "short": [
+      "clock module",
+      "clock modules"
+    ]
+  },
+  "code": {
+    "pinLine": "DS3231 real-time clock {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000) and clock{n} = DS3231(i2c{n}). clock{n}.time() gives (year, month, day, hour, minute, second), 24-hour. clock{n}.set_time(year, month, day, hour, minute, second) sets it: only do that once (or behind a button), or it resets to the same time on every start. clock{n}.temperature() is the chip's temperature in C.",
+    "imports": [
+      "from machine import Pin, I2C",
+      "from ds3231 import DS3231"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `clock = DS3231(i2c); clock.time()` |"
+    ],
+    "moduleRule": "ds3231 when a real-time clock is listed",
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

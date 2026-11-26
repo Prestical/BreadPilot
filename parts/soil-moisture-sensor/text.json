@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (soil moisture sensor)",
+    "text": "Plug the sensor's 3-wire cable into column f, one wire per row: GND (black) into hole {hole.gnd}, VCC (red) into {hole.vcc} and AOUT (yellow) into {hole.aout}. The probe itself lies beside the breadboard.",
+    "tip": "Use male-to-female jumper wires if your cable ends in sockets. Only push the probe into the soil up to the white line: the parts above it must stay dry."
+  },
+  "why": "{ref} measures how wet the soil around its probe is, through its coating (it has no bare metal, so it doesn't rust). Its AOUT voltage goes down as the soil gets wetter.",
+  "wire": {
+    "ground": "This connects {ref}'s GND wire to ground.",
+    "power": "This powers {ref} from 3.3 V, so its AOUT stays below the Pico's 3.3 V.",
+    "adc": "{pin} is an analog input (ADC): it measures {ref}'s AOUT and gives the code a number from 0 to 65535, lower when the soil is wetter."
+  },
+  "names": {
+    "shop": [
+      "capacitive soil moisture sensor (v1.2)",
+      "capacitive soil moisture sensors (v1.2)"
+    ],
+    "plan": "Soil moisture sensor",
+    "greeting": "a soil moisture sensor"
+  }
+}

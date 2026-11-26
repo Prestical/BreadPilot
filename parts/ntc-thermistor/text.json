@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (thermistor)",
+    "text": "Push the thermistor {ref}'s 2 thin legs into column f: one into hole {hole.a}, the other into {hole.b}. The small black bead is the part that measures.",
+    "tip": "A thermistor has no + or −. Its legs are thin: push them in close to the breadboard so they don't bend."
+  },
+  "why": "{ref} is a thermistor: its resistance drops as it gets warmer (10 kΩ at 25 °C). With the 10 kΩ resistor below it, it makes a voltage divider, so the code can work out the temperature from the voltage between them.",
+  "wire": {
+    "ground": "This connects the bottom of the divider (the 10 kΩ resistor) to ground.",
+    "power": "This puts 3.3 V on {ref}'s top leg, the top of the divider.",
+    "adc": "{pin} is an analog input (ADC): it measures the voltage between {ref} and the 10 kΩ resistor (0 to 65535); it rises as {ref} warms up, and the code turns it into °C."
+  },
+  "names": {
+    "shop": [
+      "NTC thermistor (10 kΩ, B 3950)",
+      "NTC thermistors (10 kΩ, B 3950)"
+    ],
+    "plan": "Thermistor (NTC 10 kΩ)",
+    "greeting": "a thermistor"
+  }
+}

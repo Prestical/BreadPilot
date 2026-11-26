@@ -1,0 +1,44 @@
+{
+  "plan": {
+    "line": "a DHT22 (AM2302) sensor that measures the air's temperature (−40 to 80 °C, ±0.5 °C) and humidity (0 to 100 %, ±2 %), at most once every 2 seconds; its pull-up resistor is added automatically. Use it when the idea names a DHT22 or AM2302, or needs below-zero or more precise readings; otherwise the DHT11."
+  },
+  "words": {
+    "nouns": [
+      "dht22",
+      "dht22s",
+      "dht-22",
+      "am2302",
+      "am2302s"
+    ],
+    "claims": [
+      "dht22",
+      "temperature-sensor"
+    ]
+  },
+  "names": {
+    "label": [
+      "a DHT22 temperature and humidity sensor",
+      "DHT22 temperature and humidity sensors"
+    ],
+    "count": [
+      "DHT22 sensor",
+      "DHT22 sensors"
+    ],
+    "supports": "the DHT22 (AM2302) temperature and humidity sensor",
+    "short": [
+      "DHT22 sensor",
+      "DHT22 sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "DHT22 temperature and humidity sensor {ref} on {gpio}: sensor = dht.DHT22(Pin({g})). Call sensor.measure(), then sensor.temperature() gives degrees C with one decimal and sensor.humidity() percent with one decimal. Wait 1 s after the program starts before the first measure(), and at least 2 s between measure() calls. measure() raises OSError when a reading fails (for example a loose wire): catch it and try again on the next round.",
+    "imports": [
+      "from machine import Pin",
+      "import dht"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `dht.DHT22(Pin({g}))  (measure(), then temperature() and humidity())` |"
+    ],
+    "ragQuery": "GPIO digital input pull-up resistor"
+  }
+}

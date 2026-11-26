@@ -757,6 +757,27 @@ function moduleFeature(f: ModuleFeature, m: Face): ShapeNode[] {
       const [u, y] = f.at;
       return [disc(u, y, f.radius, 0.04, "#cfd3d8", METAL), disc(u, y, f.radius * 0.6, 0.06, "#0b0d12")];
     }
+    case "can": {
+      // A vibration switch (SW-420): a metal can lying along the board, its sealed end dark, the two
+      // wires at its ends bent onto the face.
+      const [u, y] = f.at;
+      const x = front + face * f.radius;
+      const along = (du: number, r: number, len: number, color: string, extra: Partial<Material>): ShapeNode => ({ node: "mesh", position: [x, y, u + du], rotation: [Math.PI / 2, 0, 0], noRaycast: true, geometry: { type: "cylinder", args: [r, r, len, 24] }, material: std(color, opacity, extra) });
+      return [
+        along(0, f.radius, f.length, f.color, METAL),
+        along(f.length / 2 + 0.4, f.radius * 0.9, 0.8, "#1a1b1e", { roughness: 0.7 }),
+        ...[-1, 1].map((s) => on(u + s * (f.length / 2 + 1.2), y, [0.4, 0.5, 1.2], TIN, METAL)),
+      ];
+    }
+    case "disc": {
+      // A coin vibration motor stuck on the face: a metal disc with a thin rim, its two wires to the board.
+      const [u, y] = f.at;
+      return [
+        disc(u, y, f.radius, f.height, f.color, METAL),
+        disc(u, y, f.radius * 0.86, 0.06, "#b5b9c0", METAL, f.height),
+        ...([[-0.8, "#d93a3a"], [0.8, "#2a2c31"]] as const).map(([d, color]): ShapeNode => ({ node: "lead", points: [[front + face * (f.height * 0.5), y - f.radius, u + d], [front + face * 0.3, y - f.radius - 2.5, u + d]], radius: 0.25, bend: 0.6, opacity, color })),
+      ];
+    }
     case "coin": {
       // On the back: the black holder, the cell in it and the spring clip across the cell.
       const [u, y] = f.at;
@@ -1154,6 +1175,54 @@ function tetherUnit(u: TetherUnit, wires: number, opacity: number, flip: boolean
           cyl([mx, 24.5, -8], 2.5, 8, std("#c9a24a", opacity, METAL)),
           box([mx - 15.5, 9.5, 0], [5, 12, 14.6], "#2a5fd0", { roughness: 0.4 }),
           ...colors.map((color, i): ShapeNode => ({ node: "lead", points: [[mx - 17.5, 13, (i - 2) * 1.3], [mx - 22, 16, (i - 2) * 1.3], [bx + 11, 14, 9.5 + (i - 2) * 2.5], [bx + 11, 7.4, 9.5 + (i - 2) * 2.5]], radius: 0.5, bend: 4, opacity, color })),
+        ],
+      };
+    }
+    case "soil-probe": {
+      // A capacitive soil moisture probe (v1.2) lying flat, pointing away from the breadboard (in this
+      // frame -x looks at the breadboard). After the common board's photos: the head with the
+      // electronics and the white 3-pin plug at its end, a small shoulder where the narrower probe
+      // starts, the probe with its two lines of white print, and the arrow-shaped point.
+      const L = 98;
+      const W = 23; // the head
+      const P = 21; // the probe, a little narrower: the shoulder
+      const head = 25;
+      const top = 1.6;
+      const near = -L / 2;
+      const tipBase = L / 2 - P / 2; // the point: two 45° edges meeting at the far end
+      const probeLen = tipBase - (near + head);
+      const board = std(u.board, opacity, { roughness: 0.5 });
+      const print = (text: string, z: number): ShapeNode => ({
+        node: "mesh",
+        position: [near + head + probeLen / 2 + 1, top + 0.03, z],
+        // lying flat; read with the point on the left, like the real print. No background: only the
+        // letters are drawn, so the board's own black shows between them.
+        rotation: [-Math.PI / 2, 0, 0],
+        noRaycast: true,
+        geometry: { type: "plane", args: [50, 6] },
+        material: { kind: "basic", map: { text, bg: "rgba(0,0,0,0)", fg: "#f1f1ed", width: 500, height: 60 }, transparent: true, opacity },
+      });
+      return {
+        half: L / 2,
+        ends: Array.from({ length: wires }, (_, i): Vec3 => [near - 0.6, 3.4, side(i, 2)]),
+        nodes: [
+          // the head, the probe, and the point (a square turned 45°: its back half is hidden in the probe)
+          box([near + head / 2, top / 2, 0], [head, top, W], u.board, { roughness: 0.5 }, true),
+          box([near + head + probeLen / 2, top / 2, 0], [probeLen, top, P], u.board, { roughness: 0.5 }),
+          { node: "mesh", position: [tipBase, top / 2, 0], rotation: [0, Math.PI / 4, 0], noRaycast: true, geometry: { type: "box", args: [P / Math.SQRT2, top, P / Math.SQRT2] }, material: board },
+          // the white line along the head's edge: push it into the soil only up to here
+          box([near + head - 0.4, top + 0.03, 0], [0.5, 0.06, W - 1.5], "#f1f1ed", { roughness: 0.6 }),
+          print("Capacitive Soil", -3.6),
+          print("Moisture Sensor v1.2", 3.6),
+          // electronics on the head: the timer chip with its legs, the regulator, small resistors
+          box([near + 14, top + 0.75, 3], [5, 1.5, 4], "#17181b"),
+          ...[-1, 1].flatMap((s) => [-1.27, 0, 1.27].map((d) => box([near + 14 + d * 1.3, top + 0.25, 3 + s * 2.4], [0.4, 0.5, 0.9], TIN, METAL))),
+          box([near + 12, top + 0.6, -5], [1.8, 1.2, 3], "#17181b"),
+          ...[[17, -6.5], [19, -3.5], [19, 8.5], [10, 8.5]].map(([x, z]) => box([near + x!, top + 0.4, z!], [1.6, 0.8, 1], "#22242a")),
+          // the white 3-pin plug at the end, its opening toward the breadboard (-x), the pins inside
+          box([near + 3, top + 2.9, 0], [6, 5.8, 8.6], "#f1efe9", { roughness: 0.45 }),
+          box([near - 0.01, top + 2.9, 0], [0.04, 4, 7.4], "#3a3d43", { roughness: 0.8 }),
+          ...Array.from({ length: 3 }, (_, i) => box([near + 1.5, top + 2.9, (i - 1) * 2], [3, 0.5, 0.5], TIN, METAL)),
         ],
       };
     }

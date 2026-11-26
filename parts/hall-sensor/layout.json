@@ -1,0 +1,60 @@
+{
+  "name": "hall sensor",
+  "height": 4,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "HAL",
+      "type": "self",
+      "legs": {
+        "ao": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "vcc": [
+          2,
+          "f"
+        ],
+        "do": [
+          3,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "HAL",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "HAL.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        3,
+        "j",
+        "HAL.do"
+      ]
+    },
+    {
+      "power": [
+        2,
+        "j",
+        "HAL.vcc"
+      ]
+    }
+  ]
+}

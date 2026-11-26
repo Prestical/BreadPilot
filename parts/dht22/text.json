@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (DHT22 temperature and humidity sensor)",
+    "text": "Push {ref}'s 4 legs into column f, one leg per row, with its grid facing you: VCC into hole {hole.vcc}, DATA into {hole.data}, NC into {hole.nc} and GND into {hole.gnd}.",
+    "tip": "Looking at the grid, the legs are VCC, DATA, NC, GND from left to right. NC isn't connected inside the sensor, so it gets no wire. If yours is on a small board with 3 pins, follow its labels instead."
+  },
+  "why": "{ref} measures the air's temperature (−40 to 80 °C) and humidity (0 to 100 %) and sends both to the Pico as short pulses on one wire, its DATA leg.",
+  "wire": {
+    "ground": "This connects {ref}'s GND leg to ground.",
+    "power": "This powers {ref} with 3.3 V. The pull-up resistor in this row gets 3.3 V too, so the data line rests at 3.3 V, the Pico's own level.",
+    "in": "{pin} reads {ref}'s data. To ask for a reading the Pico pulls this line low for a moment; the sensor then answers with 40 short pulses."
+  },
+  "names": {
+    "shop": [
+      "DHT22 (AM2302) temperature and humidity sensor",
+      "DHT22 (AM2302) temperature and humidity sensors"
+    ],
+    "plan": "DHT22 temperature & humidity sensor",
+    "greeting": "a DHT22 sensor"
+  }
+}

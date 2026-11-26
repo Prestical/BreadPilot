@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "read the module's output",
+      "file": "code/clap.py",
+      "layout": [
+        {
+          "kind": "sound-sensor"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the module on a pin that isn't wired",
+      "file": "code/wrong-pin.py",
+      "layout": [
+        {
+          "kind": "sound-sensor"
+        }
+      ],
+      "errors": [
+        "C004",
+        "C006"
+      ]
+    }
+  ]
+}

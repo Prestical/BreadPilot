@@ -1,0 +1,75 @@
+{
+  "name": "temperature sensor",
+  "height": 3,
+  "reach": [0, 1],
+  "pins": {
+    "data": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "DS",
+      "type": "self",
+      "legs": {
+        "gnd": [
+          0,
+          "f"
+        ],
+        "dq": [
+          1,
+          "f"
+        ],
+        "vdd": [
+          2,
+          "f"
+        ]
+      }
+    },
+    {
+      "ref": "R",
+      "type": "resistor",
+      "legs": {
+        "a": [
+          2,
+          "i"
+        ],
+        "b": [
+          1,
+          "g"
+        ]
+      },
+      "props": {
+        "ohms": {
+          "default": 4700
+        }
+      }
+    }
+  ],
+  "main": "DS",
+  "wires": [
+    {
+      "ground": [
+        0,
+        "j",
+        "DS.gnd"
+      ]
+    },
+    {
+      "pin": "data",
+      "to": [
+        1,
+        "j",
+        "DS.dq"
+      ]
+    },
+    {
+      "power": [
+        2,
+        "j",
+        "DS.vdd"
+      ]
+    }
+  ]
+}

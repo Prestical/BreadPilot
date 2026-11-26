@@ -1,0 +1,26 @@
+{
+  "id": "reed-switch",
+  "name": "Reed switch (normally open, glass, 2 legs)",
+  "category": "input",
+  "legs": [
+    {
+      "id": "a",
+      "label": "leg 1"
+    },
+    {
+      "id": "b",
+      "label": "leg 2"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "switch",
+      "a": "a",
+      "b": "b",
+      "closed": "a magnet is near"
+    }
+  ],
+  "specs": {
+    "note": "Two legs and no polarity: the contact between them is either open or closed."
+  }
+}

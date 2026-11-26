@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "print temperature, pressure and humidity",
+      "file": "code/weather.py",
+      "layout": [
+        {
+          "kind": "bme280"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "a CircuitPython library instead of the shipped driver",
+      "file": "code/wrong-driver.py",
+      "layout": [
+        {
+          "kind": "bme280"
+        }
+      ],
+      "errors": [
+        "C010"
+      ]
+    }
+  ]
+}

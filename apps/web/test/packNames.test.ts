@@ -12,6 +12,6 @@ describe("UI names from part packs", () => {
   });
 
   it("the start screen's parts line", () => {
-    expect(`Parts: ${GREETING_PARTS}, and the Pico's own LED, Wi-Fi and temperature sensor.`).toBe('Parts: LEDs, buttons, slide switches, knobs, the 1.3" OLED, a temperature and humidity sensor, a buzzer, and the Pico\'s own LED, Wi-Fi and temperature sensor.');
+    expect(`Parts: ${GREETING_PARTS}, and the Pico's own LED, Wi-Fi and temperature sensor.`).toBe('Parts: LEDs, buttons, slide switches, a tilt switch, a reed switch, a touch sensor, a Hall sensor, knobs, a light sensor, a BH1750 light sensor, a thermistor, a water level sensor, a soil moisture sensor, the 1.3" OLED, the 0.96" OLED, a temperature and humidity sensor, a DHT22 sensor, a DS18B20 sensor, an obstacle sensor, a pressure sensor, a flame sensor, a sound sensor, a vibration sensor, a line sensor, a buzzer, an active buzzer, a vibration motor, a real-time clock, an accelerometer, and the Pico\'s own LED, Wi-Fi and temperature sensor.');
   });
 });

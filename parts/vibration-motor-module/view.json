@@ -1,0 +1,56 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "in",
+    "vcc",
+    "gnd"
+  ],
+  "board": {
+    "size": [
+      16,
+      26
+    ],
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "to92",
+      "at": [
+        -3.5,
+        9
+      ]
+    },
+    {
+      "type": "resistor",
+      "at": [
+        3.5,
+        9.5
+      ]
+    },
+    {
+      "type": "led",
+      "at": [
+        3.5,
+        12.5
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "disc",
+      "at": [
+        0,
+        19.5
+      ],
+      "radius": 5,
+      "height": 2.7,
+      "color": "#c9cdd3"
+    }
+  ],
+  "labels": [
+    "IN",
+    "VCC",
+    "GND"
+  ]
+}

@@ -1,6 +1,7 @@
 {
   "name": "display",
   "height": 14,
+  "reach": [1, 1],
   "max": {
     "value": 2,
     "src": { "doc": "SH1106.pdf", "page": 13, "note": "the module answers at one fixed address, so each display needs its own I2C bus; the Pico 2 W has two (I2C0, I2C1)" }

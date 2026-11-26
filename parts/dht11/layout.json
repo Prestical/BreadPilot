@@ -1,6 +1,7 @@
 {
   "name": "temperature and humidity sensor",
   "height": 4,
+  "reach": [1, 1],
   "pins": { "data": { "need": "gpio", "mode": "in" } },
   "parts": [
     { "ref": "DHT", "type": "self", "legs": { "vcc": [0, "f"], "data": [1, "f"], "nc": [2, "f"], "gnd": [3, "f"] } },

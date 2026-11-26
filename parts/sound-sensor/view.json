@@ -1,0 +1,63 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "out",
+    "gnd",
+    "vcc"
+  ],
+  "board": {
+    "size": [
+      15,
+      34
+    ],
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "led",
+      "at": [
+        -5,
+        9.5
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "led",
+      "at": [
+        5,
+        9.5
+      ],
+      "color": "#35d04f"
+    },
+    {
+      "type": "chip",
+      "at": [
+        0,
+        12.5
+      ]
+    },
+    {
+      "type": "trimmer",
+      "at": [
+        0,
+        20
+      ]
+    },
+    {
+      "type": "mic",
+      "at": [
+        0,
+        28.5
+      ],
+      "radius": 4.85,
+      "height": 6.5
+    }
+  ],
+  "labels": [
+    "OUT",
+    "GND",
+    "VCC"
+  ]
+}

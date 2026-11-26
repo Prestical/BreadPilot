@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (flame sensor)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, DO into {hole.do}. The dark round sensor points up, away from the breadboard.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} watches for the infrared light a flame gives off; when it sees enough of it, it pulls its DO pin LOW and its second LED lights.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its output signal is never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s DO output: 0 while it sees a flame, 1 otherwise. The module drives this line itself."
+  },
+  "names": {
+    "shop": [
+      "flame sensor module (3 pins)",
+      "flame sensor modules (3 pins)"
+    ],
+    "plan": "Flame sensor",
+    "greeting": "a flame sensor"
+  }
+}

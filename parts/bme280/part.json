@@ -1,0 +1,98 @@
+{
+  "id": "bme280",
+  "name": "Pressure sensor module (BME280 / BMP280, 6 pins)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          1.8,
+          3.6
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": {
+          "decision": "maintainer, 19/11/2026",
+          "why": "the 6-pin board has no regulator: VCC goes straight to the sensor chip, which takes at most 3.6 V"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    },
+    {
+      "id": "csb",
+      "label": "CSB (not used)"
+    },
+    {
+      "id": "sdo",
+      "label": "SDO (not used)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 1,
+        "src": {
+          "typical": true,
+          "note": "typical module current; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "i2cAddresses": {
+      "value": [
+        118,
+        119
+      ],
+      "src": {
+        "typical": true,
+        "note": "BME280/BMP280: 0x76 with SDO low, 0x77 with SDO high"
+      }
+    },
+    "pressureRangeHpa": {
+      "value": [
+        300,
+        1100
+      ],
+      "src": {
+        "typical": true,
+        "note": "BME280 typical range"
+      }
+    },
+    "humidity": {
+      "value": "BME280 only (the BMP280 has none)",
+      "src": {
+        "typical": true,
+        "note": "Bosch: chip id 0x60 = BME280, 0x58 = BMP280"
+      }
+    },
+    "note": "Measures air pressure, temperature and (BME280) humidity. The 6-pin board has no regulator: 3.3 V only."
+  }
+}

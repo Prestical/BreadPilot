@@ -1,0 +1,45 @@
+{
+  "plan": {
+    "line": "a flame sensor module: notices the infrared light of a small flame (a lighter or candle) up to about a metre in front of it. Its output is LOW while it sees a flame. Strong sunlight can set it off too. It is a toy detector, not a fire alarm."
+  },
+  "words": {
+    "nouns": [
+      "flame sensor",
+      "flame sensors",
+      "flame detector",
+      "flame detectors",
+      "fire sensor",
+      "fire sensors",
+      "fire detector",
+      "fire detectors"
+    ],
+    "claims": [
+      "flame"
+    ]
+  },
+  "names": {
+    "label": [
+      "a flame sensor",
+      "flame sensors"
+    ],
+    "count": [
+      "flame sensor",
+      "flame sensors"
+    ],
+    "supports": "flame sensors",
+    "short": [
+      "flame sensor",
+      "flame sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "flame sensor {ref} on {gpio}: Pin({g}, Pin.IN). value() is 0 while it sees a flame and 1 otherwise (sensitivity set with its screw). Strong sunlight can also read 0.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (0 = flame seen)` |"
+    ],
+    "ragQuery": "GPIO digital input"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "id": "rtc-ds3231",
+  "order": 64,
+  "kind": "rtc",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-19"
+  },
+  "driver": "driver/ds3231.py"
+}

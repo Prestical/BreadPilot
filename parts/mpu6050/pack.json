@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "id": "mpu6050",
+  "order": 65,
+  "kind": "imu",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-19"
+  },
+  "driver": "driver/mpu6050.py"
+}

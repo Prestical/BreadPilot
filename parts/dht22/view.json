@@ -1,0 +1,25 @@
+{
+  "shape": "grid-sensor",
+  "pins": [
+    "vcc",
+    "data",
+    "nc",
+    "gnd"
+  ],
+  "body": {
+    "size": [
+      15.1,
+      20,
+      7.7
+    ],
+    "color": "#f1f1ed",
+    "note": "Not measured: the usual size of this part."
+  },
+  "grid": {
+    "color": "#4a4d53",
+    "cells": [
+      5,
+      8
+    ]
+  }
+}

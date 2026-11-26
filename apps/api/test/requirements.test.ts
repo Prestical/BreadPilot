@@ -1,7 +1,7 @@
 // Principle-based tests for agent/requirements.ts. The examples are deliberately NOT taken
 // from data/eval/*.jsonl, so passing them says something about general behavior.
 import { describe, expect, it } from "vitest";
-import { PICO_2_W } from "@breadpilot/circuit-core";
+import { layoutProject, PICO_2_W } from "@breadpilot/circuit-core";
 import { analyzeIdea, mergeRequirements, minimumParts, planProblems, TEMPERATURE_QUESTION, UNSUPPORTED_DISPLAY } from "../src/agent/requirements";
 import { ALARM_SOUND_QUESTION } from "../src/agent/vocabulary";
 import type { Plan, PartKind } from "../src/agent/schemas";
@@ -21,7 +21,8 @@ describe("1. unambiguous component names are unsupported", () => {
     ["Wave a flag using a servo", "motors or servos"],
     ["Show my name on an LCD", UNSUPPORTED_DISPLAY],
     ["Rainbow effect on a NeoPixel ring", "RGB or addressable LEDs"],
-    ["Read a DHT22 every minute", "a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor"],
+    ["Read a TMP36 every minute", "a temperature sensor other than the DHT11, DHT22, DS18B20 or BME280 (such as a TMP36 or a thermocouple)"],
+    ["Detect people walking past with a PIR sensor", "a motion sensor"],
     ["Switch a lamp with a relay", "a relay or high-power device"],
     ["Type a code on a keypad to unlock", "an input module that isn't supported yet"],
   ])("%s", (idea, label) => {
@@ -41,9 +42,7 @@ describe("2. context words count only in a component context", () => {
     ["Play a tune when the button is pressed", []],
     ["Count how often it beeps", []],
     ["Read the news aloud through a speaker", ["a speaker or headphones (for recorded sound or speech; the buzzer only plays tones)"]],
-    ["Turn on the LED when it gets dark outside", ["a light sensor"]],
     ["Measure the distance to the wall", ["a distance sensor"]],
-    ["Blink faster when an object comes close", ["a distance sensor"]],
     ["Cool down my desk with a fan", ["a fan (needs a driver)"]],
   ])("%s", (idea, labels) => {
     expect(a(idea).unsupported).toEqual(labels);
@@ -105,7 +104,7 @@ describe("5. the board's own features are supported", () => {
 });
 
 describe("5b. temperature (M15, user 11/11/2026): the air's needs the DHT11, the chip's own sensor only when the idea is about the chip", () => {
-  const OTHER = "a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor";
+  const OTHER = "a waterproof temperature probe (the DS18B20 and thermistor here are bare parts that must stay dry)";
 
   it.each(["Print the chip temperature to my laptop once a minute", "Light an LED if the CPU's temperature goes above 30 degrees", "Graph the processor temperature over an hour on a screen", "Show the temperature of the Pico on a 128x64 display"])(
     "the chip's own temperature: no DHT11, nothing to ask: %s",
@@ -321,7 +320,7 @@ describe("6d. a list of colors before one LED noun is that many LEDs", () => {
 describe("6b. a size is not a count", () => {
   it.each([
     ['Show the score on the 1.3" OLED', { oled: { min: 1 } }],
-    ["Show the score on a 0.96 inch OLED", { oled: { min: 1 } }],
+    ["Show the score on a 0.96 inch OLED", { "oled-small": { min: 1 } }], // the 0.96" OLED (M17), and 0.96 is a size, not a count
     ['Two 1.3" OLEDs, one per player', { oled: { min: 2, exact: 2 } }],
     ["Three 12 mm buttons for a quiz", { button: { min: 3, exact: 3 } }],
     ["Blink 3 LEDs, each every 1.5 seconds", { led: { min: 3, exact: 3 } }],
@@ -449,5 +448,87 @@ describe("sound (M15): the passive buzzer plays tones; recorded sound and speech
   it("listening for a sound is a microphone, not the buzzer", () => {
     const r = a("Light an LED when it hears a clap");
     expect(r.parts.buzzer).toBeUndefined();
+  });
+});
+
+// M17 17.1 (17/11/2026): 11 new parts. A named part, or what an idea asks to sense ("when it gets
+// dark", "detect water"), picks the part; the other sensors still need a handoff.
+describe("17.1 parts: named or asked for by what they sense", () => {
+  const kinds = (idea: string) => Object.keys(a(idea).parts).sort();
+
+  it.each([
+    ["Turn on the LED when it gets dark outside", ["ldr", "led"]],
+    ["Measure the light level and print it to my laptop", ["ldr"]],
+    ["A night light with a photoresistor and a white LED", ["ldr", "led"]],
+    ["Blink faster when an object comes close", ["led", "obstacle"]],
+    ["Count people passing an IR obstacle sensor", ["obstacle"]],
+    ["Beep when the box is tilted", ["buzzer", "tilt"]],
+    ["Light an LED while the tilt switch is upright", ["led", "tilt"]],
+    ["Light the LED when a magnet comes near the door", ["led", "reed"]],
+    ["A door alarm with a reed switch and a buzzer", ["buzzer", "reed"]],
+    ["Toggle the LED when I touch the pad", ["led", "touch"]],
+    ["Toggle the LED when I clap", ["led", "sound-sensor"]],
+    ["Flash the red LED when the sensor detects a flame", ["flame", "led"]],
+    ["Beep when the sensor detects water", ["buzzer", "water-level"]],
+    ["Read the temperature with a thermistor and print it", ["ntc"]],
+    ["Log a DHT22's temperature and humidity every minute", ["dht22"]],
+    ["Show the room temperature on the OLED", ["dht11", "oled"]],
+    ["Make an active buzzer beep three times", ["active-buzzer"]],
+    // user's tests, 18/11/2026: a "when" that starts a longer clause, a level to show, a door that opens
+    ["A night guard: when it gets dark and an object comes close, sound the buzzer", ["buzzer", "ldr", "obstacle"]],
+    ["Show the light level as a bar on the OLED", ["ldr", "oled"]],
+    ["Show the water level as a percentage on the OLED", ["oled", "water-level"]],
+    ["Count how many times the door opens and show it on the OLED", ["oled", "reed"]],
+  ])("%s", (idea, expected) => {
+    const r = a(idea);
+    expect(r.unsupported, idea).toEqual([]);
+    expect(kinds(idea)).toEqual(expected);
+  });
+
+  it.each([
+    ["Record my voice with a microphone", "a microphone"],
+    ["Measure the distance to the wall", "a distance sensor"],
+    ["Show the coffee's temperature with a thermistor", "a waterproof temperature probe (the DS18B20 and thermistor here are bare parts that must stay dry)"],
+  ])("still unsupported: %s", (idea, label) => {
+    expect(a(idea).unsupported).toContain(label);
+  });
+
+  it("'light' still means an LED when nothing is measured", () => {
+    expect(kinds("Turn on a light when the button is pressed")).toEqual(["button", "led"]);
+  });
+});
+
+// 19/11/2026: the parts added before the pre-release (Hall, soil, DS18B20, SW-420, TCRT5000, vibration
+// motor, BH1750, DS3231, MPU-6050, BME280, 0.96" OLED), named or asked for by what they sense.
+describe("pre-release parts: named or asked for by what they sense", () => {
+  it.each([
+    ["Light the LED when a magnet is near the Hall sensor", ["hall", "led"]],
+    ["Count how many times a magnet passes a hall effect sensor and show it on the OLED", ["hall", "oled"]],
+    ["Water my plant: beep when the soil is dry", ["buzzer", "soil"]],
+    ["Show the soil moisture on the OLED", ["oled", "soil"]],
+    ["Read a DS18B20 and print the temperature", ["ds18b20"]],
+    ["Show the DS18B20 temperature on the OLED", ["ds18b20", "oled"]],
+    ["Beep when the vibration sensor feels a knock", ["buzzer", "vibration"]],
+    ["Detect vibration and flash the LED", ["led", "vibration"]],
+    ["Light the LED when the line sensor sees a black line", ["led", "line"]],
+    ["Make the vibration motor buzz when the button is pressed", ["button", "vibration-motor"]],
+    ["Vibrate three times when I touch the pad", ["touch", "vibration-motor"]],
+    ["Show the light in lux from a BH1750 on the OLED", ["bh1750", "oled"]],
+    ["A clock with a DS3231 real-time clock and the OLED", ["oled", "rtc"]],
+    ["Show the time from the RTC module on the 0.96 inch OLED", ["oled-small", "rtc"]],
+    ["A spirit level with an MPU-6050 and LEDs", ["imu", "led"]],
+    ["Measure the acceleration and print it", ["imu"]],
+    ["A weather station with a BME280 and the OLED", ["bme280", "oled"]],
+    ["Measure the air pressure and the altitude and print them", ["bme280"]],
+    ["Show text on an SSD1306 display", ["oled-small"]],
+    ["Make a sound when I clap", ["buzzer", "sound-sensor"]],
+  ])("%s", (idea, expected) => {
+    const r = a(idea);
+    expect(r.unsupported, idea).toEqual([]);
+    expect(Object.keys(r.parts).sort()).toEqual(expected);
+  });
+
+  it("three I2C parts get a clear limit, not a vague pin error", () => {
+    expect(() => layoutProject([{ kind: "oled" }, { kind: "bme280" }, { kind: "rtc" }])).toThrow(/3 I2C parts can't be connected: each one needs its own I2C bus for now, and the Pico 2 W has two/);
   });
 });

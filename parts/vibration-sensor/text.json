@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (vibration sensor)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, DO into {hole.do}. The small metal can (the vibration switch) is at the top.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} has a small spring switch in a metal can that opens and closes while it shakes; its comparator turns that into a clean on/off signal on DO, and its second LED blinks.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its outputs are never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s DO output: it changes for a moment on each shake or knock. The module drives this line itself."
+  },
+  "names": {
+    "shop": [
+      "vibration sensor module (SW-420)",
+      "vibration sensor modules (SW-420)"
+    ],
+    "plan": "Vibration sensor",
+    "greeting": "a vibration sensor"
+  }
+}

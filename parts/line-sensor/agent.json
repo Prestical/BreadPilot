@@ -1,0 +1,44 @@
+{
+  "plan": {
+    "line": "a line tracking sensor module (TCRT5000): looks at a surface 1 to 15 mm in front of it and says whether it is light (reflects infrared) or dark, such as a black line on white paper. Its D0 is 0 over a light surface and 1 over black or nothing (most boards). Its A0 output isn't used."
+  },
+  "words": {
+    "nouns": [
+      "line sensor",
+      "line sensors",
+      "line tracking sensor",
+      "line tracking sensors",
+      "line follower sensor",
+      "line follower sensors",
+      "tcrt5000",
+      "reflective sensor",
+      "reflective sensors",
+      "line tracker"
+    ]
+  },
+  "names": {
+    "label": [
+      "a line tracking sensor (TCRT5000)",
+      "line tracking sensors (TCRT5000)"
+    ],
+    "count": [
+      "line sensor",
+      "line sensors"
+    ],
+    "supports": "line tracking sensors (TCRT5000)",
+    "short": [
+      "line sensor",
+      "line sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "line tracking sensor {ref} on {gpio}: Pin({g}, Pin.IN). value() is 0 over a light surface that reflects infrared (white paper) and 1 over a black line or nothing, on most TCRT5000 boards (the sensitivity screw sets the switching point). It must be 1-15 mm from the surface. The module drives the line itself: no pull-up.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (0 = light surface, 1 = black)` |"
+    ],
+    "ragQuery": "GPIO digital input"
+  }
+}

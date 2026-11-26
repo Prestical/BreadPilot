@@ -1,0 +1,28 @@
+{
+  "shape": "header-module",
+  "pins": [
+    "gnd",
+    "vcc",
+    "scl",
+    "sda"
+  ],
+  "board": {
+    "size": [
+      27,
+      27
+    ],
+    "height": 8.5,
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "screen": {
+    "size": [
+      13,
+      25
+    ],
+    "text": "Hello!  128x64",
+    "bg": "#04060b",
+    "fg": "#e8f1ff"
+  },
+  "labels": true
+}

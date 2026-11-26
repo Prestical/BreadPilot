@@ -88,8 +88,16 @@ export const WIRES_PER_PICO_PIN = 2;
 
 export const WIRE_COLORS = { gnd: "black", power: "red", signals: ["yellow", "green", "blue", "orange", "white", "purple"] };
 
+/** How many I2C buses the board has (each I2C part gets its own for now). */
+const busCount = (board: Board) => new Set(i2cPairs(board).map((p) => p.bus)).size;
+
 const FIRST_PART_ROW = PICO_LAST_ROW + 4;
 const BLOCK_GAP = 1;
+/** The Pico's board ends about half a row past its last pins: a body may not reach above this. */
+const PICO_EDGE_ROW = PICO_LAST_ROW + 1;
+
+/** Rows a template's 3D body reaches past its first and last row (an upright module's wide board). */
+const reachOf = (t: LayoutTemplate): [number, number] => t.reach ?? [0, 0];
 
 /** The pack and layout template for a plan kind. */
 function templateOf(kind: BlockKind): { pack: Pack; t: LayoutTemplate; pinName: string; pin: LayoutTemplate["pins"][string] } {
@@ -294,7 +302,14 @@ function plan(requests: BlockRequest[], board: Board): Plan {
       i2cPairs(board).filter((p) => !used.has(p.sda.name) && !used.has(p.scl.name) && !busesUsed.has(p.bus)),
       (p) => pairCost(p, side),
     );
-    if (!pair) throw new LayoutError(`No free I2C pin pair (SDA + SCL on the same bus) left for the ${needs[i]!.t.name}.`);
+    if (!pair) {
+      const i2cParts = requests.filter((_, k) => needs[k]!.pin.need === "i2c-pair").length;
+      throw new LayoutError(
+        i2cParts > busCount(board)
+          ? `${i2cParts} I2C parts can't be connected: each one needs its own I2C bus for now, and the ${board.name.replace(/^Raspberry Pi /, "")} has ${COUNT_WORDS[busCount(board)] ?? busCount(board)}.`
+          : `No free I2C pin pair (SDA + SCL on the same bus) left for the ${needs[i]!.t.name}.`,
+      );
+    }
     const c = { gpio: pair.sda.name, scl: pair.scl.name, bus: pair.bus };
     take(c);
     explicit[i] = c;
@@ -319,6 +334,17 @@ function plan(requests: BlockRequest[], board: Board): Plan {
   };
 
   const next: Record<Side, number> = { L: FIRST_PART_ROW, R: FIRST_PART_ROW };
+  // The last row a placed part's body reaches on each half: the next body starts below it (user,
+  // 18/11/2026: wide module boards went through each other).
+  const edge: Record<Side, number> = { L: PICO_EDGE_ROW, R: PICO_EDGE_ROW };
+  const mark = (t: LayoutTemplate, spans: boolean, side: Side, rows: [number, number]) => {
+    const after = rows[1] + 1 + BLOCK_GAP;
+    const reached = rows[1] + reachOf(t)[1];
+    for (const s of spans ? (["L", "R"] as Side[]) : [side]) {
+      next[s] = Math.max(next[s], after);
+      edge[s] = Math.max(edge[s], reached);
+    }
+  };
   let leftOpen = false;
   // Kept parts (M9) are fixed first: new parts go below them on their half; a removed part's rows
   // stay empty, so nothing that stays has to move.
@@ -327,9 +353,7 @@ function plan(requests: BlockRequest[], board: Board): Plan {
     if (!explicit[i]) throw new LayoutError(`A kept ${needs[i]!.t.name} needs its old pin.`);
     const { side, rows } = r.place;
     if (rows[1] > BREADBOARD.rows || rows[0] < FIRST_PART_ROW) throw new LayoutError(`The kept ${needs[i]!.t.name} doesn't fit on the breadboard any more.`);
-    const after = rows[1] + 1 + BLOCK_GAP;
-    if (geometry(needs[i]!.t).spans) next.L = next.R = Math.max(next.L, next.R, after);
-    else next[side] = Math.max(next[side], after);
+    mark(needs[i]!.t, geometry(needs[i]!.t).spans, side, rows);
     if (side === "L" && !leftOpen) {
       leftOpen = true;
       crowd.add(topGround(board, "L"));
@@ -342,7 +366,8 @@ function plan(requests: BlockRequest[], board: Board): Plan {
     let best: (PartPlan & { cost: number }) | null = null;
     let noPin = false;
     for (const side of geo.sides) {
-      const start = geo.spans ? Math.max(next.L, next.R) : next[side];
+      const above = reachOf(t)[0];
+      const start = geo.spans ? Math.max(next.L, next.R, edge.L + above, edge.R + above) : Math.max(next[side], edge[side] + above);
       const end = start + t.height - 1;
       if (end > BREADBOARD.rows) continue;
       const pick = pickFor(i, side);
@@ -368,9 +393,7 @@ function plan(requests: BlockRequest[], board: Board): Plan {
       leftOpen = true;
       crowd.add(topGround(board, "L")); // the left rail's feed wire (rails mode)
     }
-    const after = best.rows[1] + 1 + BLOCK_GAP;
-    if (geo.spans) next.L = next.R = after;
-    else next[best.side] = after;
+    mark(t, geo.spans, best.side, best.rows);
     return { choice: best.choice, side: best.side, rows: best.rows };
   });
   return { parts, leftOpen };

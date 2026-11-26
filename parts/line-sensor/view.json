@@ -1,0 +1,85 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "vcc",
+    "gnd",
+    "do",
+    "ao"
+  ],
+  "board": {
+    "size": [
+      15,
+      32
+    ],
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "led",
+      "at": [
+        -5,
+        9.5
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "led",
+      "at": [
+        5,
+        9.5
+      ],
+      "color": "#35d04f"
+    },
+    {
+      "type": "chip",
+      "at": [
+        0,
+        13
+      ]
+    },
+    {
+      "type": "trimmer",
+      "at": [
+        0,
+        21.5
+      ]
+    },
+    {
+      "type": "sensor",
+      "at": [
+        0,
+        29
+      ],
+      "size": [
+        10,
+        5.8
+      ],
+      "color": "#17181b"
+    },
+    {
+      "type": "emitter",
+      "at": [
+        -2.5,
+        31
+      ],
+      "color": "#3b6fd6",
+      "clear": true
+    },
+    {
+      "type": "emitter",
+      "at": [
+        2.5,
+        31
+      ],
+      "color": "#15161a"
+    }
+  ],
+  "labels": [
+    "VCC",
+    "GND",
+    "D0",
+    "A0"
+  ]
+}

@@ -605,7 +605,8 @@ async function runFrom(deps: AgentDeps, p: Project, from: Resume): Promise<Proje
       } else if (intake.clarity === "unsupported") {
         // The rules found nothing unsupported but the model thinks so: don't block, ask.
         const parts = intake.unsupportedParts.length ? intake.unsupportedParts.join(", ") : "parts that aren't supported";
-        questions.push(`This might need ${parts}. Can it be done with ${joinList(AGENT_PACKS.flatMap((x) => (x.agent!.names.short ? [x.agent!.names.short[1]] : [])), "and")} instead? If not, ask for the handoff bundle.`);
+        // With 29 parts, naming each one makes a paragraph: point to the list instead (M17).
+        questions.push(`This might need ${parts}. Can it be done with the ${AGENT_PACKS.length} parts BreadPilot supports instead (LEDs, buttons, sensors, displays, buzzers and more: see Supported parts)? If not, ask for the handoff bundle.`);
         intake.clarity = "vague";
       }
       if (intake.clarity !== "unsupported" && (req.tooShort || questions.length)) intake.clarity = "vague";

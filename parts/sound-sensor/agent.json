@@ -1,0 +1,65 @@
+{
+  "plan": {
+    "line": "a sound sensor module: a microphone with a comparator that says yes or no, is it louder than a set level right now (a clap, a knock, a shout). Its output goes LOW for a moment on each loud sound. It can't record sound, recognise words or measure volume."
+  },
+  "words": {
+    "nouns": [
+      "sound sensor",
+      "sound sensors",
+      "clap sensor",
+      "clap sensors",
+      "sound detector",
+      "sound detectors",
+      "noise sensor",
+      "noise sensors",
+      "clap switch",
+      "clap switches"
+    ],
+    "impliedBy": {
+      "words": [
+        "clap",
+        "claps",
+        "clapping",
+        "clapped",
+        "knock",
+        "knocks",
+        "knocking"
+      ],
+      "unless": [
+        "clap sensor",
+        "sound sensor"
+      ],
+      "unlessNamed": [
+        "vibration"
+      ]
+    },
+    "claims": [
+      "sound-level"
+    ]
+  },
+  "names": {
+    "label": [
+      "a sound sensor",
+      "sound sensors"
+    ],
+    "count": [
+      "sound sensor",
+      "sound sensors"
+    ],
+    "supports": "sound sensors (claps and loud sounds)",
+    "short": [
+      "sound sensor",
+      "sound sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "sound sensor {ref} on {gpio}: Pin({g}, Pin.IN). value() goes 0 only for a moment (a few milliseconds) while a sound is louder than the level set with its screw, and is 1 otherwise. Read it very often (a loop with time.sleep_ms(1) or less), or catch it with Pin.irq(trigger=Pin.IRQ_FALLING); after a clap, ignore it for about 200 ms so one clap counts once.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (0 = loud sound right now)` |"
+    ],
+    "ragQuery": "GPIO digital input interrupt irq falling edge"
+  }
+}

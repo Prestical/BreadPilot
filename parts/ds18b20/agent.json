@@ -1,0 +1,47 @@
+{
+  "plan": {
+    "line": "a DS18B20 temperature sensor (the bare 3-leg part, 1-Wire): measures temperature from −55 to 125 °C, ±0.5 °C; its 4.7 kΩ pull-up resistor is added automatically. Use it when the idea names a DS18B20 or a precise temperature; it measures the air or what it touches, but the bare part must stay dry. It doesn't measure humidity."
+  },
+  "words": {
+    "nouns": [
+      "ds18b20",
+      "ds18b20s",
+      "1-wire temperature sensor",
+      "one-wire temperature sensor",
+      "onewire temperature sensor",
+      "1-wire sensor",
+      "one-wire sensor"
+    ],
+    "claims": [
+      "ds18b20",
+      "temperature-sensor"
+    ]
+  },
+  "names": {
+    "label": [
+      "a DS18B20 temperature sensor",
+      "DS18B20 temperature sensors"
+    ],
+    "count": [
+      "DS18B20 sensor",
+      "DS18B20 sensors"
+    ],
+    "supports": "the DS18B20 temperature sensor",
+    "short": [
+      "DS18B20 sensor",
+      "DS18B20 sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "DS18B20 temperature sensor {ref} on {gpio}: ow = onewire.OneWire(Pin({g})); ds = ds18x20.DS18X20(ow); roms = ds.scan() (a list with the sensor's address; empty = check the wiring). Each reading: ds.convert_temp(), then time.sleep_ms(750), then ds.read_temp(roms[0]) gives degrees C with decimals. Don't read faster than every 750 ms.",
+    "imports": [
+      "from machine import Pin",
+      "import onewire",
+      "import ds18x20"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `ds18x20.DS18X20(onewire.OneWire(Pin({g})))  (convert_temp(), wait 750 ms, read_temp(rom))` |"
+    ],
+    "ragQuery": "GPIO digital input pull-up resistor"
+  }
+}

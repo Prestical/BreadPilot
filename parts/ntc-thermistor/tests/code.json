@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "read it with ADC",
+      "file": "code/temperature.py",
+      "layout": [
+        {
+          "kind": "ntc"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "read_u16 on a Pin (AttributeError on a Pico)",
+      "file": "code/pin.py",
+      "layout": [
+        {
+          "kind": "ntc"
+        }
+      ],
+      "errors": [
+        "C005"
+      ]
+    }
+  ]
+}

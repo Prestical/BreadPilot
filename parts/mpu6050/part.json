@@ -1,0 +1,89 @@
+{
+  "id": "mpu6050",
+  "name": "Motion sensor module (MPU-6050, GY-521)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    },
+    {
+      "id": "xda",
+      "label": "XDA (not used)"
+    },
+    {
+      "id": "xcl",
+      "label": "XCL (not used)"
+    },
+    {
+      "id": "ad0",
+      "label": "AD0 (not used)"
+    },
+    {
+      "id": "int",
+      "label": "INT (not used)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 4,
+        "src": {
+          "typical": true,
+          "note": "typical module current; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "i2cAddresses": {
+      "value": [
+        104,
+        105
+      ],
+      "src": {
+        "typical": true,
+        "note": "MPU-6050: 0x68 with AD0 low (the board's default), 0x69 with AD0 high"
+      }
+    },
+    "ranges": {
+      "value": "±2 g, ±250 °/s",
+      "src": {
+        "typical": true,
+        "note": "MPU-6050 power-on ranges"
+      }
+    },
+    "note": "The GY-521 has its own 3.3 V regulator and pulls SDA/SCL up to it. Powered from 3V3 here."
+  }
+}

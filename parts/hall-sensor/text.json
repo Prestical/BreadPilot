@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (hall sensor)",
+    "text": "Push {ref}'s 4 pins into column f, one pin per row: A0 into {hole.ao}, G into {hole.gnd}, + into {hole.vcc}, D0 into {hole.do}. The black sensor at the top points up, away from the breadboard.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. A0 gets no wire."
+  },
+  "why": "{ref} has a Hall sensor that feels magnetic fields; when a magnet comes close enough (set with its screw), it switches its D0 output and its second LED changes.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its outputs are never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s D0 output: it changes while a magnet is near. The module drives this line itself."
+  },
+  "names": {
+    "shop": [
+      "Hall sensor module (KY-024)",
+      "Hall sensor modules (KY-024)"
+    ],
+    "plan": "Hall sensor",
+    "greeting": "a Hall sensor"
+  }
+}

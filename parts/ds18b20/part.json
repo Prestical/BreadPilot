@@ -1,0 +1,85 @@
+{
+  "id": "ds18b20",
+  "name": "DS18B20 temperature sensor (TO-92, 1-Wire)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "gnd",
+      "label": "GND (leg 1)",
+      "kind": "ground"
+    },
+    {
+      "id": "dq",
+      "label": "DQ (leg 2, data)",
+      "kind": "digital_out",
+      "level": "vcc"
+    },
+    {
+      "id": "vdd",
+      "label": "VDD (leg 3)",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.0,
+          5.5
+        ],
+        "src": {
+          "typical": true,
+          "note": "DS18B20 typical supply range"
+        }
+      }
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vdd",
+      "b": "gnd",
+      "currentMa": {
+        "value": 1.5,
+        "src": {
+          "typical": true,
+          "note": "DS18B20 typical current while converting"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "legOrder": {
+      "value": [
+        "gnd",
+        "dq",
+        "vdd"
+      ],
+      "src": {
+        "typical": true,
+        "note": "the usual DS18B20 pinout, left to right looking at the flat side"
+      }
+    },
+    "temperatureRangeC": {
+      "value": [
+        -55,
+        125
+      ],
+      "src": {
+        "typical": true,
+        "note": "DS18B20 typical value"
+      }
+    },
+    "temperatureAccuracyC": {
+      "value": 0.5,
+      "src": {
+        "typical": true,
+        "note": "DS18B20 typical value from -10 to 85 C"
+      }
+    },
+    "conversionMs": {
+      "value": 750,
+      "src": {
+        "typical": true,
+        "note": "DS18B20 typical value at 12-bit resolution"
+      }
+    },
+    "note": "Powered from 3V3 here (not parasite power), so its data line, pulled up to VDD, stays at the Pico's 3.3 V."
+  }
+}

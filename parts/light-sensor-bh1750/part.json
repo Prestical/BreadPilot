@@ -1,0 +1,80 @@
+{
+  "id": "light-sensor-bh1750",
+  "name": "Light sensor module (BH1750, GY-302)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    },
+    {
+      "id": "addr",
+      "label": "ADDR (not used)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 0.2,
+        "src": {
+          "typical": true,
+          "note": "typical module current; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "i2cAddresses": {
+      "value": [
+        35,
+        92
+      ],
+      "src": {
+        "typical": true,
+        "note": "BH1750: 0x23 with ADDR low (the module's default), 0x5C with ADDR high"
+      }
+    },
+    "luxRange": {
+      "value": [
+        1,
+        65535
+      ],
+      "src": {
+        "typical": true,
+        "note": "BH1750 typical range"
+      }
+    },
+    "note": "Measures light in lux, the unit light meters use. Powered from 3V3 here."
+  }
+}

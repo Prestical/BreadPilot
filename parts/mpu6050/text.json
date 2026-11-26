@@ -1,0 +1,23 @@
+{
+  "place": {
+    "title": "Place {ref} (MPU-6050 motion sensor)",
+    "text": "Push {ref}'s 8 header pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, SCL into {hole.scl}, SDA into {hole.sda}, XDA into {hole.xda}, XCL into {hole.xcl}, AD0 into {hole.ad0}, INT into {hole.int}. The board lies over the left half of the breadboard, its chip facing up.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. XDA, XCL, AD0 and INT get no wire."
+  },
+  "why": "{ref} feels gravity and movement (accelerometer) and turning (gyroscope) in three directions. The Pico reads the numbers over I2C: SDA (data) and SCL (clock).",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its I2C lines stay at the Pico's 3.3 V.",
+    "i2c_sda": "{pin} is the I2C{bus} data line (SDA): the Pico and {ref} send their bytes on this wire.",
+    "i2c_scl": "{pin} is the I2C{bus} clock line (SCL): it sets the pace for the data on SDA."
+  },
+  "names": {
+    "shop": [
+      "MPU-6050 accelerometer/gyroscope module (GY-521)",
+      "MPU-6050 accelerometer/gyroscope modules (GY-521)"
+    ],
+    "plan": "Motion sensor (MPU-6050, I2C)",
+    "greeting": "an accelerometer",
+    "driver": "motion sensor driver"
+  }
+}

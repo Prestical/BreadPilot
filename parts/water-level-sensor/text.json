@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (water level sensor)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: − into hole {hole.gnd}, + into {hole.vcc} and S into {hole.sig}. The striped part points up, away from the breadboard.",
+    "tip": "Read the labels printed next to the pins (S, +, −). If yours are in another order, follow the labels, not the picture. Only the striped end may touch water: keep the pins and the parts above the stripes dry."
+  },
+  "why": "{ref} has bare metal strips: the more of them are under water, the better the water connects them, and the higher the voltage on its S pin.",
+  "wire": {
+    "ground": "This connects {ref}'s − pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its S output stays between 0 and 3.3 V, safe for the Pico.",
+    "adc": "{pin} is an analog input (ADC): it measures {ref}'s S voltage and gives the code a number from 0 to 65535, near 0 when dry and higher the deeper the strips are in water."
+  },
+  "names": {
+    "shop": [
+      "water level sensor (3 pins)",
+      "water level sensors (3 pins)"
+    ],
+    "plan": "Water level sensor",
+    "greeting": "a water level sensor"
+  }
+}

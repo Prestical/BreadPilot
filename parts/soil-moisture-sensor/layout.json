@@ -1,0 +1,56 @@
+{
+  "name": "soil moisture sensor",
+  "height": 3,
+  "reach": [4, 4],
+  "pins": {
+    "signal": {
+      "need": "adc",
+      "mode": "adc"
+    }
+  },
+  "parts": [
+    {
+      "ref": "SOIL",
+      "type": "self",
+      "legs": {
+        "gnd": [
+          0,
+          "f"
+        ],
+        "vcc": [
+          1,
+          "f"
+        ],
+        "aout": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "SOIL",
+  "wires": [
+    {
+      "ground": [
+        0,
+        "j",
+        "SOIL.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        2,
+        "j",
+        "SOIL.aout"
+      ]
+    },
+    {
+      "power": [
+        1,
+        "j",
+        "SOIL.vcc"
+      ]
+    }
+  ]
+}

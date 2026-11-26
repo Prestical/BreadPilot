@@ -1,0 +1,18 @@
+{
+  "shape": "tethered",
+  "pins": [
+    "gnd",
+    "vcc",
+    "aout"
+  ],
+  "wires": [
+    "#2a2c31",
+    "#d93a3a",
+    "#f2d21b"
+  ],
+  "unit": {
+    "type": "soil-probe",
+    "board": "#17181b"
+  },
+  "note": "The usual v1.2 board (about 98 x 23 mm); not measured."
+}

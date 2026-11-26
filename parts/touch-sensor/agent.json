@@ -1,0 +1,66 @@
+{
+  "plan": {
+    "line": "a touch sensor module (TTP223): a pad that notices a finger, even through thin plastic or paper. Its output is HIGH while it is touched. Use it like a button with no moving parts."
+  },
+  "words": {
+    "nouns": [
+      "touch sensor",
+      "touch sensors",
+      "touch pad",
+      "touch pads",
+      "touch button",
+      "touch buttons",
+      "ttp223",
+      "capacitive touch",
+      "touch switch",
+      "touch switches"
+    ],
+    "impliedBy": {
+      "words": [
+        "touch",
+        "touches",
+        "touched",
+        "touching"
+      ],
+      "unless": [
+        "touch screen",
+        "touchscreen",
+        "touch sensor",
+        "touch pad"
+      ],
+      "unlessNamed": [
+        "button",
+        "slide-switch",
+        "oled"
+      ]
+    },
+    "claims": [
+      "touch"
+    ]
+  },
+  "names": {
+    "label": [
+      "a touch sensor (TTP223)",
+      "touch sensors (TTP223)"
+    ],
+    "count": [
+      "touch sensor",
+      "touch sensors"
+    ],
+    "supports": "touch sensors (TTP223)",
+    "short": [
+      "touch sensor",
+      "touch sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "touch sensor {ref} on {gpio}: Pin({g}, Pin.IN). value() is 1 while a finger touches the pad and 0 otherwise (the module drives the pin itself: no pull-up needed). Keep the finger off the pad for the first half second after power-up: it measures the empty pad then.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (1 = touched)` |"
+    ],
+    "ragQuery": "GPIO digital input"
+  }
+}

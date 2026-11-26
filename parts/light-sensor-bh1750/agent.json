@@ -1,0 +1,44 @@
+{
+  "plan": {
+    "line": "a BH1750 light sensor module (I2C): measures light in lux (1 to 65535), like a light meter: darkness, room light and daylight. Use it when the idea names a BH1750 or needs real lux values; the photoresistor is simpler for dark/bright. Uses one I2C bus (each I2C part needs its own, so at most 2 I2C parts)."
+  },
+  "words": {
+    "nouns": [
+      "bh1750",
+      "bh1750s",
+      "gy-302",
+      "lux sensor",
+      "lux sensors",
+      "lux meter",
+      "lux meters",
+      "digital light sensor",
+      "digital light sensors"
+    ]
+  },
+  "names": {
+    "label": [
+      "a BH1750 light sensor",
+      "BH1750 light sensors"
+    ],
+    "count": [
+      "BH1750 sensor",
+      "BH1750 sensors"
+    ],
+    "supports": "BH1750 light sensors (lux)",
+    "short": [
+      "lux sensor",
+      "lux sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "BH1750 light sensor {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000). It needs no driver: once at the start i2c{n}.writeto(0x23, b\"\\x10\") (continuous high-resolution mode), then wait 180 ms; each reading: data = i2c{n}.readfrom(0x23, 2); lux = (data[0] << 8 | data[1]) / 1.2. It measures a new value about every 120 ms. If 0x23 isn't in i2c{n}.scan(), its address is 0x5C.",
+    "imports": [
+      "from machine import Pin, I2C"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `writeto(0x23, b'\\x10'); lux = int.from_bytes(readfrom(0x23, 2), 'big') / 1.2` |"
+    ],
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

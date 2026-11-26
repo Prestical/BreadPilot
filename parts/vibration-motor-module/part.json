@@ -1,0 +1,56 @@
+{
+  "id": "vibration-motor-module",
+  "name": "Vibration motor module (coin motor, 3 pins)",
+  "category": "output",
+  "legs": [
+    {
+      "id": "in",
+      "label": "IN",
+      "kind": "digital_in"
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 80,
+        "src": {
+          "typical": true,
+          "note": "a coin vibration motor while running; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "activeLevel": {
+      "value": "high",
+      "src": {
+        "typical": true,
+        "note": "these modules switch the motor with an NPN transistor: IN HIGH = on"
+      }
+    },
+    "note": "The motor runs from VCC through the module's own transistor; the Pico pin only switches it, so it never carries the motor's current."
+  }
+}

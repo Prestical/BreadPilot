@@ -1,0 +1,47 @@
+{
+  "plan": {
+    "line": "a vibration sensor module (SW-420): notices knocks, shaking and vibration of whatever it stands on (sensitivity set with its screw); its output changes for a moment with each shake. It can't measure how strong a vibration is."
+  },
+  "words": {
+    "nouns": [
+      "vibration sensor",
+      "vibration sensors",
+      "sw-420",
+      "sw420",
+      "shock sensor",
+      "shock sensors",
+      "knock sensor",
+      "knock sensors",
+      "vibration detector",
+      "vibration detectors"
+    ],
+    "claims": [
+      "vibration"
+    ]
+  },
+  "names": {
+    "label": [
+      "a vibration sensor (SW-420)",
+      "vibration sensors (SW-420)"
+    ],
+    "count": [
+      "vibration sensor",
+      "vibration sensors"
+    ],
+    "supports": "vibration sensors (SW-420)",
+    "short": [
+      "vibration sensor",
+      "vibration sensors"
+    ]
+  },
+  "code": {
+    "pinLine": "vibration sensor {ref} on {gpio}: Pin({g}, Pin.IN). Its DO changes only for a moment on each shake or knock. Read the value at the start while still (idle = pin.value()) and count any other value as a vibration; read it very often (time.sleep_ms(1) or less) or catch the change with Pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING), and ignore it for about 200 ms after each one.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN)  (changes for a moment on a shake)` |"
+    ],
+    "ragQuery": "GPIO digital input interrupt irq"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine",
+      "layout": [
+        {
+          "kind": "imu"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "next to the OLED display: one I2C bus each",
+      "layout": [
+        {
+          "kind": "imu"
+        },
+        {
+          "kind": "oled"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "SDA and SCL swapped in the pin modes",
+      "layout": [
+        {
+          "kind": "imu"
+        }
+      ],
+      "modes": {
+        "GP16": "i2c0_scl",
+        "GP17": "i2c0_sda"
+      },
+      "expect": [
+        "E009",
+        "E009",
+        "E015",
+        "E015"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "plan": {
+    "line": "a vibration motor module: a small coin motor that buzzes and shakes while it runs (like a phone's vibration), switched by its own transistor. Use it to give a silent alert or feel a tap."
+  },
+  "words": {
+    "nouns": [
+      "vibration motor",
+      "vibration motors",
+      "vibration motor module",
+      "vibration motor modules",
+      "vibrating motor",
+      "vibrating motors",
+      "haptic motor",
+      "haptic motors",
+      "vibrator",
+      "coin motor",
+      "coin motors"
+    ],
+    "impliedBy": {
+      "words": [
+        "vibrate",
+        "vibrates",
+        "vibrating",
+        "haptic"
+      ],
+      "unless": [
+        "vibration sensor",
+        "detect vibration",
+        "detects vibration"
+      ]
+    }
+  },
+  "names": {
+    "label": [
+      "a vibration motor module",
+      "vibration motor modules"
+    ],
+    "count": [
+      "vibration motor",
+      "vibration motors"
+    ],
+    "supports": "vibration motor modules",
+    "short": [
+      "vibration motor",
+      "vibration motors"
+    ]
+  },
+  "code": {
+    "pinLine": "vibration motor module {ref} on {gpio}: motor = Pin({g}, Pin.OUT, value=0); motor.value(1) runs it, motor.value(0) stops it. Short pulses (100-300 ms) feel like taps. End the program with it off.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.OUT, value=0)  (1 = vibrate)` |"
+    ],
+    "ragQuery": "GPIO digital output"
+  }
+}

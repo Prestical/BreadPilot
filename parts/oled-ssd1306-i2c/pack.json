@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "id": "oled-ssd1306-i2c",
+  "order": 41,
+  "kind": "oled-small",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-19"
+  },
+  "driver": "driver/ssd1306.py"
+}

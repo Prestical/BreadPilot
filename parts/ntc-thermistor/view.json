@@ -1,0 +1,10 @@
+{
+  "shape": "bead",
+  "legs": [
+    "a",
+    "b"
+  ],
+  "radius": 1.5,
+  "color": "#1b1c1f",
+  "note": "Not measured: the usual size of this part."
+}

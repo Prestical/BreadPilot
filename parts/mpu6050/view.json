@@ -1,0 +1,76 @@
+{
+  "shape": "header-module",
+  "pins": [
+    "vcc",
+    "gnd",
+    "scl",
+    "sda",
+    "xda",
+    "xcl",
+    "ad0",
+    "int"
+  ],
+  "board": {
+    "size": [
+      16,
+      21
+    ],
+    "height": 8.5,
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "holes": false,
+  "features": [
+    {
+      "type": "sensor",
+      "at": [
+        0,
+        11.8
+      ],
+      "size": [
+        4,
+        4
+      ],
+      "color": "#17181b"
+    },
+    {
+      "type": "led",
+      "at": [
+        -7.5,
+        10.5
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "resistor",
+      "at": [
+        5.8,
+        10.2
+      ]
+    },
+    {
+      "type": "resistor",
+      "at": [
+        5.8,
+        12.2
+      ]
+    },
+    {
+      "type": "hole",
+      "at": [
+        -8,
+        13.6
+      ],
+      "radius": 1.5
+    },
+    {
+      "type": "hole",
+      "at": [
+        8,
+        13.6
+      ],
+      "radius": 1.5
+    }
+  ],
+  "labels": true
+}

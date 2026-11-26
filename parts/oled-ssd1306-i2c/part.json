@@ -1,0 +1,102 @@
+{
+  "id": "oled-ssd1306-i2c",
+  "name": "0.96\" I2C OLED display (SSD1306, 128x64)",
+  "category": "display",
+  "legs": [
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of these modules"
+        }
+      },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": {
+          "decision": "maintainer, 19/11/2026",
+          "why": "as for the 1.3\" OLED: the module may pull SDA and SCL up to VCC, and the Pico's GPIOs only take 3.3 V"
+        }
+      }
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 20,
+        "src": {
+          "typical": true,
+          "note": "typical with half the pixels lit; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "controller": {
+      "value": "SSD1306",
+      "src": {
+        "typical": true,
+        "note": "the usual controller of 0.96\" 128x64 OLED modules"
+      }
+    },
+    "resolution": {
+      "value": [
+        128,
+        64
+      ],
+      "src": {
+        "typical": true,
+        "note": "the usual 0.96\" OLED module"
+      }
+    },
+    "headerOrder": {
+      "value": [
+        "gnd",
+        "vcc",
+        "scl",
+        "sda"
+      ],
+      "src": {
+        "typical": true,
+        "note": "the most common 0.96\" module pin order; some boards have VCC first"
+      }
+    },
+    "i2cAddresses": {
+      "value": [
+        60,
+        61
+      ],
+      "src": {
+        "typical": true,
+        "note": "SSD1306: 0x3C, or 0x3D with the address resistor moved"
+      }
+    },
+    "note": "Pins in this order on most boards: GND, VCC, SCL, SDA. Power it from 3V3 (not 5 V)."
+  }
+}

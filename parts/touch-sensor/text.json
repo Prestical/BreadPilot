@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (touch sensor)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: SIG into {hole.sig}, VCC into {hole.vcc}, GND into {hole.gnd}. The touch pad faces up.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} notices a finger on its pad by the small change it makes to the pad's capacitance, and sets its SIG output HIGH while it is touched.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its output signal is never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s SIG output: 1 while the pad is touched, 0 otherwise. The module drives this line itself, so the pin needs no pull-up."
+  },
+  "names": {
+    "shop": [
+      "touch sensor module (TTP223)",
+      "touch sensor modules (TTP223)"
+    ],
+    "plan": "Touch sensor",
+    "greeting": "a touch sensor"
+  }
+}

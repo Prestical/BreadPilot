@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "ir-obstacle-sensor",
+  "order": 52,
+  "kind": "obstacle",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-17"
+  }
+}

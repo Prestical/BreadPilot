@@ -1,0 +1,56 @@
+{
+  "name": "water level sensor",
+  "height": 3,
+  "reach": [3, 3],
+  "pins": {
+    "signal": {
+      "need": "adc",
+      "mode": "adc"
+    }
+  },
+  "parts": [
+    {
+      "ref": "WL",
+      "type": "self",
+      "legs": {
+        "gnd": [
+          0,
+          "f"
+        ],
+        "vcc": [
+          1,
+          "f"
+        ],
+        "sig": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "WL",
+  "wires": [
+    {
+      "ground": [
+        0,
+        "j",
+        "WL.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        2,
+        "j",
+        "WL.sig"
+      ]
+    },
+    {
+      "power": [
+        1,
+        "j",
+        "WL.vcc"
+      ]
+    }
+  ]
+}

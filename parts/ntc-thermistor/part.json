@@ -1,0 +1,40 @@
+{
+  "id": "ntc-thermistor",
+  "name": "NTC thermistor (10 kΩ, B 3950)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "a",
+      "label": "leg 1"
+    },
+    {
+      "id": "b",
+      "label": "leg 2",
+      "kind": "analog_out"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "resistor",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "specs": {
+    "resistanceAt25COhms": {
+      "value": 10000,
+      "src": {
+        "typical": true,
+        "note": "MF52 10 kΩ NTC typical value"
+      }
+    },
+    "betaK": {
+      "value": 3950,
+      "src": {
+        "typical": true,
+        "note": "MF52 B 3950 typical value"
+      }
+    },
+    "note": "Its resistance falls as it gets warmer. It has no polarity."
+  }
+}

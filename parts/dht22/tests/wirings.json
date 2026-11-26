@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine (pull-up inside the block)",
+      "layout": [
+        {
+          "kind": "dht22"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "next to a DHT11, power straight from the Pico",
+      "layout": [
+        {
+          "kind": "dht22"
+        },
+        {
+          "kind": "dht11"
+        }
+      ],
+      "power": "direct",
+      "expect": []
+    },
+    {
+      "name": "the data pin set as an analog input (GP16 has no ADC)",
+      "layout": [
+        {
+          "kind": "dht22"
+        }
+      ],
+      "modes": {
+        "GP16": "adc"
+      },
+      "expect": [
+        "E008"
+      ]
+    }
+  ]
+}

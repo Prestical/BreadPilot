@@ -35,6 +35,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# The 3D model sheet (developer tool: npm run model-sheet -w @breadpilot/web)
+apps/web/.model-sheet/
+
 # Desktop app packaging (apps/desktop/scripts/stage.mjs, electron-builder): built, never committed
 apps/desktop/.stage/
 apps/desktop/release/

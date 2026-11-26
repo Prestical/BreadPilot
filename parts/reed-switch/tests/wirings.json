@@ -1,0 +1,57 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine",
+      "layout": [
+        {
+          "kind": "reed"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "two of them and an LED, power straight from the Pico",
+      "layout": [
+        {
+          "kind": "reed"
+        },
+        {
+          "kind": "reed"
+        },
+        {
+          "kind": "led"
+        }
+      ],
+      "power": "direct",
+      "expect": []
+    },
+    {
+      "name": "the pin driven as an output (closed, it shorts the pin to ground)",
+      "layout": [
+        {
+          "kind": "reed"
+        }
+      ],
+      "modes": {
+        "GP16": "out"
+      },
+      "expect": [
+        "E003"
+      ]
+    },
+    {
+      "name": "input with no pull-up (floating while open)",
+      "layout": [
+        {
+          "kind": "reed"
+        }
+      ],
+      "modes": {
+        "GP16": "in"
+      },
+      "expect": [
+        "W003"
+      ]
+    }
+  ]
+}

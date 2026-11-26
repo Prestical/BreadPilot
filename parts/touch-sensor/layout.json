@@ -1,0 +1,56 @@
+{
+  "name": "touch sensor",
+  "height": 3,
+  "reach": [4, 4],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "TCH",
+      "type": "self",
+      "legs": {
+        "sig": [
+          0,
+          "f"
+        ],
+        "vcc": [
+          1,
+          "f"
+        ],
+        "gnd": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "TCH",
+  "wires": [
+    {
+      "ground": [
+        2,
+        "j",
+        "TCH.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "TCH.sig"
+      ]
+    },
+    {
+      "power": [
+        1,
+        "j",
+        "TCH.vcc"
+      ]
+    }
+  ]
+}

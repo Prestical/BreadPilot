@@ -1,0 +1,38 @@
+{
+  "plan": {
+    "line": "an active buzzer module: beeps at one fixed pitch (about 2300 Hz) while switched on; simple on/off code, no notes or melodies. Use it only when the idea names an active buzzer; for tones, melodies or a plain \"buzzer\" use the passive buzzer."
+  },
+  "words": {
+    "nouns": [
+      "active buzzer",
+      "active buzzers",
+      "active buzzer module",
+      "active buzzer modules"
+    ]
+  },
+  "names": {
+    "label": [
+      "an active buzzer",
+      "active buzzers"
+    ],
+    "count": [
+      "active buzzer",
+      "active buzzers"
+    ],
+    "supports": "an active buzzer",
+    "short": [
+      "active buzzer",
+      "active buzzers"
+    ]
+  },
+  "code": {
+    "pinLine": "active buzzer {ref} on {gpio}, which beeps while the pin is LOW: buzzer = Pin({g}, Pin.OUT, value=1) so it starts quiet; buzzer.value(0) beeps, buzzer.value(1) stops. End the program with the pin HIGH. It has one fixed pitch: don't use PWM or notes.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.OUT, value=1)  (0 = beep, 1 = quiet)` |"
+    ],
+    "ragQuery": "GPIO digital output"
+  }
+}

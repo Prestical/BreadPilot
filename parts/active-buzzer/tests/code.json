@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "three short beeps, quiet (HIGH) at the end",
+      "file": "code/beep.py",
+      "layout": [
+        {
+          "kind": "active-buzzer"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the buzzer on a pin that isn't wired",
+      "file": "code/wrong-pin.py",
+      "layout": [
+        {
+          "kind": "active-buzzer"
+        }
+      ],
+      "errors": [
+        "C004",
+        "C006"
+      ]
+    }
+  ]
+}

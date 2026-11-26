@@ -182,6 +182,17 @@ function pulledUpPart(resolved: Resolved, resistor: ResolvedPart): ResolvedPart 
   });
 }
 
+/**
+ * The sensor a resistor makes a voltage divider with: one of its legs shares a strip with that
+ * part's analog output (a photoresistor's or thermistor's reading leg, M17).
+ */
+function dividedPart(resolved: Resolved, resistor: ResolvedPart): ResolvedPart | undefined {
+  const strips = Object.values(resistor.legs).map(stripOfHole);
+  return resolved.parts.find(
+    (p) => p !== resistor && p.def.legs.some((l) => l.kind === "analog_out" && p.legs[l.id] !== undefined && strips.includes(stripOfHole(p.legs[l.id]!))),
+  );
+}
+
 function ledCurrentMa(led: ResolvedPart, ohms: number, supply = 3.3): { vf: number; ma: number } {
   const table = (led.def.specs?.forwardVoltage ?? {}) as Record<string, number>;
   const vf = table[String(led.props.color)] ?? 2.0;
@@ -201,6 +212,10 @@ function partWhy(resolved: Resolved, part: ResolvedPart): string {
   if (t?.whyPullUp) {
     const pulled = pulledUpPart(resolved, part);
     if (pulled) return fill(t.whyPullUp, { ...vars, part: () => pulled.ref });
+  }
+  if (t?.whyDivider) {
+    const sensor = dividedPart(resolved, part);
+    if (sensor) return fill(t.whyDivider, { ...vars, part: () => sensor.ref });
   }
   if (t?.why) return fill(t.why, vars);
   return typeof part.def.specs?.note === "string" ? part.def.specs.note : `${part.ref} is part of this project's circuit.`;

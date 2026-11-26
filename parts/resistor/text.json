@@ -6,9 +6,13 @@
   },
   "why": "{ref} limits how much current can flow in this part of the circuit.",
   "whyPullUp": "{ref} is a pull-up resistor: it holds {part}'s data line at 3.3 V while nothing pulls it low. {part} can only pull that line low to send its answer, so without {ref} the Pico couldn't read it.",
+  "whyDivider": "{ref} is the lower half of a voltage divider with {part}: as {part}'s resistance changes, the voltage between the two changes too, and the Pico's analog pin measures it. Without {ref} that point would just sit at 3.3 V.",
   "whyWithLed": "{ref} limits the current through {led} to about {ma} mA ((3.3 V − {vf} V) ÷ {ohms}). Without it, too much current would flow and could damage the LED or the Pico pin.",
   "names": {
-    "shop": ["resistor", "resistors"],
+    "shop": [
+      "resistor",
+      "resistors"
+    ],
     "shopBy": "{prop.ohms} Ω",
     "hover": " · {prop.ohms} Ω"
   }

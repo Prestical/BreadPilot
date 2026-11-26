@@ -1,6 +1,7 @@
 {
   "name": "buzzer",
   "height": 3,
+  "reach": [2, 2],
   "pins": { "signal": { "need": "gpio", "mode": "pwm" } },
   "parts": [
     { "ref": "BZ", "type": "self", "legs": { "gnd": [0, "f"], "io": [1, "f"], "vcc": [2, "f"] } }

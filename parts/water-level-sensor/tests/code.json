@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "read the level with ADC",
+      "file": "code/level.py",
+      "layout": [
+        {
+          "kind": "water-level"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "read_u16 on a Pin (AttributeError on a Pico)",
+      "file": "code/pin.py",
+      "layout": [
+        {
+          "kind": "water-level"
+        }
+      ],
+      "errors": [
+        "C005"
+      ]
+    }
+  ]
+}

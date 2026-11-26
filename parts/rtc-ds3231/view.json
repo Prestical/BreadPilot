@@ -1,0 +1,95 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "32k",
+    "sqw",
+    "scl",
+    "sda",
+    "vcc",
+    "gnd"
+  ],
+  "board": {
+    "size": [
+      22,
+      38
+    ],
+    "color": "#1d3c8f",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "sensor",
+      "at": [
+        0,
+        14
+      ],
+      "size": [
+        7.5,
+        10.3
+      ],
+      "color": "#17181b"
+    },
+    {
+      "type": "chip",
+      "at": [
+        0,
+        25.5
+      ]
+    },
+    {
+      "type": "led",
+      "at": [
+        -8,
+        10
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "resistor",
+      "at": [
+        7.5,
+        10
+      ]
+    },
+    {
+      "type": "resistor",
+      "at": [
+        7.5,
+        12.5
+      ]
+    },
+    {
+      "type": "hole",
+      "at": [
+        -8,
+        34.5
+      ],
+      "radius": 1.6
+    },
+    {
+      "type": "hole",
+      "at": [
+        8,
+        34.5
+      ],
+      "radius": 1.6
+    },
+    {
+      "type": "coin",
+      "at": [
+        0,
+        21.5
+      ],
+      "radius": 10
+    }
+  ],
+  "labels": [
+    "32K",
+    "SQW",
+    "SCL",
+    "SDA",
+    "VCC",
+    "GND"
+  ]
+}

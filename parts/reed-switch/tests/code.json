@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "read it with the internal pull-up",
+      "file": "code/door.py",
+      "layout": [
+        {
+          "kind": "reed"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "its pin driven as an output",
+      "file": "code/output.py",
+      "layout": [
+        {
+          "kind": "reed"
+        }
+      ],
+      "errors": [
+        "C005"
+      ]
+    }
+  ]
+}

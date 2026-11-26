@@ -1,0 +1,107 @@
+{
+  "id": "dht22",
+  "name": "DHT22 (AM2302) temperature and humidity sensor",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC (leg 1)",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.5
+        ],
+        "src": {
+          "typical": true,
+          "note": "AM2302 typical supply range"
+        }
+      }
+    },
+    {
+      "id": "data",
+      "label": "DATA (leg 2)",
+      "kind": "digital_out",
+      "level": "vcc"
+    },
+    {
+      "id": "nc",
+      "label": "NC (leg 3, not connected)"
+    },
+    {
+      "id": "gnd",
+      "label": "GND (leg 4)",
+      "kind": "ground"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 1.5,
+        "src": {
+          "typical": true,
+          "note": "AM2302 typical current while measuring"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "legOrder": {
+      "value": [
+        "vcc",
+        "data",
+        "nc",
+        "gnd"
+      ],
+      "src": {
+        "typical": true,
+        "note": "the usual DHT22 leg order, left to right with the grid facing you"
+      }
+    },
+    "minReadIntervalS": {
+      "value": 2,
+      "src": {
+        "typical": true,
+        "note": "AM2302 typical sampling period"
+      }
+    },
+    "temperatureRangeC": {
+      "value": [
+        -40,
+        80
+      ],
+      "src": {
+        "typical": true,
+        "note": "AM2302 typical value"
+      }
+    },
+    "humidityRangeRH": {
+      "value": [
+        0,
+        100
+      ],
+      "src": {
+        "typical": true,
+        "note": "AM2302 typical value"
+      }
+    },
+    "temperatureAccuracyC": {
+      "value": 0.5,
+      "src": {
+        "typical": true,
+        "note": "AM2302 typical value"
+      }
+    },
+    "humidityAccuracyRH": {
+      "value": 2,
+      "src": {
+        "typical": true,
+        "note": "AM2302 typical value"
+      }
+    },
+    "note": "Powered from 3V3 here, so its data line (pulled up to VCC) stays at the Pico's 3.3 V."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "tilt-switch",
+  "name": "Ball tilt switch (SW-520D, 2 legs)",
+  "category": "input",
+  "legs": [
+    {
+      "id": "a",
+      "label": "leg 1"
+    },
+    {
+      "id": "b",
+      "label": "leg 2"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "switch",
+      "a": "a",
+      "b": "b",
+      "closed": "standing upright (the ball rests on both contacts)"
+    }
+  ],
+  "specs": {
+    "note": "Two legs and no polarity: the contact between them is either open or closed."
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "two short taps, off at the end",
+      "file": "code/tap.py",
+      "layout": [
+        {
+          "kind": "vibration-motor"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the motor on a pin that isn't wired",
+      "file": "code/wrong-pin.py",
+      "layout": [
+        {
+          "kind": "vibration-motor"
+        }
+      ],
+      "errors": [
+        "C004",
+        "C006"
+      ]
+    }
+  ]
+}

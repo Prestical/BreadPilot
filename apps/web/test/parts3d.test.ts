@@ -10,9 +10,28 @@ import { BOARD, PICO, PITCH, colX } from "../src/scene/coords";
 import { BOARD_MODELS, boardPlace, boardShapes } from "../src/scene/boards";
 import { boardPrint, MAT, matLines } from "../src/scene/textures";
 import { baseLift, resolvedWires, wireLifts } from "../src/scene/model";
-import { SUPPORTED_PARTS } from "../src/ui/PartsDialog";
+import { SUPPORTED_GROUPS, SUPPORTED_PARTS } from "../src/ui/PartsDialog";
 
 const partOf = (kind: string, ref: string, pin?: string): ResolvedPart => resolveBuild(layoutProject([{ kind, ...(pin ? { pin } : {}) }]).build).resolved!.parts.find((p) => p.ref === ref)!;
+/**
+ * A model by id: from upcoming.ts while it has no pack, else from its pack's view.json (M17: models
+ * move into their packs unchanged). `placedOf` puts it in its holes the same way.
+ */
+const lookOf = (id: string) => {
+  const m = UPCOMING_MODELS.find((x) => x.id === id);
+  if (m) return m;
+  const pack = PACKS.find((p) => p.meta.id === id);
+  if (!pack?.view) throw new Error(`no model or pack "${id}"`);
+  return { id, name: pack.part.name, view: pack.view, legs: {} };
+};
+const placedOf = (id: string): ResolvedPart => {
+  const m = UPCOMING_MODELS.find((x) => x.id === id);
+  if (m) return upcomingPart(m);
+  const pack = PACKS.find((p) => p.meta.id === id)!;
+  return resolveBuild(layoutProject([{ kind: pack.meta.kind! }]).build).resolved!.parts.find((p) => p.def.id === id)!;
+};
+const lookTree = (id: string, state: "done" | "ghost" = "done") => viewShapes(lookOf(id).view, placedOf(id), state);
+
 /** Every mesh with its position in the part's frame (group offsets added). */
 function meshes(n: ShapeNode, at: [number, number, number] = [0, 0, 0]): { geometry: string; args: number[]; pos: [number, number, number]; flat?: boolean; color?: string }[] {
   const pos: [number, number, number] = [at[0] + ((n as { position?: number[] }).position?.[0] ?? 0), at[1] + ((n as { position?: number[] }).position?.[1] ?? 0), at[2] + ((n as { position?: number[] }).position?.[2] ?? 0)];
@@ -138,18 +157,38 @@ describe("realistic part shapes (user, 11/11/2026)", () => {
   });
 });
 
-describe("models of the next parts (PLAN 17.1), before their packs exist", () => {
-  const model = (id: string) => UPCOMING_MODELS.find((m) => m.id === id)!;
-  const tree = (id: string, state: "done" | "ghost" = "done") => viewShapes(model(id).view, upcomingPart(model(id)), state);
+describe("models of the phase 17.1 parts (PLAN 17.1), now in their packs", () => {
+  // A model leaves upcoming.ts unchanged when its pack is made (17/11/2026: all but the Hall sensor and the soil sensor).
+  const packOf = (id: string) => PACKS.find((p) => p.meta.id === id);
+  const model = lookOf;
+  const placed = placedOf;
+  const tree = lookTree;
+  const MOVED = ["active-buzzer", "photoresistor", "ntc-thermistor", "tilt-switch", "reed-switch", "touch-sensor", "ir-obstacle-sensor", "flame-sensor", "sound-sensor", "water-level-sensor", "dht22", "hall-sensor", "soil-moisture-sensor"];
 
-  it("all 13 parts of phase 17.1 have a model, each in the view.json format", () => {
-    expect(UPCOMING_MODELS.slice(0, 13).map((m) => m.id)).toEqual(["active-buzzer", "photoresistor", "ntc-thermistor", "tilt-switch", "reed-switch", "hall-sensor", "touch-sensor", "ir-obstacle-sensor", "flame-sensor", "sound-sensor", "soil-moisture-sensor", "water-level-sensor", "dht22"]);
+  it("all 13 parts have packs that carry their model in view.json (19/11/2026: the Hall and soil sensors too)", () => {
+    for (const id of MOVED) {
+      expect(packOf(id)?.view, id).toBeDefined();
+      expect(UPCOMING_MODELS.some((m) => m.id === id), id).toBe(false);
+    }
     for (const m of UPCOMING_MODELS) {
       expect(() => checkViewSpec(m.view, m.id), m.id).not.toThrow();
       const named = "legs" in m.view ? m.view.legs : "pins" in m.view ? m.view.pins : Object.keys(m.legs);
       expect([...named].sort(), m.id).toEqual(Object.keys(m.legs).sort());
       // no two legs in one breadboard row on the same side of the channel (they would be joined)
       expect(new Set(Object.values(m.legs).map(([row, col]) => `${row}${col < "f" ? "L" : "R"}`)).size, m.id).toBe(Object.keys(m.legs).length);
+    }
+  });
+
+  it("a pack's model stands in the holes its layout gives, with one highlighted body", () => {
+    for (const id of MOVED) {
+      const part = placed(id);
+      const t = tree(id);
+      const starts = [...nodes(t, "rod").map((r) => r.from.join()), ...nodes(t, "lead").flatMap((l) => [l.points[0]!.join(), l.points.at(-1)!.join()])];
+      for (const h of Object.values(part.legs)) expect(starts, id).toContain(holePos(h).join());
+      const all = (n: ShapeNode): ShapeNode[] => [n, ...(n.node === "group" ? n.children.flatMap(all) : [])];
+      expect(all(t).filter((n) => n.node === "mesh" && n.pulse).length, id).toBe(1);
+      for (const n of all(tree(id, "ghost"))) if (n.node === "mesh") expect(n.material.opacity, id).toBeLessThan(1);
+      for (const x of meshes(t)) expect([...x.args, ...x.pos].every(Number.isFinite), id).toBe(true);
     }
   });
 
@@ -171,17 +210,12 @@ describe("models of the next parts (PLAN 17.1), before their packs exist", () =>
     }
   });
 
-  it("active buzzer: a sound hole on top and a + beside the positive leg", () => {
-    const m = model("active-buzzer");
-    const part = upcomingPart(m);
-    const t = tree(m.id);
-    const top = meshes(t).find((x) => x.geometry === "cylinder" && x.args[0] === 1.1)!;
-    expect(top.pos[1]).toBeGreaterThan(9.5);
-    const plus = nodes(t, "group").flatMap((g) => g.children).find((c) => c.node === "mesh" && c.material.map?.text === "+")!;
-    const plusZ = holePos(part.legs.plus!)[2];
-    const minusZ = holePos(part.legs.minus!)[2];
-    // the + sits on the plus leg's side of the middle
-    expect(Math.sign((plus as { position: number[] }).position[2]!)).toBe(Math.sign(plusZ - minusZ));
+  it("active buzzer: the 3-pin module, built like the passive buzzer module", () => {
+    const active = packOf("active-buzzer")!.view!;
+    const passive = packOf("passive-buzzer")!.view!;
+    expect(active.shape).toBe("upright-module");
+    expect((active as { pins: string[] }).pins).toEqual((passive as { pins: string[] }).pins);
+    expect(meshes(tree("active-buzzer")).some((x) => x.geometry === "cylinder" && x.args[0] === 6)).toBe(true);
   });
 
   it("photoresistor: a zigzag of five bars joined at alternating ends, all on the disc", () => {
@@ -208,7 +242,7 @@ describe("models of the next parts (PLAN 17.1), before their packs exist", () =>
   it("modules: the parts sit on the channel side of the board, and the pin names are printed", () => {
     for (const id of ["hall-sensor", "touch-sensor", "ir-obstacle-sensor", "flame-sensor", "sound-sensor", "water-level-sensor"]) {
       const m = model(id);
-      const part = upcomingPart(m);
+      const part = placed(id);
       const legX = holePos(Object.values(part.legs)[0]!)[0];
       const t = tree(id);
       const names = nodes(t, "group").flatMap((g) => g.children).flatMap((c) => (c.node === "mesh" && c.material.map ? [c.material.map.text] : []));
@@ -225,17 +259,22 @@ describe("models of the next parts (PLAN 17.1), before their packs exist", () =>
     for (const d of domes("ir-obstacle-sensor")) expect(d.pos[1]).toBeGreaterThan(32);
   });
 
-  it("soil moisture sensor: the probe lies on the mat beside the breadboard, joined by two wires", () => {
-    const m = model("soil-moisture-sensor");
-    const part = upcomingPart(m);
-    const t = tree(m.id);
-    const legX = holePos(part.legs.ao!)[0];
-    const head = meshes(t).find((x) => x.geometry === "box" && x.args[0] === 20)!;
-    expect(Math.sign(head.pos[0])).toBe(Math.sign(legX));
-    expect(Math.abs(head.pos[0]) - 10).toBeGreaterThan(BOARD.maxX);
-    expect(head.pos[1] - 0.8).toBeCloseTo(-BOARD.height);
-    expect(nodes(t, "lead").filter((l) => l.color).length).toBe(2);
-    expect(previewFrame(m.view).size).toBeGreaterThan(previewFrame(model("flame-sensor").view).size);
+  it("soil moisture sensor: the capacitive probe lies on the mat beside the breadboard, pointing away, on three wires", () => {
+    const part = placed("soil-moisture-sensor");
+    const t = tree("soil-moisture-sensor");
+    const legX = holePos(part.legs.aout!)[0];
+    const m = meshes(t);
+    const head = m.find((x) => x.geometry === "box" && x.args[0] === 25 && x.args[2] === 23)!;
+    const probe = m.find((x) => x.geometry === "box" && x.args[2] === 21)!;
+    expect(Math.sign(head.pos[0])).toBe(Math.sign(legX)); // on the part's own side
+    expect(Math.abs(head.pos[0]) - 12.5).toBeGreaterThan(BOARD.maxX); // all of it beyond the breadboard's edge
+    expect(Math.abs(probe.pos[0])).toBeGreaterThan(Math.abs(head.pos[0])); // the probe points away
+    expect(head.pos[1] - 0.8).toBeCloseTo(-BOARD.height); // on the mat
+    // the shoulder: the probe is narrower than the head; its two lines of print are on it
+    const texts = nodes(t, "group").flatMap((g) => g.children).flatMap((c) => (c.node === "mesh" && c.material.map ? [c.material.map.text] : []));
+    expect(texts).toEqual(["Capacitive Soil", "Moisture Sensor v1.2"]);
+    expect(nodes(t, "lead").filter((l) => l.color).length).toBe(3);
+    expect(previewFrame(model("soil-moisture-sensor").view).size).toBeGreaterThan(previewFrame(model("flame-sensor").view).size);
   });
 
   it("DHT22: a white case with its own grid; the DHT11 keeps its 4 x 6 grid", () => {
@@ -258,13 +297,14 @@ describe("models of the parts with several pins (PLAN 17.2)", () => {
   const tree = (id: string) => viewShapes(model(id).view, upcomingPart(model(id)), "done");
 
   it("all 8 parts of phase 17.2 have a model", () => {
-    expect(UPCOMING_MODELS.slice(13, 21).map((m) => m.id)).toEqual(["rgb-led", "hc-sr04", "joystick", "rotary-encoder", "keypad-4x4", "seven-segment", "tm1637-display", "traffic-light"]);
+    for (const id of ["rgb-led", "hc-sr04", "joystick", "rotary-encoder", "keypad-4x4", "seven-segment", "tm1637-display", "traffic-light"]) expect(lookOf(id).view, id).toBeDefined();
   });
 
   it("the parts dialog shows every model once, in lists short enough for the browser's 3D canvases", () => {
     expect(UPCOMING_GROUPS.flatMap((g) => g.models)).toEqual(UPCOMING_MODELS);
     for (const g of UPCOMING_GROUPS) expect(g.models.length, g.label).toBeLessThanOrEqual(14);
-    expect(SUPPORTED_PARTS.length).toBeLessThanOrEqual(14);
+    expect(SUPPORTED_GROUPS.flatMap((g) => g.parts.map((p) => p.kind)).sort()).toEqual(SUPPORTED_PARTS.map((p) => p.kind).sort());
+    for (const g of SUPPORTED_GROUPS) expect(g.parts.length, g.label).toBeLessThanOrEqual(14);
   });
 
   it("a digit has seven bars that fit its box, the three flat ones between the four posts", () => {
@@ -414,15 +454,16 @@ describe("models of the other boards (before any board pack)", () => {
 
 describe("models of the I2C parts (PLAN 17.3)", () => {
   const all3 = (n: ShapeNode): ShapeNode[] => [n, ...(n.node === "group" ? n.children.flatMap(all3) : [])];
-  const model = (id: string) => UPCOMING_MODELS.find((m) => m.id === id)!;
-  const tree = (id: string) => viewShapes(model(id).view, upcomingPart(model(id)), "done");
+  const model = lookOf;
+  const tree = (id: string) => lookTree(id);
 
   it("all 6 parts of phase 17.3 have a model", () => {
-    expect(UPCOMING_MODELS.slice(21, 27).map((m) => m.id)).toEqual(["oled-ssd1306", "bme280", "mpu6050", "ds3231", "bh1750", "vl53l0x"]);
+    // 19/11/2026: all but the VL53L0X have packs now (oled-ssd1306-i2c, bme280, mpu6050, rtc-ds3231, light-sensor-bh1750)
+    for (const id of ["oled-ssd1306-i2c", "bme280", "mpu6050", "rtc-ds3231", "light-sensor-bh1750", "vl53l0x"]) expect(lookOf(id).view, id).toBeDefined();
   });
 
   it("flat boards: the parts lie on top of the board, between the pin header and the far edge", () => {
-    for (const id of ["bme280", "mpu6050", "bh1750", "vl53l0x"]) {
+    for (const id of ["bme280", "mpu6050", "light-sensor-bh1750", "vl53l0x"]) {
       const v = model(id).view as Extract<(typeof UPCOMING_MODELS)[number]["view"], { shape: "header-module" }>;
       const m = meshes(tree(id));
       const board = m.find((x) => x.geometry === "box" && x.args[0] === v.board.size[0] && x.args[2] === v.board.size[1])!;
@@ -440,15 +481,15 @@ describe("models of the I2C parts (PLAN 17.3)", () => {
   });
 
   it("the small OLED keeps a lit screen and its four pin names", () => {
-    const t = tree("oled-ssd1306");
+    const t = tree("oled-ssd1306-i2c");
     const texts = nodes(t, "group").flatMap((g) => g.children).flatMap((c) => (c.node === "mesh" && c.material.map ? [c.material.map.text] : []));
     expect(texts).toEqual(expect.arrayContaining(["Hello!  128x64", "GND", "VCC", "SCL", "SDA"]));
   });
 
   it("clock module: the coin cell is on the back of the board, the chips on the front", () => {
-    const part = upcomingPart(model("ds3231"));
+    const part = placedOf("rtc-ds3231");
     const legX = holePos(part.legs.vcc!)[0];
-    const m = meshes(tree("ds3231"));
+    const m = meshes(tree("rtc-ds3231"));
     const cell = m.find((x) => x.geometry === "cylinder" && x.args[0] === 10)!;
     const chip = m.find((x) => x.geometry === "box" && x.args[1] === 10.3)!;
     // the front faces the channel (toward x = 0): the cell is on the other side of the legs
@@ -457,7 +498,6 @@ describe("models of the I2C parts (PLAN 17.3)", () => {
   });
 
   it("DS18B20 (17.4): a body round at the back and flat at the front, its name on the flat side, three legs", () => {
-    expect(UPCOMING_MODELS.slice(27, 28).map((m) => m.id)).toEqual(["ds18b20"]);
     const t = tree("ds18b20");
     expect(nodes(t, "lead").length).toBe(3);
     const round = all3(t).find((n) => n.node === "mesh" && n.geometry.type === "cylinder" && n.geometry.arc)!;
@@ -485,7 +525,7 @@ describe("models of the basic parts (PLAN 17.5)", () => {
   const all = (n: ShapeNode): ShapeNode[] => [n, ...(n.node === "group" ? n.children.flatMap(all) : [])];
 
   it("all 5 parts of phase 17.5 have a model", () => {
-    expect(UPCOMING_MODELS.slice(28, 33).map((m) => m.id)).toEqual(["diode-1n4007", "electrolytic-capacitor", "ceramic-capacitor", "npn-transistor", "logic-mosfet"]);
+    expect(UPCOMING_MODELS.filter((m) => ["diode-1n4007", "electrolytic-capacitor", "ceramic-capacitor", "npn-transistor", "logic-mosfet"].includes(m.id)).map((m) => m.id)).toEqual(["diode-1n4007", "electrolytic-capacitor", "ceramic-capacitor", "npn-transistor", "logic-mosfet"]);
   });
 
   it("diode: the band is at the cathode's end of the body", () => {
@@ -538,7 +578,7 @@ describe("models of the motors and 5 V parts (PLAN 17.6)", () => {
   const onWires = ["servo-sg90", "dc-motor", "stepper-28byj-48", "lcd-1602-i2c", "vibration-motor"];
 
   it("all 8 parts of phase 17.6 have a model", () => {
-    expect(UPCOMING_MODELS.slice(33, 41).map((m) => m.id)).toEqual(["servo-sg90", "relay-module", "dc-motor", "stepper-28byj-48", "neopixel-stick", "pir-hc-sr501", "lcd-1602-i2c", "vibration-motor"]);
+    expect(UPCOMING_MODELS.filter((m) => ["servo-sg90", "relay-module", "dc-motor", "stepper-28byj-48", "neopixel-stick", "pir-hc-sr501", "lcd-1602-i2c", "vibration-motor"].includes(m.id)).map((m) => m.id)).toEqual(["servo-sg90", "relay-module", "dc-motor", "stepper-28byj-48", "neopixel-stick", "pir-hc-sr501", "lcd-1602-i2c", "vibration-motor"]);
   });
 
   it("parts on wires: one coloured wire per pin, from over its hole to the part on the mat beside the breadboard", () => {
@@ -603,10 +643,15 @@ describe("models of the SPI and UART parts (PLAN 17.7)", () => {
   const model = (id: string) => UPCOMING_MODELS.find((m) => m.id === id)!;
   const tree = (id: string) => viewShapes(model(id).view, upcomingPart(model(id)), "done");
 
-  it("all 5 parts of phase 17.7 have a model, which makes every part of the plan's list: 46", () => {
-    expect(UPCOMING_MODELS.slice(41).map((m) => m.id)).toEqual(["matrix-max7219", "rfid-rc522", "sd-card-module", "tft-st7735", "gps-neo-6m"]);
-    expect(UPCOMING_MODELS.length).toBe(46);
-    expect(new Set(UPCOMING_MODELS.map((m) => m.id)).size).toBe(46);
+  it("all 5 parts of phase 17.7 have a model, which makes every part of the plan's list: 46 (27 previews + 19 packs)", () => {
+    expect(UPCOMING_MODELS.slice(-5).map((m) => m.id)).toEqual(["matrix-max7219", "rfid-rc522", "sd-card-module", "tft-st7735", "gps-neo-6m"]);
+    expect(UPCOMING_MODELS.length).toBe(27);
+    const packed = [
+      "active-buzzer", "photoresistor", "ntc-thermistor", "tilt-switch", "reed-switch", "touch-sensor", "ir-obstacle-sensor", "flame-sensor", "sound-sensor", "water-level-sensor", "dht22",
+      "hall-sensor", "soil-moisture-sensor", "oled-ssd1306-i2c", "bme280", "mpu6050", "rtc-ds3231", "light-sensor-bh1750", "ds18b20",
+    ];
+    for (const id of packed) expect(PACKS.some((p) => p.meta.id === id), id).toBe(true);
+    expect(new Set([...UPCOMING_MODELS.map((m) => m.id), ...packed]).size).toBe(46);
   });
 
   it("LED matrix: 64 dots in a square, the picture's dots lit, its top row at the top", () => {
@@ -681,7 +726,10 @@ describe("the printed breadboard top and the cutting mat", () => {
 
 describe("Supported parts list", () => {
   it("lists every part the AI can plan with, from the packs, each with a description", () => {
-    expect(SUPPORTED_PARTS.map((p) => p.kind)).toEqual(["led", "button", "slide-switch", "pot", "oled", "dht11", "buzzer"]);
+    expect(SUPPORTED_PARTS.map((p) => p.kind)).toEqual([
+      "led", "button", "slide-switch", "tilt", "reed", "touch", "hall", "pot", "ldr", "bh1750", "ntc", "water-level", "soil", "oled", "oled-small",
+      "dht11", "dht22", "ds18b20", "obstacle", "bme280", "flame", "sound-sensor", "vibration", "line", "buzzer", "active-buzzer", "vibration-motor", "rtc", "imu",
+    ]);
     for (const p of SUPPORTED_PARTS) {
       expect(p.name.length).toBeGreaterThan(2);
       expect(p.text).toMatch(/^[A-Z]/);
@@ -725,5 +773,17 @@ describe("wires don't go through each other (user, 11/11/2026)", () => {
         expect(b.lift! * 0.8, `${a.id}/${b.id}`).toBeGreaterThanOrEqual(a.lift! + 2.2 - 1e-9);
       }
     }
+  });
+});
+
+describe("divider resistors (user, 18/11/2026: they looked squeezed)", () => {
+  it("the photoresistor's and thermistor's resistor span as many rows as the LED's", () => {
+    const span = (kind: string) => {
+      const r = resolveBuild(layoutProject([{ kind }]).build).resolved!.parts.find((p) => p.def.id === "resistor")!;
+      return Math.abs(r.legs.a!.row - r.legs.b!.row);
+    };
+    expect(span("led")).toBe(3);
+    expect(span("ldr")).toBe(span("led"));
+    expect(span("ntc")).toBe(span("led"));
   });
 });

@@ -1,0 +1,12 @@
+{
+  "shape": "photo-disc",
+  "legs": [
+    "a",
+    "b"
+  ],
+  "radius": 2.55,
+  "body": "#e9e3d2",
+  "face": "#c9512b",
+  "track": "#f0e2c0",
+  "note": "Not measured: the usual size of this part."
+}

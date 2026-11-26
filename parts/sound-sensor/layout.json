@@ -1,0 +1,56 @@
+{
+  "name": "sound sensor",
+  "height": 3,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "SND",
+      "type": "self",
+      "legs": {
+        "out": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "vcc": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "SND",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "SND.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "SND.out"
+      ]
+    },
+    {
+      "power": [
+        2,
+        "j",
+        "SND.vcc"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (light sensor)",
+    "text": "Push the photoresistor {ref}'s 2 legs into column f: one into hole {hole.a}, the other into {hole.b}. Its face with the wavy line points up, toward the light.",
+    "tip": "A photoresistor has no + or −: either leg can go in either hole."
+  },
+  "why": "{ref} is a photoresistor: its resistance drops in bright light. With the 10 kΩ resistor below it, it makes a voltage divider, so the voltage between them rises as the light gets brighter.",
+  "wire": {
+    "ground": "This connects the bottom of the divider (the 10 kΩ resistor) to ground.",
+    "power": "This puts 3.3 V on {ref}'s top leg, the top of the divider.",
+    "adc": "{pin} is an analog input (ADC): it measures the voltage between {ref} and the 10 kΩ resistor and gives the code a number from 0 to 65535, higher in brighter light."
+  },
+  "names": {
+    "shop": [
+      "photoresistor (LDR, GL5528)",
+      "photoresistors (LDR, GL5528)"
+    ],
+    "plan": "Light sensor (photoresistor)",
+    "greeting": "a light sensor"
+  }
+}

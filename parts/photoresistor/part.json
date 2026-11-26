@@ -1,0 +1,43 @@
+{
+  "id": "photoresistor",
+  "name": "Photoresistor (LDR, GL5528)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "a",
+      "label": "leg 1"
+    },
+    {
+      "id": "b",
+      "label": "leg 2",
+      "kind": "analog_out"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "resistor",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "specs": {
+    "resistanceAt10LuxOhms": {
+      "value": [
+        10000,
+        20000
+      ],
+      "src": {
+        "typical": true,
+        "note": "GL5528 typical value"
+      }
+    },
+    "darkResistanceOhms": {
+      "value": 1000000,
+      "src": {
+        "typical": true,
+        "note": "GL5528 typical value"
+      }
+    },
+    "note": "Its resistance falls as the light gets brighter. It has no polarity."
+  }
+}

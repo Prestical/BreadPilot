@@ -1,0 +1,45 @@
+{
+  "plan": {
+    "line": "an NTC thermistor (10 kΩ, B 3950) that measures temperature from about −20 to 100 °C, accurate to about ±1 °C; a 10 kΩ resistor is added automatically. The code turns its reading into °C. Use it when the idea names a thermistor; for the room's temperature and humidity prefer the DHT11. The bare bead must stay dry. Uses one of the three ADC pins (shared with knobs)."
+  },
+  "words": {
+    "nouns": [
+      "thermistor",
+      "thermistors",
+      "ntc",
+      "ntcs",
+      "ntc thermistor",
+      "ntc thermistors"
+    ],
+    "claims": [
+      "thermistor",
+      "temperature-sensor"
+    ]
+  },
+  "names": {
+    "label": [
+      "an NTC thermistor",
+      "NTC thermistors"
+    ],
+    "count": [
+      "thermistor",
+      "thermistors"
+    ],
+    "supports": "NTC thermistors",
+    "short": [
+      "thermistor",
+      "thermistors"
+    ]
+  },
+  "code": {
+    "pinLine": "NTC thermistor {ref} on {gpio}: ADC({g}). It sits on the 3.3 V side of a divider with a 10 kΩ resistor to GND, so read_u16() rises as it gets warmer. To get °C: v = adc.read_u16(); r = 10000 * (65535 - v) / v (the thermistor's ohms; skip v == 0); t = 1 / (1/298.15 + math.log(r / 10000) / 3950) - 273.15 (needs import math). Average a few readings: one ADC reading jumps by about half a degree.",
+    "imports": [
+      "from machine import ADC",
+      "import math"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `ADC({g})  (r = 10000*(65535-v)/v; °C from B 3950)` |"
+    ],
+    "ragQuery": "ADC analog input GP26 GP27 GP28 voltage range"
+  }
+}

@@ -219,7 +219,7 @@ describe("unsupported ideas", () => {
     const { llm } = fakeLlm({ intake: [intake("unsupported", { unsupportedParts: ["DC motors"] })], plan: [LED_BUTTON] });
     const p = await createProject(deps(llm), "build a robot car");
     expect(p.state).toBe("AWAIT_APPROVAL");
-    expect(p.plans[0]!.questions[0]).toBe("This might need DC motors. Can it be done with LEDs, buttons, slide switches, knobs, temperature sensors and buzzers instead? If not, ask for the handoff bundle.");
+    expect(p.plans[0]!.questions[0]).toBe("This might need DC motors. Can it be done with the 29 parts BreadPilot supports instead (LEDs, buttons, sensors, displays, buzzers and more: see Supported parts)? If not, ask for the handoff bundle.");
   });
 });
 
@@ -353,8 +353,8 @@ describe("live-eval regressions (run 1)", () => {
     expect(p.state).toBe("HANDOFF");
     expect(p.intake!.clarity).toBe("unsupported");
     // The OLED is supported since Milestone 6 and the DHT11 since M15, but the DHT11 measures air only.
-    expect(p.intake!.unsupportedParts).toEqual(["a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor"]);
-    expect(p.handoffReason).toMatch(/^This project needs a temperature sensor other than the DHT11 .*, which the builder can't wire yet/);
+    expect(p.intake!.unsupportedParts).toEqual(["a waterproof temperature probe (the DS18B20 and thermistor here are bare parts that must stay dry)"]);
+    expect(p.handoffReason).toMatch(/^This project needs a waterproof temperature probe .*, which the builder can't wire yet/);
     expect(calls.map((c) => c.stage)).toEqual(["intake"]); // no plan, no substituted parts
     expect(p.build).toBeUndefined();
   });
@@ -487,7 +487,10 @@ describe("LLM client", () => {
     const llm = createLlm({ api: "ollama", baseUrl: "http://h", model: "m", numCtx: 1, temperature: 0, timeoutMs: 1000, fetchImpl: f as never });
     await llm.json(PlanSchema, []);
     const format = JSON.parse(String((f.mock.calls[0]! as unknown as [string, RequestInit])[1].body)).format;
-    expect(format.properties.parts.items.properties.kind.enum).toEqual(["led", "button", "slide-switch", "pot", "oled", "dht11", "buzzer"]);
+    expect(format.properties.parts.items.properties.kind.enum).toEqual([
+      "led", "button", "slide-switch", "tilt", "reed", "touch", "hall", "pot", "ldr", "bh1750", "ntc", "water-level", "soil", "oled", "oled-small",
+      "dht11", "dht22", "ds18b20", "obstacle", "bme280", "flame", "sound-sensor", "vibration", "line", "buzzer", "active-buzzer", "vibration-motor", "rtc", "imu",
+    ]);
     expect(format.properties.parts.items.required).toEqual(["kind", "purpose"]);
     expect(JSON.stringify(format)).not.toMatch(/maxItems|pattern/);
     expect(format.properties.behavior.minItems).toBe(1);

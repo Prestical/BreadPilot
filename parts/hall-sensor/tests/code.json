@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "read the module's output",
+      "file": "code/read.py",
+      "layout": [
+        {
+          "kind": "hall"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the module on a pin that isn't wired",
+      "file": "code/wrong-pin.py",
+      "layout": [
+        {
+          "kind": "hall"
+        }
+      ],
+      "errors": [
+        "C004",
+        "C006"
+      ]
+    }
+  ]
+}

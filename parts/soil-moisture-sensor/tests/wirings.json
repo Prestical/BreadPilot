@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine (VCC from 3V3)",
+      "layout": [
+        {
+          "kind": "soil"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "with a knob and an LED, power straight from the Pico",
+      "layout": [
+        {
+          "kind": "soil"
+        },
+        {
+          "kind": "pot"
+        },
+        {
+          "kind": "led"
+        }
+      ],
+      "power": "direct",
+      "expect": []
+    },
+    {
+      "name": "the signal's pin set as a digital input (and it floats: a voltage, not a 0/1 output)",
+      "layout": [
+        {
+          "kind": "soil"
+        }
+      ],
+      "modes": {
+        "GP26": "in"
+      },
+      "expect": [
+        "E008",
+        "W003"
+      ]
+    }
+  ]
+}

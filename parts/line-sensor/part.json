@@ -1,0 +1,61 @@
+{
+  "id": "line-sensor",
+  "name": "Line tracking sensor module (TCRT5000, 4 pins)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "do",
+      "label": "D0",
+      "kind": "digital_out",
+      "level": "vcc"
+    },
+    {
+      "id": "ao",
+      "label": "A0 (not used)"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 20,
+        "src": {
+          "typical": true,
+          "note": "typical module current on 3.3 V; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "activeLevel": {
+      "value": "low over a light surface",
+      "src": {
+        "typical": true,
+        "note": "typical for TCRT5000 comparator boards"
+      }
+    },
+    "note": "Powered from 3V3, so its outputs stay at the Pico's 3.3 V."
+  }
+}

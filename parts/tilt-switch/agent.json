@@ -1,0 +1,65 @@
+{
+  "plan": {
+    "line": "a ball tilt switch (SW-520D): closed while it stands upright, open when it is tilted or shaken. Use it to notice tilting, tipping over or shaking; it can't measure an angle."
+  },
+  "words": {
+    "nouns": [
+      "tilt switch",
+      "tilt switches",
+      "tilt sensor",
+      "tilt sensors",
+      "ball switch",
+      "ball switches",
+      "sw-520d",
+      "sw520d",
+      "shake switch",
+      "shake sensor",
+      "vibration switch",
+      "vibration switches"
+    ],
+    "impliedBy": {
+      "words": [
+        "tilt",
+        "tilts",
+        "tilted",
+        "tilting",
+        "tip over",
+        "tips over",
+        "tipped over",
+        "shake",
+        "shakes",
+        "shaken",
+        "shaking"
+      ],
+      "unless": [
+        "tilt switch",
+        "tilt sensor"
+      ]
+    }
+  },
+  "names": {
+    "label": [
+      "a tilt switch",
+      "tilt switches"
+    ],
+    "count": [
+      "tilt switch",
+      "tilt switches"
+    ],
+    "supports": "tilt switches",
+    "short": [
+      "tilt switch",
+      "tilt switches"
+    ]
+  },
+  "code": {
+    "pinLine": "tilt switch {ref} on {gpio}: Pin({g}, Pin.IN, Pin.PULL_UP). value() is 0 while it stands upright (the ball closes the contact) and 1 while it is tilted. While it is being shaken the ball bounces, so the value flickers: to count a tilt, wait until it has read 1 for about 50 ms.",
+    "imports": [
+      "from machine import Pin"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {refs} | {mode} | `Pin({g}, Pin.IN, Pin.PULL_UP)  (0 = upright, 1 = tilted)` |"
+    ],
+    "ragQuery": "GPIO digital input with pull-up resistor"
+  }
+}

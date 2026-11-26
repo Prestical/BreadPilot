@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "name": "text on the display",
+      "file": "code/hello.py",
+      "layout": [
+        {
+          "kind": "oled-small"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the SH1106 driver (a different chip)",
+      "file": "code/sh1106.py",
+      "layout": [
+        {
+          "kind": "oled-small"
+        }
+      ],
+      "errors": [
+        "C010",
+        "C012"
+      ]
+    },
+    {
+      "name": "drawn but never shown",
+      "file": "code/no-show.py",
+      "layout": [
+        {
+          "kind": "oled-small"
+        }
+      ],
+      "errors": [
+        "C012"
+      ]
+    }
+  ]
+}

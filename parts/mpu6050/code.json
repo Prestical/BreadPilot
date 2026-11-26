@@ -1,0 +1,11 @@
+{
+  "modules": {
+    "match": [
+      "mpu6050",
+      "mpu_6050",
+      "imu"
+    ],
+    "hint": "Use `from mpu6050 import MPU6050` (the mpu6050.py file from this project).",
+    "onlyWith": "a motion sensor"
+  }
+}

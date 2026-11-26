@@ -22,13 +22,23 @@ const STRONG: { id: string; re: RegExp; label: string }[] = [
   // The DHT11 (and a plain "DHT", "humidity", "thermometer") can be a part (M15: the dht11 pack claims
   // it); other temperature sensors stay unsupported.
   { id: "dht11", re: /\b(dhts?|dht-?11s?|humidity|hygrometers?|thermometers?)\b/, label: "a temperature or humidity sensor" },
-  { id: "temperature", re: /\b(dht-?(1[02-9]|[2-9]\d)s?|am2302|bme\d+|bmp\d+|ds18b20|thermistors?|moisture)\b/, label: "a temperature sensor other than the DHT11 (such as a DHT22, BME280, DS18B20 or thermistor) or a moisture sensor" },
+  // M17 17.1 (17/11/2026): the DHT22 and the NTC thermistor have packs (they claim these entries);
+  // the other temperature sensors, soil moisture and Hall sensors stay unsupported.
+  { id: "dht22", re: /\b(dht-?22s?|am2302s?)\b/, label: "a DHT22 temperature and humidity sensor" },
+  { id: "thermistor", re: /\b(thermistors?|ntcs?)\b/, label: "a thermistor" },
+  { id: "ds18b20", re: /\b(ds18b20s?)\b/, label: "a DS18B20 temperature sensor" },
+  { id: "bme280", re: /\b(bme280s?|bmp280s?)\b/, label: "a BME280 or BMP280 pressure sensor" },
+  { id: "temperature", re: /\b(dht-?(1[02-9]|2[013-9]|[3-9]\d)s?|bme(?!280)\d+|bmp(?!280)\d+|lm35|tmp36|max6675|thermocouples?)\b/, label: "a temperature sensor other than the DHT11, DHT22, DS18B20 or BME280 (such as a TMP36 or a thermocouple)" },
+  { id: "moisture", re: /\b(moisture)\b/, label: "a soil moisture sensor" },
+  { id: "hall", re: /\b(hall(-| )effect|hall sensors?|a3144)\b/, label: "a Hall (magnet) sensor" },
   { id: "distance", re: /\b(ultrasonic|hc-?sr04|lidar)\b/, label: "a distance sensor" },
-  { id: "motion", re: /\b(pir|accelerometers?|gyroscopes?|gyros?|imu|mpu-?\d+)\b/, label: "a motion sensor" },
+  { id: "imu", re: /\b(accelerometers?|gyroscopes?|gyros?|imus?|mpu-?6050s?|gy-?521)\b/, label: "an accelerometer or gyroscope" },
+  { id: "motion", re: /\b(pir|mpu-?(?!6050)\d+)\b/, label: "a motion sensor" },
   { id: "light", re: /\b(ldr|photoresistors?|photocells?|light sensors?)\b/, label: "a light sensor" },
   { id: "microphone", re: /\b(microphones?|mics?)\b/, label: "a microphone" },
   { id: "relay", re: /\b(relays?|solenoids?|pumps?|heaters?|light ?bulbs?|mains|230 ?v|110 ?v|120 ?v)\b/, label: "a relay or high-power device" },
-  { id: "input", re: /\b(keypads?|joysticks?|rotary encoders?|touch sensors?|capacitive)\b/, label: "an input module that isn't supported yet" },
+  { id: "touch", re: /\b(touch sensors?|touch pads?|capacitive touch|ttp223)\b/, label: "a touch sensor" },
+  { id: "input", re: /\b(keypads?|joysticks?|rotary encoders?)\b/, label: "an input module that isn't supported yet" },
   { id: "module", re: /\b(cameras?|rfid|nfc|gps|sd cards?|lasers?)\b/, label: "a module that isn't supported yet" },
 ];
 
@@ -58,14 +68,36 @@ const NOT_AVAILABLE: { id: string; text: string }[] = [
   { id: "buzzer", text: "buzzers" },
   { id: "speaker", text: "speakers for recorded sound or speech" },
   { id: "displays", text: "other displays like LCD, TFT, e-ink, 7-segment, color or touch screens" },
-  { id: "sensors", text: "sensors for distance, light or motion" },
+  { id: "distance", text: "distance sensors" },
+  { id: "light", text: "light sensors" },
+  { id: "motion", text: "motion sensors" },
   { id: "temperature-sensing", text: "temperature or humidity sensors" },
-  { id: "temperature", text: "other temperature sensors (DHT22, BME280, DS18B20, thermistors)" },
+  { id: "dht22", text: "the DHT22" },
+  { id: "thermistor", text: "thermistors" },
+  { id: "ds18b20", text: "the DS18B20" },
+  { id: "bme280", text: "pressure sensors (BME280)" },
+  { id: "imu", text: "accelerometers and gyroscopes" },
+  { id: "temperature", text: "other temperature sensors (TMP36, thermocouples)" },
+  { id: "moisture", text: "soil moisture sensors" },
+  { id: "hall", text: "Hall (magnet) sensors" },
+  { id: "touch", text: "touch sensors" },
   { id: "relay", text: "relays" },
   { id: "input", text: "keypads" },
 ];
 
-export const VOCABULARY_IDS = new Set([...STRONG, ...CONTEXTUAL, SOUND_VERBS, ...NOT_AVAILABLE].map((e) => e.id));
+/**
+ * Things an idea can ask to sense ("detect water", "when it gets dark", requirements.ts QUANTITIES and
+ * CONDITIONS). A pack that claims one is added to the plan for it instead of the idea being refused
+ * (M17). "temperature-sensor": the pack measures temperature too, so naming it is enough for a
+ * temperature idea (the DHT11 isn't added on top).
+ */
+export const SENSED_IDS = ["light-level", "sound-level", "water", "nearby", "flame", "distance", "motion", "pressure", "gas", "moisture", "vibration", "imu", "temperature-sensor"] as const;
+export type SensedId = (typeof SENSED_IDS)[number];
+
+export const VOCABULARY_IDS = new Set([...[...STRONG, ...CONTEXTUAL, SOUND_VERBS, ...NOT_AVAILABLE].map((e) => e.id), ...SENSED_IDS]);
+
+/** The part kind whose pack claims this vocabulary id, if any. */
+export const kindClaiming = (id: string) => PACKS.find((p) => p.agent?.words.claims?.includes(id))?.meta.kind;
 
 /**
  * The part kind that measures the air's temperature and humidity, when a pack claims

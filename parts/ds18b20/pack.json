@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "ds18b20",
+  "order": 51.5,
+  "kind": "ds18b20",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-19"
+  }
+}

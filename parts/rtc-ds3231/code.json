@@ -1,0 +1,10 @@
+{
+  "modules": {
+    "match": [
+      "ds3231",
+      "rtc"
+    ],
+    "hint": "This clock uses the DS3231: use `from ds3231 import DS3231` (the ds3231.py file from this project).",
+    "onlyWith": "a real-time clock"
+  }
+}

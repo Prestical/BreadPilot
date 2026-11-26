@@ -1,0 +1,20 @@
+{
+  "place": {
+    "title": "Place {ref} (tilt switch)",
+    "text": "Push the tilt switch {ref}'s 2 legs into column f: one into hole {hole.a}, the other into {hole.b}. Stand it straight up.",
+    "tip": "The legs have no + or −: either way round works. Upright, the ball inside touches both legs."
+  },
+  "why": "{ref} is a tilt switch: a small metal ball inside joins its two legs while it stands upright and rolls away when it is tilted, so the Pico can tell whether it is upright.",
+  "wire": {
+    "ground": "This connects {ref}'s other leg to ground: while the ball touches both legs, the pin reads 0.",
+    "in": "{pin} reads {ref}: 0 while it stands upright (the ball connects the pin to ground) and 1 while it is tilted (the Pico's internal pull-up)."
+  },
+  "names": {
+    "shop": [
+      "ball tilt switch (SW-520D)",
+      "ball tilt switches (SW-520D)"
+    ],
+    "plan": "Tilt switch",
+    "greeting": "a tilt switch"
+  }
+}

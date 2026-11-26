@@ -1,0 +1,59 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine",
+      "layout": [
+        {
+          "kind": "bme280"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "next to the OLED display: one I2C bus each",
+      "layout": [
+        {
+          "kind": "bme280"
+        },
+        {
+          "kind": "oled"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "SDA and SCL swapped in the pin modes",
+      "layout": [
+        {
+          "kind": "bme280"
+        }
+      ],
+      "modes": {
+        "GP16": "i2c0_scl",
+        "GP17": "i2c0_sda"
+      },
+      "expect": [
+        "E009",
+        "E009",
+        "E015",
+        "E015"
+      ]
+    },
+    {
+      "name": "VCC on 5 V (VBUS): the chip takes at most 3.6 V",
+      "layout": [
+        {
+          "kind": "bme280"
+        }
+      ],
+      "rewire": {
+        "BME1.vcc": "#40(VBUS) -> #24j(BME1.vcc)"
+      },
+      "expect": [
+        "E007",
+        "E007",
+        "E014"
+      ]
+    }
+  ]
+}

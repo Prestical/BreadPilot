@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "print the time every second",
+      "file": "code/clock.py",
+      "layout": [
+        {
+          "kind": "rtc"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "a CircuitPython library instead of the shipped driver",
+      "file": "code/wrong-driver.py",
+      "layout": [
+        {
+          "kind": "rtc"
+        }
+      ],
+      "errors": [
+        "C010"
+      ]
+    }
+  ]
+}

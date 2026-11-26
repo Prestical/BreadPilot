@@ -27,7 +27,7 @@
 import type { Board } from "@breadpilot/circuit-core";
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { PartKind, Plan } from "./schemas";
-import { ALARM_SOUND_QUESTION, CONTEXTUAL_WORDS, SOUND_PART, SOUND_VERB_WORDS, STRONG_WORDS, strongEntry, TEMPERATURE_PART, UNSUPPORTED_DISPLAY } from "./vocabulary";
+import { ALARM_SOUND_QUESTION, CONTEXTUAL_WORDS, kindClaiming, type SensedId, SOUND_PART, SOUND_VERB_WORDS, STRONG_WORDS, strongEntry, TEMPERATURE_PART, UNSUPPORTED_DISPLAY } from "./vocabulary";
 
 export { UNSUPPORTED_DISPLAY };
 
@@ -200,32 +200,48 @@ function matches(t: Text, re: RegExp): number[] {
 // ---------------------------------------------------------------- unsupported parts
 
 const SENSING_VERBS = /^(measure|measures|measuring|detect|detects|detecting|sense|senses|sensing|monitor|monitors|monitoring|track|tracks|log|logs|logging|check|checks)$/;
-const QUANTITIES: Record<string, string> = {
-  temperature: "a temperature or humidity sensor",
-  distance: "a distance sensor",
-  motion: "a motion sensor",
-  movement: "a motion sensor",
-  presence: "a motion sensor",
-  light: "a light sensor",
-  brightness: "a light sensor",
-  darkness: "a light sensor",
-  sound: "a microphone",
-  noise: "a microphone",
-  pressure: "a pressure sensor",
-  gas: "a gas sensor",
-  smoke: "a gas sensor",
-  water: "a water sensor",
+/**
+ * What an idea can ask to sense, with the label used when no part can (and the vocabulary id a
+ * part pack claims to sense it, M17). Temperature has its own rules (the DHT11, the chip's sensor).
+ */
+const QUANTITIES: Record<string, { label: string; id?: SensedId }> = {
+  temperature: { label: "a temperature or humidity sensor" },
+  distance: { label: "a distance sensor", id: "distance" },
+  motion: { label: "a motion sensor", id: "motion" },
+  movement: { label: "a motion sensor", id: "motion" },
+  presence: { label: "a motion sensor", id: "motion" },
+  light: { label: "a light sensor", id: "light-level" },
+  brightness: { label: "a light sensor", id: "light-level" },
+  darkness: { label: "a light sensor", id: "light-level" },
+  sound: { label: "a microphone", id: "sound-level" },
+  noise: { label: "a microphone", id: "sound-level" },
+  pressure: { label: "a pressure sensor", id: "pressure" },
+  gas: { label: "a gas sensor", id: "gas" },
+  smoke: { label: "a gas sensor", id: "gas" },
+  water: { label: "a water sensor", id: "water" },
+  rain: { label: "a water sensor", id: "water" },
+  leak: { label: "a water sensor", id: "water" },
+  flame: { label: "a flame sensor", id: "flame" },
+  moisture: { label: "a soil moisture sensor", id: "moisture" },
+  vibration: { label: "a vibration sensor", id: "vibration" },
+  vibrations: { label: "a vibration sensor", id: "vibration" },
+  altitude: { label: "a pressure sensor", id: "pressure" },
+  acceleration: { label: "an accelerometer or gyroscope", id: "imu" },
+  flames: { label: "a flame sensor", id: "flame" },
+  fire: { label: "a flame sensor", id: "flame" },
 };
-const CONDITIONS: Record<string, string> = {
-  dark: "a light sensor",
-  bright: "a light sensor",
-  warm: "a temperature or humidity sensor",
-  hot: "a temperature or humidity sensor",
-  cold: "a temperature or humidity sensor",
-  humid: "a temperature or humidity sensor",
-  loud: "a microphone",
-  close: "a distance sensor",
-  near: "a distance sensor",
+const CONDITIONS: Record<string, { label: string; id?: SensedId }> = {
+  dark: { label: "a light sensor", id: "light-level" },
+  bright: { label: "a light sensor", id: "light-level" },
+  warm: { label: "a temperature or humidity sensor" },
+  hot: { label: "a temperature or humidity sensor" },
+  cold: { label: "a temperature or humidity sensor" },
+  humid: { label: "a temperature or humidity sensor" },
+  loud: { label: "a microphone", id: "sound-level" },
+  close: { label: "a distance sensor", id: "nearby" },
+  near: { label: "a distance sensor", id: "nearby" },
+  wet: { label: "a water sensor", id: "water" },
+  dry: { label: "a soil moisture sensor", id: "moisture" },
 };
 const PRODUCE = /^(make|makes|making|play|plays|playing|produce|produces|emit|emits)$/;
 
@@ -245,24 +261,40 @@ const chipTemperatureOnly = (t: Text) => t.tokens.some((w) => OWN_TEMPERATURE.ha
  */
 const NOT_AIR_TEMPERATURE = /\b(water|liquid|liquids|aquarium|pool|coffee|tea|food|soup|soil|body|skin|fever|oven|freezer|frozen|boiling)\b/;
 
+export const WATERPROOF_PROBE = "a waterproof temperature probe (the DS18B20 and thermistor here are bare parts that must stay dry)";
+
 /** "a temperature sensor", "the humidity sensor": the temperature part, when there is one. */
 const TEMPERATURE_SENSOR_WORDS = new Set(["temperature", "humidity", "dht", "dht11", "thermal"]);
 
-function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[] } {
+/**
+ * "sensor" inside a part's own name ("light sensor", "flame sensor"): that part, not an unknown sensor.
+ */
+function insidePartName(t: Text, i: number): boolean {
+  return AGENT_PACKS.some((p) =>
+    p.agent!.words.nouns.filter((n) => n.includes(" ")).some((n) => matches(t, wordsRe([n])).some((from) => i >= from && i <= from + n.split(" ").length - 1)),
+  );
+}
+
+function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]; sensed: PartKind[] } {
   const unsupported = new Set<string>();
   const ambiguous = new Set<string>();
+  // Parts asked for by what they sense ("when it gets dark" → the light sensor, M17).
+  const sensed = new Set<PartKind>();
   const internalSensor = chipTemperatureOnly(t);
   // A temperature part exists (M15): the air's temperature is supported, so neither refuse nor ask.
   const notAir = TEMPERATURE_PART !== undefined && !internalSensor && NOT_AIR_TEMPERATURE.test(t.joined);
   const temperatureOk = (label: string) => label.startsWith("a temperature or humidity") && (internalSensor || (TEMPERATURE_PART !== undefined && !notAir));
-  const otherTemperatureSensor = strongEntry("temperature")!.label;
+  // A liquid's, the soil's or a body's temperature: the bare sensors here (DS18B20, thermistor) must stay dry.
+  const otherTemperatureSensor = WATERPROOF_PROBE;
 
-  for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i) && !aboutFilming(t, i)) unsupported.add(label);
+  // A word inside a part's own name isn't another part: "vibration motor module" isn't a motor (M17).
+  for (const { re, label } of STRONG_WORDS) for (const i of matches(t, re)) if (!negated(t, i) && !aboutFilming(t, i) && !insidePartName(t, i)) unsupported.add(label);
 
   for (const { re, label, ok, question } of CONTEXTUAL_WORDS) {
     for (const i of matches(t, re)) {
       if (negated(t, i) || (ok === "onboard" && before(t, i, 3).some((w) => ONBOARD.has(w)))) continue;
       if (t.tokens[i]!.startsWith("sensor") && TEMPERATURE_PART && TEMPERATURE_SENSOR_WORDS.has(t.tokens[i - 1] ?? "")) continue;
+      if (t.tokens[i]!.startsWith("sensor") && insidePartName(t, i)) continue;
       const producing = before(t, i, 3).some((w) => PRODUCE.test(w));
       if (!(nounContext(t, i) || producing || after(t, i, 1)[0] === "sensor")) continue;
       if (question && t.tokens[i] === question.word) ambiguous.add(question.text);
@@ -274,9 +306,17 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
   for (const { re, label } of SOUND_VERB_WORDS) for (const i of matches(t, re)) if (!negated(t, i)) unsupported.add(label);
 
   // "measure the distance", "detect motion", "check the temperature"
-  for (const [quantity, label] of Object.entries(QUANTITIES)) {
+  for (const [quantity, { label, id }] of Object.entries(QUANTITIES)) {
     for (const i of matches(t, new RegExp(`\\b${quantity}\\b`))) {
       if (negated(t, i)) continue;
+      // "the water temperature" is a temperature, not water to detect.
+      if (id === "water" && after(t, i, 1)[0]?.startsWith("temperature")) continue;
+      const part = id && (kindClaiming(id) as PartKind | undefined);
+      if (part) {
+        // "measure the light", or a level to show: "the light level", "the water level" (M17).
+        if (before(t, i, 3).some((w) => SENSING_VERBS.test(w)) || /^levels?$/.test(after(t, i, 1)[0] ?? "")) sensed.add(part);
+        continue;
+      }
       if (temperatureOk(label)) continue; // the Pico's own sensor, or the temperature part
       if (notAir && label.startsWith("a temperature")) {
         unsupported.add(otherTemperatureSensor);
@@ -290,11 +330,19 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
   }
 
   // Conditions on the environment: "when it gets dark", "if something comes close".
-  for (const [word, label] of Object.entries(CONDITIONS)) {
+  for (const [word, { label, id }] of Object.entries(CONDITIONS)) {
     for (const i of matches(t, new RegExp(`\\b${word}\\b`))) {
       const prev = before(t, i, 4);
-      const condition = prev.some((w) => ["when", "if", "once", "until", "whenever", "as"].includes(w)) && prev.some((w) => /^(gets|get|is|becomes|goes|comes|turns|it's)$/.test(w));
+      // The "when" may start a longer clause: "when it gets dark and an object comes close" (M17).
+      const condition = before(t, i, 10).some((w) => ["when", "if", "once", "until", "whenever", "as", "while"].includes(w)) && prev.some((w) => /^(gets|get|is|becomes|goes|comes|turns|it's)$/.test(w));
       if (!condition || negated(t, i)) continue;
+      // "when a magnet comes near" is about the magnet (a reed switch), not an obstacle.
+      if (id === "nearby" && before(t, i, 4).some((w) => /^magnets?$/.test(w))) continue;
+      const part = id && (kindClaiming(id) as PartKind | undefined);
+      if (part) {
+        sensed.add(part);
+        continue;
+      }
       if (temperatureOk(label)) continue;
       if (notAir && label.startsWith("a temperature")) {
         unsupported.add(otherTemperatureSensor);
@@ -306,7 +354,7 @@ function unsupportedParts(t: Text): { unsupported: string[]; ambiguous: string[]
     }
   }
 
-  return { unsupported: [...unsupported], ambiguous: [...ambiguous] };
+  return { unsupported: [...unsupported], ambiguous: [...ambiguous], sensed: [...sensed] };
 }
 
 // ---------------------------------------------------------------- parts we support
@@ -491,11 +539,18 @@ function pinsOf(t: Text, board: Board): { pins: string[]; ambiguous: string[] } 
 
 export function analyzeIdea(text: string, board?: Board): Requirements {
   const t = tokenize(text);
-  const { unsupported, ambiguous } = unsupportedParts(t);
+  const { unsupported, ambiguous, sensed } = unsupportedParts(t);
   const { parts, removed, fewer, onboard, named } = partsOf(t);
+  for (const kind of sensed) if (!parts[kind] && !removed.includes(kind)) parts[kind] = { min: 1 };
+  // "the sensor" in an idea that has a sensor part is that part (M17), not an unknown sensor.
+  const SENSOR = "a sensor";
+  const hasSensor = (Object.keys(parts) as PartKind[]).some((k) => AGENT_PACKS.find((p) => p.meta.kind === k)?.part.category === "sensor");
+  if (hasSensor && unsupported.includes(SENSOR)) unsupported.splice(unsupported.indexOf(SENSOR), 1);
   // M15 (user, 11/11/2026): the air's temperature or humidity needs the temperature part; the chip's
   // own sensor only when the idea is about the chip. Humidity always needs the part.
-  if (TEMPERATURE_PART && !parts[TEMPERATURE_PART as PartKind] && !removed.includes(TEMPERATURE_PART as PartKind)) {
+  // A named part that measures temperature too (the DHT22, a thermistor) is enough (M17).
+  const otherThermometer = named.some((k) => AGENT_PACKS.find((p) => p.meta.kind === k)?.agent?.words.claims?.includes("temperature-sensor"));
+  if (TEMPERATURE_PART && !otherThermometer && !parts[TEMPERATURE_PART as PartKind] && !removed.includes(TEMPERATURE_PART as PartKind)) {
     const asked = (re: RegExp) => matches(t, re).some((i) => !negated(t, i));
     if (asked(/\b(humidity|humid)\b/) || (asked(/\b(temperatures?|weather)\b/) && !chipTemperatureOnly(t))) parts[TEMPERATURE_PART as PartKind] = { min: 1 };
   }

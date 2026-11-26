@@ -35,7 +35,7 @@ export function previewFrame(view: ViewSpec | undefined): { size: number; lookY:
       return { size: 30, lookY: 6 };
     case "tethered": {
       // across, and how tall, the thing on the wires is
-      const sizes: Record<typeof view.unit.type, [number, number]> = { servo: [33, 31], "dc-motor": [20, 20], "coin-motor": [10, 3], lcd: [80, 9], stepper: [68, 28] };
+      const sizes: Record<typeof view.unit.type, [number, number]> = { servo: [33, 31], "dc-motor": [20, 20], "coin-motor": [10, 3], lcd: [80, 9], stepper: [68, 28], "soil-probe": [98, 6] };
       const [wide, tall] = sizes[view.unit.type];
       return { size: 70 + wide * 1.7, lookY: tall / 2 - 4, lookX: 16 + wide / 2 };
     }

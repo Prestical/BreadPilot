@@ -96,6 +96,8 @@ while True:
   it("the plan prompt no longer lists temperature sensors as unavailable", () => {
     const text = planMessages(IDEA, INTAKE as never).map((m) => m.content).join("\n");
     expect(text).not.toMatch(/sensors for temperature/);
-    expect(text).toMatch(/other temperature sensors \(DHT22, BME280, DS18B20, thermistors\)/);
+    expect(text).toMatch(/other temperature sensors \(TMP36, thermocouples\)/);
+    // M17: the DHT22 and thermistors have packs now, so they aren't listed as unavailable.
+    expect(text).not.toMatch(/the DHT22|thermistors/);
   });
 });

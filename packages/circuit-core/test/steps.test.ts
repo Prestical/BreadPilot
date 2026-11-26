@@ -81,3 +81,25 @@ describe("buildSteps", () => {
     expect(() => buildSteps(mk([], "#36(3V3) -> #38(GND)"))).toThrow(StepsError);
   });
 });
+
+// M17 17.1 (17/11/2026): a sensor whose resistance changes, read through a divider with a fixed resistor.
+describe("a resistor's why: divider, pull-up or LED current", () => {
+  const whyOf = (kind: string) => {
+    const steps = buildSteps(layoutProject([{ kind }]).build);
+    return steps.filter((s) => s.kind === "place-part").map((s) => s.why);
+  };
+
+  it("explains the photoresistor's and thermistor's resistor as the lower half of a divider", () => {
+    for (const kind of ["ldr", "ntc"]) {
+      const [sensor, resistor] = whyOf(kind);
+      expect(sensor, kind).toMatch(/voltage divider/);
+      expect(resistor, kind).toMatch(/^R1 is the lower half of a voltage divider with (LDR|NTC)1/);
+      expect(resistor, kind).not.toMatch(/limits how much current/);
+    }
+  });
+
+  it("keeps the pull-up and LED explanations", () => {
+    expect(whyOf("dht22")[1]).toMatch(/is a pull-up resistor/);
+    expect(whyOf("led").join(" ")).toMatch(/limits the current through LED1/);
+  });
+});

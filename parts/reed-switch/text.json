@@ -1,0 +1,20 @@
+{
+  "place": {
+    "title": "Place {ref} (reed switch)",
+    "text": "Bend the reed switch {ref}'s legs down and push them into column f: one into hole {hole.a}, the other into {hole.b}, so the glass tube lies flat over the rows between.",
+    "tip": "The glass breaks easily: bend each leg a few millimetres away from the glass, holding the leg (not the tube) with pliers or your fingers. Either leg can go in either hole."
+  },
+  "why": "{ref} is a reed switch: two thin metal strips in a glass tube touch while a magnet is near, so the Pico can tell whether the magnet is there.",
+  "wire": {
+    "ground": "This connects {ref}'s other leg to ground: while a magnet closes the contact, the pin reads 0.",
+    "in": "{pin} reads {ref}: 0 while a magnet is near (the contact joins the pin to ground) and 1 without one (the Pico's internal pull-up)."
+  },
+  "names": {
+    "shop": [
+      "reed switch (normally open)",
+      "reed switches (normally open)"
+    ],
+    "plan": "Reed switch",
+    "greeting": "a reed switch"
+  }
+}

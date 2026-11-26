@@ -1,0 +1,12 @@
+{
+  "modules": {
+    "match": [
+      "bme280",
+      "bmp280",
+      "bme",
+      "bmp"
+    ],
+    "hint": "Use `from bme280 import BME280` (the bme280.py file from this project; it reads BMP280s too).",
+    "onlyWith": "a pressure sensor"
+  }
+}

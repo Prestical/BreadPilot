@@ -1,0 +1,49 @@
+{
+  "id": "soil-moisture-sensor",
+  "name": "Capacitive soil moisture sensor (v1.2, 3 pins)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.5
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "aout",
+      "label": "AOUT",
+      "kind": "analog_out"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 5,
+        "src": {
+          "typical": true,
+          "note": "typical seller value; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "note": "Powered from 3V3, so AOUT stays below 3.3 V: higher when dry, lower when wet. It measures through its coating, so it doesn't rust like bare-metal probes."
+  }
+}

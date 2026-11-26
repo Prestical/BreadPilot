@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "read the temperature every second",
+      "file": "code/read.py",
+      "layout": [
+        {
+          "kind": "ds18b20"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "the sensor on a pin that isn't wired",
+      "file": "code/wrong-pin.py",
+      "layout": [
+        {
+          "kind": "ds18b20"
+        }
+      ],
+      "errors": [
+        "C004",
+        "C006"
+      ]
+    }
+  ]
+}

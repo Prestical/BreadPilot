@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "id": "light-sensor-bh1750",
+  "order": 33,
+  "kind": "bh1750",
+  "review": {
+    "status": "reviewed",
+    "by": "typical facts of the most common version of this part; not yet checked against a datasheet page or tried on hardware; maintainer review pending",
+    "date": "2026-11-19"
+  }
+}

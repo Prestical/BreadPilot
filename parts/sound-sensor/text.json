@@ -1,0 +1,21 @@
+{
+  "place": {
+    "title": "Place {ref} (sound sensor)",
+    "text": "Push {ref}'s 3 pins into column f, one pin per row: OUT into {hole.out}, GND into {hole.gnd}, VCC into {hole.vcc}. The round microphone points up, away from the breadboard.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture."
+  },
+  "why": "{ref} listens with its small microphone; whenever the sound is louder than the level set with its screw, it pulls its OUT pin LOW for a moment.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its output signal is never more than the Pico's 3.3 V.",
+    "in": "{pin} reads {ref}'s OUT: it drops to 0 for a moment on each loud sound and is 1 otherwise. The module drives this line itself."
+  },
+  "names": {
+    "shop": [
+      "sound sensor module (3 pins)",
+      "sound sensor modules (3 pins)"
+    ],
+    "plan": "Sound sensor",
+    "greeting": "a sound sensor"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "display": {
+    "class": "SSD1306_I2C",
+    "width": {
+      "value": 128,
+      "src": {
+        "typical": true,
+        "note": "the usual 0.96\" OLED module"
+      }
+    },
+    "height": {
+      "value": 64,
+      "src": {
+        "typical": true,
+        "note": "the usual 0.96\" OLED module"
+      }
+    },
+    "font": {
+      "value": 8,
+      "src": {
+        "typical": true,
+        "note": "MicroPython v1.29.0 framebuf: 'All characters have dimensions of 8x8 pixels' (docs/software/micropython-v1.29.0/docs__library__framebuf.rst, FrameBuffer.text); characters outside 32-127 are drawn as character 127 (extmod__modframebuf.c, line 844)"
+      }
+    },
+    "title": "the 0.96\" OLED display",
+    "var": "oled"
+  },
+  "modules": {
+    "match": [
+      "ssd1306",
+      "sh1106"
+    ],
+    "hint": "This display uses the SSD1306 chip: use `from ssd1306 import SSD1306_I2C` (the ssd1306.py file from this project).",
+    "onlyWith": "the 0.96\" OLED display"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "vibration motor",
+  "height": 3,
+  "reach": [3, 3],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "out"
+    }
+  },
+  "parts": [
+    {
+      "ref": "VM",
+      "type": "self",
+      "legs": {
+        "in": [
+          0,
+          "f"
+        ],
+        "vcc": [
+          1,
+          "f"
+        ],
+        "gnd": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "VM",
+  "wires": [
+    {
+      "ground": [
+        2,
+        "j",
+        "VM.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "VM.in"
+      ]
+    },
+    {
+      "power": [
+        1,
+        "j",
+        "VM.vcc"
+      ]
+    }
+  ]
+}

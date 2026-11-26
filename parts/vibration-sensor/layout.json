@@ -1,0 +1,56 @@
+{
+  "name": "vibration sensor",
+  "height": 3,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "VIB",
+      "type": "self",
+      "legs": {
+        "vcc": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "do": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "VIB",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "VIB.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        2,
+        "j",
+        "VIB.do"
+      ]
+    },
+    {
+      "power": [
+        0,
+        "j",
+        "VIB.vcc"
+      ]
+    }
+  ]
+}

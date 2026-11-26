@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "read the light in lux",
+      "file": "code/lux.py",
+      "layout": [
+        {
+          "kind": "bh1750"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "SDA and SCL swapped in I2C()",
+      "file": "code/swapped.py",
+      "layout": [
+        {
+          "kind": "bh1750"
+        }
+      ],
+      "errors": [
+        "C005"
+      ]
+    }
+  ]
+}

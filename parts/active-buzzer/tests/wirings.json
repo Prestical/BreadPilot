@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "name": "laid out by the engine (VCC from 3V3)",
+      "layout": [
+        {
+          "kind": "active-buzzer"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "name": "next to the passive buzzer and an LED, power straight from the Pico",
+      "layout": [
+        {
+          "kind": "active-buzzer"
+        },
+        {
+          "kind": "buzzer"
+        },
+        {
+          "kind": "led"
+        }
+      ],
+      "power": "direct",
+      "expect": []
+    },
+    {
+      "name": "the signal pin set as an analog input (GP16 has no ADC)",
+      "layout": [
+        {
+          "kind": "active-buzzer"
+        }
+      ],
+      "modes": {
+        "GP16": "adc"
+      },
+      "expect": [
+        "E008"
+      ]
+    }
+  ]
+}

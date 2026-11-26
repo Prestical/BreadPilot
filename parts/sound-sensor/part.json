@@ -1,0 +1,57 @@
+{
+  "id": "sound-sensor",
+  "name": "Sound sensor module (3 pins, digital output)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "out",
+      "label": "OUT",
+      "kind": "digital_out",
+      "level": "vcc"
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 4,
+        "src": {
+          "typical": true,
+          "note": "typical module current on 3.3 V; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "activeLevel": {
+      "value": "low",
+      "src": {
+        "typical": true,
+        "note": "the most common version of this module; some boards differ"
+      }
+    },
+    "note": "Powered from 3V3, so its output (at most VCC) stays at the Pico's 3.3 V."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "shape": "to92",
+  "legs": [
+    "gnd",
+    "dq",
+    "vdd"
+  ],
+  "color": "#17181b",
+  "label": "DS18B20",
+  "note": "Not measured: the usual size of this part."
+}

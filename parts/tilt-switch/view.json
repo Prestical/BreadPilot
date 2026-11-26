@@ -1,0 +1,12 @@
+{
+  "shape": "metal-can",
+  "legs": [
+    "a",
+    "b"
+  ],
+  "radius": 2.6,
+  "height": 10,
+  "color": "#cdb878",
+  "base": "#7b2320",
+  "note": "Not measured: the usual size of this part."
+}

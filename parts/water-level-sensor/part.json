@@ -1,0 +1,49 @@
+{
+  "id": "water-level-sensor",
+  "name": "Water level sensor (3 pins: S, +, −)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "gnd",
+      "label": "− (GND)",
+      "kind": "ground"
+    },
+    {
+      "id": "vcc",
+      "label": "+ (VCC)",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.0,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "sig",
+      "label": "S (signal)",
+      "kind": "analog_out"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 20,
+        "src": {
+          "typical": true,
+          "note": "typical seller value (less than 20 mA); not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "note": "Powered from 3V3, so S stays between 0 V and 3.3 V: about 0 V dry, rising as more of the strips are under water."
+  }
+}

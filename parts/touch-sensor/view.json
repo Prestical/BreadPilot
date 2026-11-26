@@ -1,0 +1,40 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "sig",
+    "vcc",
+    "gnd"
+  ],
+  "board": {
+    "size": [
+      24,
+      24
+    ],
+    "color": "#a8242b",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "pad",
+      "at": [
+        0,
+        15
+      ],
+      "radius": 7
+    },
+    {
+      "type": "led",
+      "at": [
+        9.5,
+        9
+      ],
+      "color": "#ff4a3d"
+    }
+  ],
+  "labels": [
+    "SIG",
+    "VCC",
+    "GND"
+  ]
+}

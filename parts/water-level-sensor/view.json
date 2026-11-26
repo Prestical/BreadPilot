@@ -1,0 +1,63 @@
+{
+  "shape": "upright-module",
+  "pins": [
+    "gnd",
+    "vcc",
+    "sig"
+  ],
+  "board": {
+    "size": [
+      20,
+      62
+    ],
+    "color": "#a8242b",
+    "note": "Not measured: the usual size of this part."
+  },
+  "hole": false,
+  "features": [
+    {
+      "type": "led",
+      "at": [
+        -7,
+        10
+      ],
+      "color": "#ff4a3d"
+    },
+    {
+      "type": "resistor",
+      "at": [
+        0,
+        10
+      ]
+    },
+    {
+      "type": "resistor",
+      "at": [
+        6,
+        10
+      ]
+    },
+    {
+      "type": "to92",
+      "at": [
+        0,
+        17
+      ]
+    },
+    {
+      "type": "traces",
+      "at": [
+        0,
+        21
+      ],
+      "count": 10,
+      "length": 38,
+      "width": 17
+    }
+  ],
+  "labels": [
+    "-",
+    "+",
+    "S"
+  ]
+}

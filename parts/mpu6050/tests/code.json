@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "print the tilt",
+      "file": "code/tilt.py",
+      "layout": [
+        {
+          "kind": "imu"
+        }
+      ],
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "name": "SDA and SCL swapped in I2C()",
+      "file": "code/swapped.py",
+      "layout": [
+        {
+          "kind": "imu"
+        }
+      ],
+      "errors": [
+        "C005"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "id": "rtc-ds3231",
+  "name": "Real-time clock module (DS3231, ZS-042)",
+  "category": "module",
+  "legs": [
+    {
+      "id": "32k",
+      "label": "32K (not used)"
+    },
+    {
+      "id": "sqw",
+      "label": "SQW (not used)"
+    },
+    {
+      "id": "scl",
+      "label": "SCL",
+      "kind": "i2c_scl",
+      "level": "vcc"
+    },
+    {
+      "id": "sda",
+      "label": "SDA",
+      "kind": "i2c_sda",
+      "level": "vcc"
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.5
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": {
+          "decision": "maintainer, 19/11/2026",
+          "why": "the ZS-042 board pulls SDA and SCL up to its VCC: from 5 V they would carry 5 V into the Pico"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 1,
+        "src": {
+          "typical": true,
+          "note": "typical module current; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "i2cAddress": {
+      "value": 104,
+      "src": {
+        "typical": true,
+        "note": "DS3231 at 0x68"
+      }
+    },
+    "accuracyPpm": {
+      "value": 2,
+      "src": {
+        "typical": true,
+        "note": "DS3231 typical: about a minute a year"
+      }
+    },
+    "note": "Keeps the time on its coin cell while the Pico is off. Powered from 3V3 here, so its I2C lines (pulled up to VCC on the board) stay at 3.3 V."
+  }
+}

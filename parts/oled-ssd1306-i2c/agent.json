@@ -1,0 +1,53 @@
+{
+  "plan": {
+    "line": "a small 0.96 inch 128x64 OLED display (I2C, SSD1306). Use it only when the idea names a 0.96 inch display or an SSD1306; otherwise the 1.3 inch OLED. At most 2 displays."
+  },
+  "words": {
+    "nouns": [
+      "ssd1306",
+      "ssd1306s",
+      "0·96 inch oled",
+      "0·96 inch oleds",
+      "0·96 oled",
+      "0·96 oleds",
+      "0·96 inch display",
+      "0·96 inch displays",
+      "0·96 inch screen",
+      "0·96 inch screens",
+      "0·96 display",
+      "0·96 screen",
+      "ssd1306 display",
+      "ssd1306 displays",
+      "ssd1306 oled",
+      "ssd1306 screen"
+    ]
+  },
+  "names": {
+    "label": [
+      "a 0.96\" OLED display",
+      "0.96\" OLED displays"
+    ],
+    "count": [
+      "0.96\" display",
+      "0.96\" displays"
+    ],
+    "supports": "the 0.96\" OLED (SSD1306)",
+    "short": [
+      "0.96\" OLED",
+      "0.96\" OLEDs"
+    ]
+  },
+  "code": {
+    "pinLine": "0.96\" OLED display {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): set it up with i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000) and oled{n} = SSD1306_I2C(128, 64, i2c{n}). Draw with oled{n}.fill(0) (clear), oled{n}.text(\"Hi\", x, y), oled{n}.rect/line/pixel, then call oled{n}.show() once after drawing. Not sh1106: this display is SSD1306.\n  This screen: letters are 8x8 pixels, so 8 text rows at y = 0, 8, 16, 24, 32, 40, 48, 56 (the last row is y = 56) and at most 16 characters per row. The built-in font has only plain ASCII characters.\n  Drawing helpers in ssd1306.py (use them: numbers, levels and pictures look much better than plain text): oled{n}.title(\"Weather\") draws a lit bar at the top (draw the rest from y = 12); oled{n}.center_text(\"Ready\", y) centres text; oled{n}.center_text(\"4:59\", y, scale=3, style=\"seg\") and oled{n}.big_text(\"23\", x, y, scale=2, style=\"block\") draw big text. Text styles: {TEXT_STYLES} (block = the font enlarged, dots = LED-matrix look from scale 3, seg = clock-like digits). Every style is 8 x scale pixels wide per character (scale 2: at most 8 characters per row, scale 3: 5); block and dots are 8 x scale tall, seg 11 x scale tall. oled{n}.bar(x, y, w, h, value, max_value, style=\"solid\") draws a level or progress bar; bar styles: {BAR_STYLES}. oled{n}.graph(readings, x, y, w, h, low, high) draws a line graph of a list of numbers (keep the last readings in a list). oled{n}.icon(\"heart\", x, y, scale=2) draws an 8x8 icon (scale 2 = 16x16); icons: {ICONS}. oled{n}.sprite([\"..##..\", \".####.\", \"######\"], x, y, scale=2) draws your own small picture, one text row per pixel row, \"#\" lit and \".\" dark: use it for anything the icons don't have.",
+    "imports": [
+      "from machine import Pin, I2C",
+      "from ssd1306 import SSD1306_I2C"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `oled = SSD1306_I2C(128, 64, i2c)` |"
+    ],
+    "moduleRule": "ssd1306 when a 0.96\" OLED display is listed",
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

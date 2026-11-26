@@ -1,0 +1,23 @@
+{
+  "place": {
+    "title": "Place {ref} (pressure sensor)",
+    "text": "Push {ref}'s 6 header pins into column f, one pin per row: VCC into {hole.vcc}, GND into {hole.gnd}, SCL into {hole.scl}, SDA into {hole.sda}, CSB into {hole.csb}, SDO into {hole.sdo}. The small board lies over the left half of the breadboard, its metal sensor facing up.",
+    "tip": "Read the labels printed next to the pins. If yours are in another order, follow the labels, not the picture. CSB and SDO get no wire."
+  },
+  "why": "{ref} measures air pressure, temperature and humidity with its tiny metal-capped sensor. The Pico reads them over I2C: SDA (data) and SCL (clock). It runs on 3.3 V only: this board has no regulator.",
+  "wire": {
+    "ground": "This connects {ref}'s GND pin to ground.",
+    "power": "This powers {ref} from 3.3 V, so its I2C lines stay at the Pico's 3.3 V.",
+    "i2c_sda": "{pin} is the I2C{bus} data line (SDA): the Pico and {ref} send their bytes on this wire.",
+    "i2c_scl": "{pin} is the I2C{bus} clock line (SCL): it sets the pace for the data on SDA."
+  },
+  "names": {
+    "shop": [
+      "BME280 pressure sensor module (6 pins, 3.3 V)",
+      "BME280 pressure sensor modules (6 pins, 3.3 V)"
+    ],
+    "plan": "Pressure sensor (BME280, I2C)",
+    "greeting": "a pressure sensor",
+    "driver": "pressure sensor driver"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "plan": {
+    "line": "an MPU-6050 motion sensor module (I2C): an accelerometer and a gyroscope; it measures tilt (which way is down), shaking and turning speed in three directions. Use it for tilt games, step counting, a spirit level or detecting a fall. Uses one I2C bus (at most 2 I2C parts)."
+  },
+  "words": {
+    "nouns": [
+      "mpu6050",
+      "mpu-6050",
+      "mpu6050s",
+      "gy-521",
+      "accelerometer",
+      "accelerometers",
+      "gyroscope",
+      "gyroscopes",
+      "gyro",
+      "gyros",
+      "imu",
+      "imus",
+      "motion sensor module"
+    ],
+    "claims": [
+      "imu"
+    ]
+  },
+  "names": {
+    "label": [
+      "an MPU-6050 motion sensor",
+      "MPU-6050 motion sensors"
+    ],
+    "count": [
+      "motion sensor",
+      "motion sensors"
+    ],
+    "supports": "MPU-6050 accelerometer/gyroscope modules",
+    "short": [
+      "accelerometer",
+      "accelerometers"
+    ]
+  },
+  "code": {
+    "pinLine": "MPU-6050 motion sensor {ref} on I2C{bus} (SDA {gpio}, SCL {scl}): i2c{n} = I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000) and mpu{n} = MPU6050(i2c{n}). mpu{n}.acceleration() gives (x, y, z) in g: lying flat and still, z is about 1.0 and x, y about 0; tilting moves that 1 g to x or y. mpu{n}.rotation() gives turning speed (x, y, z) in degrees per second, about 0 when still. Readings jitter a little: average a few or use a threshold.",
+    "imports": [
+      "from machine import Pin, I2C",
+      "from mpu6050 import MPU6050"
+    ],
+    "handoff": [
+      "| {gpio} | {phys} | {ref} SDA | i2c{bus}_sda | `I2C({bus}, sda=Pin({g}), scl=Pin({sclG}), freq=400000)` |",
+      "| {scl} | {sclPhys} | {ref} SCL | i2c{bus}_scl | `mpu = MPU6050(i2c); mpu.acceleration()` |"
+    ],
+    "moduleRule": "mpu6050 when a motion sensor is listed",
+    "ragQuery": "I2C bus SDA SCL pins"
+  }
+}

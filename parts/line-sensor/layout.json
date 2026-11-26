@@ -1,0 +1,60 @@
+{
+  "name": "line tracking sensor",
+  "height": 4,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "LN",
+      "type": "self",
+      "legs": {
+        "vcc": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "do": [
+          2,
+          "f"
+        ],
+        "ao": [
+          3,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "LN",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "LN.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        2,
+        "j",
+        "LN.do"
+      ]
+    },
+    {
+      "power": [
+        0,
+        "j",
+        "LN.vcc"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "name": "IR obstacle sensor",
+  "height": 3,
+  "reach": [2, 2],
+  "pins": {
+    "signal": {
+      "need": "gpio",
+      "mode": "in"
+    }
+  },
+  "parts": [
+    {
+      "ref": "IR",
+      "type": "self",
+      "legs": {
+        "out": [
+          0,
+          "f"
+        ],
+        "gnd": [
+          1,
+          "f"
+        ],
+        "vcc": [
+          2,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "IR",
+  "wires": [
+    {
+      "ground": [
+        1,
+        "j",
+        "IR.gnd"
+      ]
+    },
+    {
+      "pin": "signal",
+      "to": [
+        0,
+        "j",
+        "IR.out"
+      ]
+    },
+    {
+      "power": [
+        2,
+        "j",
+        "IR.vcc"
+      ]
+    }
+  ]
+}

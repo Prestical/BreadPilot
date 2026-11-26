@@ -1,0 +1,50 @@
+{
+  "id": "vibration-sensor",
+  "name": "Vibration sensor module (SW-420, 3 pins)",
+  "category": "sensor",
+  "legs": [
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "typical supply range of this module"
+        }
+      }
+    },
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "do",
+      "label": "DO",
+      "kind": "digital_out",
+      "level": "vcc"
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 4,
+        "src": {
+          "typical": true,
+          "note": "typical module current on 3.3 V; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "note": "Powered from 3V3, so its outputs stay at the Pico's 3.3 V."
+  }
+}

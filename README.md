@@ -48,12 +48,12 @@ code, built into one file you drag onto the board. It runs on your own computer 
 
 | | |
 |---|---|
-| 💬 **Idea → plan** | Type an idea. Clear ideas are planned at once; vague ones get a short plan for you to approve or change. |
-| 🛡️ **Safe wiring** | Code picks the pins, places the parts and draws every wire, then a validator checks for shorts, missing resistors, 5 V on a GPIO and more. |
-| 🧊 **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
-| 🐍 **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
-| ⬇️ **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
-| 🔒 **Local first** | A desktop app for macOS, Windows and Linux, with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
+| **Idea → plan** | Type an idea. Clear ideas are planned at once; vague ones get a short plan for you to approve or change. |
+| **Safe wiring** | Code picks the pins, places the parts and draws every wire, then a validator checks for shorts, missing resistors, 5 V on a GPIO and more. |
+| **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
+| **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
+| **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
+| **Local first** | A desktop app for macOS, Windows and Linux, with a local AI model through [Ollama](https://ollama.com). Your projects are stored encrypted on your computer. An OpenAI model is optional, per project. |
 
 ---
 
@@ -106,7 +106,7 @@ This is macOS's check for apps without a paid Apple Developer ID; it isn't a pas
 BreadPilot. BreadPilot never asks for your keychain password (see [Your data](#your-data)).
 
 Your projects are saved encrypted on your computer (see [Your data](#your-data)). The OpenAI key,
-if you add one in **⚙ Settings**, is stored encrypted too and only ever sent to OpenAI.
+if you add one in **Settings**, is stored encrypted too and only ever sent to OpenAI.
 
 <details>
 <summary><strong>Run from the source code</strong> (developers)</summary>
@@ -130,11 +130,11 @@ npm run dev:desktop
 3. **Approve the plan** if asked, or type a change in the same box.
 4. **Build step by step.** Use *Next / Back*, the step strip or the ← → keys. The first step lists
    what you need; power always goes in last.
-5. **Open `</> Code`** to read, copy, edit or download `main.py`, then press **⬇ Build for Pico**:
+5. **Open `</> Code`** to read, copy, edit or download `main.py`, then press **Build for Pico**:
    hold BOOTSEL while plugging the Pico in, and drag the file onto the drive that appears.
 
 New to breadboards? **Breadboard & Pico 101** in the sidebar is a short interactive tutorial.
-The **⚡ Power** switch on the 3D view wires parts to the breadboard rails (default) or straight to
+The **Power** switch on the 3D view wires parts to the breadboard rails (default) or straight to
 the Pico's pins; the code stays the same.
 
 BreadPilot follows your system's light or dark appearance.
@@ -143,7 +143,7 @@ BreadPilot follows your system's light or dark appearance.
 
 ## Choosing a local model
 
-Pick the local AI in the first-run setup or later in **⚙ Settings → Local AI**. The dropdown groups
+Pick the local AI in the first-run setup or later in **Settings → Local AI**. The dropdown groups
 the models by size, and each one shows its download size, the memory it needs and a warning if it
 won't fit your computer:
 
@@ -151,7 +151,7 @@ won't fit your computer:
 Small (model under 4 GB)
   Qwen3 4B Instruct · 2.5 GB · 4.9 GB memory (default, downloaded)
 Large (model 10 GB and more)
-  Gemma 4 31B · 20.4 GB · 18.7 GB+ memory · ⚠ too big for this computer
+  Gemma 4 31B · 20.4 GB · 18.7 GB+ memory · too big for this computer
 ```
 
 - **Sizes** are Ollama's own numbers, built into BreadPilot. The app doesn't go online to get them.
@@ -168,16 +168,63 @@ Large (model 10 GB and more)
 
 ## Supported hardware
 
+**Tried on hardware:** ✅ means built on a real Pico 2 W from BreadPilot's own steps and code; ❌ means not tested in real project yet. The
+others are the most common versions of each part, described from their usual values; they pass all
+of BreadPilot's checks but haven't been built yet. Reports are welcome (GitHub issues).
+
+Everything runs from the Pico's 3.3 V. Analog parts share the Pico's three ADC pins (GP26-GP28), so a
+project can have at most three of them. Each I2C part gets its own I2C bus for now, so a project can
+have at most two I2C parts.
+
+**The board**
+
 | Part | Notes |
 |---|---|
-| Raspberry Pi Pico 2 W / 2 WH | The board. Its on-board LED, temperature sensor and Wi-Fi need no extra parts. |
-| LED (5 mm) | Red, green, yellow, blue or white. Its resistor is added for you. |
-| Push button (6 mm) | Read with the Pico's internal pull-up. |
-| Slide switch (IC206, 3 legs) | On/off input: middle leg to a GPIO with the internal pull-up, one outer leg to GND. |
-| Potentiometer (10 kΩ knob) | Analog input, up to 3 (the Pico has 3 ADC pins). |
-| 1.3" I2C OLED (SH1106, 128x64) | Up to 2. **Power from 3.3 V only.** Its driver `sh1106.py` is included in the Pico build. |
-| DHT11 temperature and humidity sensor | Air temperature and humidity. Its 10 kΩ pull-up resistor is added for you. One reading every 2 s at most. |
-| Passive buzzer module (MH-FMD, 3 pins) | Tones and melodies with PWM. **Power from 3.3 V only** (the module sounds while its I/O pin is low). |
+| Raspberry Pi Pico 2 W / 2 WH | Its on-board LED, temperature sensor and Wi-Fi need no extra parts. |
+
+**Basic parts**
+
+| Part | Notes | Tried |
+|---|---|:-:|
+| LED (5 mm) | Red, green, yellow, blue or white. Its resistor is added for you. | ✅ |
+| Push button (6 mm) | Read with the Pico's internal pull-up. | ✅ |
+| Slide switch (IC206, 3 legs) | On/off input: middle leg to a GPIO with the internal pull-up, one outer leg to GND. | ✅ |
+| Ball tilt switch (SW-520D) | Closed while upright, open when tilted or shaken. | ❌ |
+| Reed switch | Closes while a magnet is near. | ❌ |
+| Potentiometer (10 kΩ knob) | Analog input. | ✅ |
+| Passive buzzer module (MH-FMD, 3 pins) | Tones and melodies with PWM. **Power from 3.3 V only** (the module sounds while its I/O pin is low). | ✅ |
+| Active buzzer module (3 pins) | One fixed beep, on/off. **Power from 3.3 V only**, like the passive module. | ❌ |
+| Vibration motor module (3 pins) | A coin motor switched by the module's own transistor. | ❌ |
+
+**Sensors**
+
+| Part | Notes | Tried |
+|---|---|:-:|
+| DHT11 temperature and humidity sensor | Air temperature and humidity. Its 10 kΩ pull-up resistor is added for you. One reading every 2 s at most. | ✅ |
+| DHT22 (AM2302) | Like the DHT11, with a wider range (−40 to 80 °C) and better accuracy. | ❌ |
+| DS18B20 temperature sensor (TO-92) | −55 to 125 °C over one data wire (1-Wire). Its 4.7 kΩ pull-up is added for you. The bare part must stay dry. | ❌ |
+| NTC thermistor (10 kΩ, B 3950) | Temperature through a voltage divider (its 10 kΩ resistor is added for you); analog. | ❌ |
+| Photoresistor (GL5528) | Light level through a voltage divider (its 10 kΩ resistor is added for you); analog. | ❌ |
+| Touch sensor (TTP223) | A touch pad; high while touched. | ❌ |
+| Hall sensor (KY-024) | Notices a magnet (its digital output is used). | ❌ |
+| IR obstacle sensor (FC-51) | Something within about 2-30 cm in front: yes or no. | ❌ |
+| Line tracking sensor (TCRT5000) | A light or a black surface 1-15 mm in front (its digital output is used). | ❌ |
+| Flame sensor (3 pins) | The infrared light of a small flame. A learning sensor, not a fire alarm. | ❌ |
+| Sound sensor (3 pins) | Claps and loud sounds: yes or no. It can't record. | ❌ |
+| Vibration sensor (SW-420) | Knocks and shaking. | ❌ |
+| Water level sensor (3 pins) | How deep its strips are in water, or simply wet or dry; analog. | ❌ |
+| Capacitive soil moisture sensor (v1.2) | How wet the soil is; analog, on its 3-wire cable. | ❌ |
+
+**I2C modules** (their drivers are included in the Pico build)
+
+| Part | Notes | Tried |
+|---|---|:-:|
+| 1.3" I2C OLED (SH1106, 128x64) | Up to 2. **Power from 3.3 V only.** Driver `sh1106.py`. | ✅ |
+| 0.96" I2C OLED (SSD1306, 128x64) | Up to 2. **Power from 3.3 V only.** Driver `ssd1306.py`, with the same drawing helpers as the 1.3" one. | ❌ |
+| BME280 / BMP280 pressure sensor (6 pins) | Air pressure, temperature and (BME280) humidity; altitude from the pressure. **3.3 V only** (no regulator). Driver `bme280.py`. | ❌ |
+| MPU-6050 accelerometer and gyroscope (GY-521) | Tilt, shaking and turning speed. Driver `mpu6050.py`. | ❌ |
+| DS3231 real-time clock (ZS-042) | Keeps the date and time on its coin cell while the Pico is off. **Power from 3.3 V only.** Driver `ds3231.py`. | ❌ |
+| BH1750 light sensor (GY-302) | Light in lux. Needs no driver. | ❌ |
 
 Ideas that need other parts (motors, servos, distance sensors, other displays…) get a **handoff bundle**: the plan,
 validated wiring and requirements as Markdown, ready to paste into a stronger assistant.
@@ -406,7 +453,7 @@ everything, also delete the data folder (this **deletes your projects**) and the
 
 **macOS**
 
-1. Quit BreadPilot (⌘Q).
+1. Quit BreadPilot (Cmd+Q).
 2. Drag **BreadPilot** from **Applications** to the Trash.
 3. To remove everything: delete `~/Library/Application Support/BreadPilot` (in Finder: Go → Go to
    Folder…) and the key, either in **Keychain Access** (search "BreadPilot data key", delete it) or
@@ -451,5 +498,5 @@ and its credit to the original project and author, and mark the files you change
 Third-party files (MicroPython firmware, datasheets, npm packages) keep their own licenses: see
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
-> ⚠️ BreadPilot gives wiring and code suggestions for real electronics. Its checks can be
+> **Warning:** BreadPilot gives wiring and code suggestions for real electronics. Its checks can be
 > incomplete and AI output can be wrong. Always check your wiring before plugging in the USB cable.

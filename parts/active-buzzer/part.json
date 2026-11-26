@@ -1,0 +1,82 @@
+{
+  "id": "active-buzzer",
+  "name": "Active buzzer module (MH-FMD type, 3 pins)",
+  "category": "output",
+  "legs": [
+    {
+      "id": "gnd",
+      "label": "GND",
+      "kind": "ground"
+    },
+    {
+      "id": "io",
+      "label": "I/O",
+      "kind": "digital_in",
+      "activeLow": true
+    },
+    {
+      "id": "vcc",
+      "label": "VCC",
+      "kind": "power_in",
+      "voltageRange": {
+        "value": [
+          3.3,
+          5.0
+        ],
+        "src": {
+          "typical": true,
+          "note": "common MH-FMD buzzer modules"
+        }
+      },
+      "maxSafeVoltage": {
+        "value": 3.3,
+        "src": {
+          "decision": "follows the passive buzzer module's board wiring (parts/passive-buzzer, checked on a real module 11/11/2026)",
+          "why": "a PNP stage that is on while I/O is LOW: from 5 V the Pico's 3.3 V HIGH couldn't switch it off"
+        }
+      }
+    }
+  ],
+  "elements": [
+    {
+      "kind": "load",
+      "a": "vcc",
+      "b": "gnd",
+      "currentMa": {
+        "value": 30,
+        "src": {
+          "typical": true,
+          "note": "small active buzzers while sounding; not measured"
+        }
+      }
+    }
+  ],
+  "specs": {
+    "pinOrder": {
+      "value": [
+        "gnd",
+        "io",
+        "vcc"
+      ],
+      "src": {
+        "typical": true,
+        "note": "the passive module's order (GND, I/O, VCC); follow the labels on your board"
+      }
+    },
+    "activeLevel": {
+      "value": "low",
+      "src": {
+        "typical": true,
+        "note": "MH-FMD buzzer modules: low-level trigger, like the passive module"
+      }
+    },
+    "toneHz": {
+      "value": 2300,
+      "src": {
+        "typical": true,
+        "note": "the usual fixed tone of small active buzzers (about 2.3 kHz)"
+      }
+    },
+    "note": "An active buzzer has its own oscillator: it beeps at one fixed pitch while switched on. It can't play notes."
+  }
+}

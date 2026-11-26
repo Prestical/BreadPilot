@@ -80,6 +80,12 @@ export interface LayoutTemplate {
   name: string;
   /** Rows the block takes, starting at its first row. */
   height: number;
+  /**
+   * How many rows the part's 3D body reaches past its first and last row ([before, after]): an
+   * upright module's board is wider than its pin header. The layout keeps bodies apart with it;
+   * apps/web/test/bounds.test.ts checks it against the 3D model. Default [0, 0].
+   */
+  reach?: [number, number];
   /** At most this many in one project, with the reason (a fact with its source). */
   max?: number;
   maxMessage?: string;
@@ -99,7 +105,7 @@ export const SIGNAL_TEXTS = ["out", "in", "adc", "i2c_sda", "i2c_scl"] as const;
 /**
  * text.json: the step texts for this part, with {placeholders} (see steps.ts `fill`).
  * Placement: {ref} {name} {list} {holes} {holes.N} {hole.<leg>} {prop.<name>} {ohms} {bands} {note}.
- * whyWithLed adds {led} {ma} {vf}; whyPullUp adds {part}; wire texts for signals add {pin} {bus}.
+ * whyWithLed adds {led} {ma} {vf}; whyPullUp and whyDivider add {part}; wire texts for signals add {pin} {bus}.
  */
 export interface TextTemplates {
   place?: { title: string; text: string; tip?: string };
@@ -108,6 +114,8 @@ export interface TextTemplates {
   whyWithLed?: string;
   /** For a resistor from a part's supply leg to its data leg (a pull-up): {part} = that part. */
   whyPullUp?: string;
+  /** For a resistor sharing a strip with a sensor's analog output (the lower half of a voltage divider): {part} = that sensor. */
+  whyDivider?: string;
   /** "Why" of a wire that ends in a strip with this part's leg. */
   wire?: Partial<Record<"ground" | "power" | (typeof SIGNAL_TEXTS)[number], string>>;
   /** Names in the web app. */
@@ -208,7 +216,9 @@ export type TetherUnit =
   /** A character display lying face up, with two lines of text. */
   | { type: "lcd"; board: string; screen: string; lines: [string, string] }
   /** A geared stepper motor with its driver board. */
-  | { type: "stepper"; board: string };
+  | { type: "stepper"; board: string }
+  /** A capacitive soil moisture probe lying flat: the long board with its pointed end, the electronics and the 3-pin plug. */
+  | { type: "soil-probe"; board: string };
 
 /**
  * One thing on the face of an upright module. `at` = [across from the board's middle, up from the
@@ -251,6 +261,10 @@ export type ModuleFeature =
   | { type: "sensor"; at: [number, number]; size: [number, number]; color: string; vent?: boolean }
   /** A plated mounting hole. */
   | { type: "hole"; at: [number, number]; radius: number }
+  /** A small metal can lying along the board (a vibration switch), its sealed end dark. `length` runs across the board (mm). */
+  | { type: "can"; at: [number, number]; radius: number; length: number; color: string }
+  /** A round flat thing on the face (a coin vibration motor): `height` = how far it stands off the board (mm). */
+  | { type: "disc"; at: [number, number]; radius: number; height: number; color: string }
   /** A coin cell in its holder, on the back of the board. */
   | { type: "coin"; at: [number, number]; radius: number }
   /** A relay: the blue box. */
@@ -505,6 +519,7 @@ const MODES = ["out", "pwm", "in", "in_pullup", "in_pulldown", "adc"] as const;
 const layoutFile = obj({
   name: str,
   height: (v, p) => (offset(v, p), (v as number) > 0 || fail(p, "must be at least 1")),
+  "reach?": arr((v, p) => (offset(v, p), (v as number) <= 8 || fail(p, "must be 0-8 rows")), 2),
   "max?": fact(num),
   "maxMessage?": str,
   pins: (v, p) => {
@@ -550,6 +565,7 @@ const textFile = obj({
   "why?": str,
   "whyWithLed?": str,
   "whyPullUp?": str,
+  "whyDivider?": str,
   "wire?": obj(Object.fromEntries(["ground", "power", ...SIGNAL_TEXTS].map((k) => [`${k}?`, str]))),
   "names?": obj({ shop: arr(str, 2), "shopBy?": str, "plan?": str, "planDot?": str, "greeting?": str, "hover?": str, "driver?": str }),
 });
@@ -586,6 +602,8 @@ const FEATURES: Record<string, Check> = {
   tft: obj({ type: str, at: size2, size: size2 }),
   shield: obj({ type: str, at: size2, size: size2 }),
   patch: obj({ type: str, at: size2, size: num }),
+  can: obj({ type: str, at: size2, radius: num, length: num, color }),
+  disc: obj({ type: str, at: size2, radius: num, height: num, color }),
 };
 const feature: Check = (v, p) => {
   const type = isObj(v) ? v.type : undefined;
@@ -598,6 +616,7 @@ const UNITS: Record<string, Check> = {
   "coin-motor": obj({ type: str }),
   lcd: obj({ type: str, board: color, screen: color, lines: arr(str, 2) }),
   stepper: obj({ type: str, board: color }),
+  "soil-probe": obj({ type: str, board: color }),
 };
 const tetherUnit: Check = (v, p) => {
   const type = isObj(v) ? v.type : undefined;
@@ -671,6 +690,7 @@ function checkText(pack: Pack): void {
   check(t.why, "why");
   check(t.whyWithLed, "whyWithLed", ["led", "ma", "vf"]);
   check(t.whyPullUp, "whyPullUp", ["part"]);
+  check(t.whyDivider, "whyDivider", ["part"]);
   for (const [k, v] of Object.entries(t.wire ?? {})) check(v, `wire.${k}`, SIGNAL_TEXTS.includes(k as never) ? ["pin", "bus"] : []);
   const planFields = Object.keys(pack.agent?.plan.props ?? {});
   check(t.names?.shopBy, "names.shopBy");
@@ -782,8 +802,9 @@ export function loadPack(src: PackSource): Pack {
     if (!pack.layout?.parts.some((p) => p.props && Object.values(p.props).some((x) => x.request === v))) fail(`${at}/agent.json.plan.props.${k}`, `the layout has no prop asking for "${v}"`);
   }
   for (const w of [...(pack.agent?.words.nouns ?? []), ...(pack.agent?.words.impliedBy?.words ?? [])]) {
-    // One word, or a short phrase of up to 3 ("slide switch", "on/off switch").
-    if (!/^[a-z0-9][a-z0-9/-]*( [a-z0-9][a-z0-9/-]*){0,2}$/.test(w)) fail(`${at}/agent.json.words`, `"${w}" must be lower-case words (letters, digits, dashes, "/"), at most 3, one space apart`);
+    // One word, or a short phrase of up to 3 ("slide switch", "on/off switch"). A decimal number is
+    // written as the idea rules read it: "0.96" becomes "0·96" ("0·96 inch oled").
+    if (!/^[a-z0-9][a-z0-9/-]*(·\d+)?( [a-z0-9][a-z0-9/-]*(·\d+)?){0,2}$/.test(w)) fail(`${at}/agent.json.words`, `"${w}" must be lower-case words (letters, digits, dashes, "/"; a decimal point as "·"), at most 3, one space apart`);
   }
   if (pack.code && !pack.driver) fail(`${at}/code.json`, "code rules need the pack's driver (pack.json driver)");
   // {ICONS}, {TEXT_STYLES} … in the AI's pin line become the driver's own lists, so a new icon or

@@ -1,0 +1,85 @@
+{
+  "name": "clock module",
+  "height": 6,
+  "reach": [2, 2],
+  "max": {
+    "value": 2,
+    "src": {
+      "typical": true,
+      "note": "the DS3231 answers only at 0x68, so each needs its own I2C bus"
+    }
+  },
+  "maxMessage": "{n} DS3231 clocks can't be connected: they answer at the same I2C address, and the Pico has two I2C buses, so at most 2.",
+  "pins": {
+    "bus": {
+      "need": "i2c-pair"
+    }
+  },
+  "parts": [
+    {
+      "ref": "RTC",
+      "type": "self",
+      "legs": {
+        "32k": [
+          0,
+          "f"
+        ],
+        "sqw": [
+          1,
+          "f"
+        ],
+        "scl": [
+          2,
+          "f"
+        ],
+        "sda": [
+          3,
+          "f"
+        ],
+        "vcc": [
+          4,
+          "f"
+        ],
+        "gnd": [
+          5,
+          "f"
+        ]
+      }
+    }
+  ],
+  "main": "RTC",
+  "wires": [
+    {
+      "power": [
+        4,
+        "j",
+        "RTC.vcc"
+      ]
+    },
+    {
+      "ground": [
+        5,
+        "j",
+        "RTC.gnd"
+      ]
+    },
+    {
+      "pin": "bus.scl",
+      "to": [
+        2,
+        "j",
+        "RTC.scl"
+      ],
+      "color": "yellow"
+    },
+    {
+      "pin": "bus.sda",
+      "to": [
+        3,
+        "j",
+        "RTC.sda"
+      ],
+      "color": "blue"
+    }
+  ]
+}
