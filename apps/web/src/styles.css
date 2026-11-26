@@ -506,6 +506,10 @@ dialog.setup { width: min(680px, calc(100vw - 32px)); }
 dialog.parts-dialog { width: min(820px, calc(100vw - 32px)); }
 .parts-dialog .settings-body { padding: 14px 18px 18px; }
 .parts-grid { list-style: none; margin: 12px 0 14px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.parts-switch { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.parts-switch button { border: 0; background: transparent; padding: 6px 12px; border-radius: calc(var(--r-md) - 2px); cursor: pointer; font-weight: 550; font-size: 0.84rem; color: var(--muted); }
+.parts-switch button:hover { color: var(--text); }
+.parts-switch button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-btn); }
 .part-card { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--surface-2); display: flex; flex-direction: column; transition: border-color 0.15s; }
 .part-card:hover { border-color: var(--border-strong); }
 .part-card h3 { margin: 0; padding: 11px 12px 3px; font-size: 0.88rem; }

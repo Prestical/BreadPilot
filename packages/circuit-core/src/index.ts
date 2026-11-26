@@ -18,4 +18,4 @@ export { holeKey, stripOfHole, railNode, RAIL_IDS, PICO_LAST_ROW } from "./bread
 export { checkMicroPython, stripStringsAndComments, PICO_MODULES, type CodeCheckReport, type CodeIssue } from "./codecheck";
 export { driversFor, type DriverFile } from "./drivers";
 export { buildUf2, firmwareInfo, parseUf2, writeUf2, Uf2Error, UF2, type BuildOptions, type FirmwareInfo, type Uf2Block } from "./uf2";
-export { PACKS, PACK_FORMAT, getPack, packByKind, packOfPart, loadPack, loadPacks, unverifiedFacts, fillTemplate, propVars, PackError, type ViewSpec, type AgentInfo, type CodeRules, type LayoutTemplate, type Pack, type PackMeta, type PackSource, type Source, type TextTemplates } from "./packs";
+export { PACKS, PACK_FORMAT, getPack, packByKind, packOfPart, loadPack, loadPacks, checkViewSpec, unverifiedFacts, fillTemplate, propVars, PackError, type ViewSpec, type ModuleFeature, type TetherUnit, type AgentInfo, type CodeRules, type LayoutTemplate, type Pack, type PackMeta, type PackSource, type Source, type TextTemplates } from "./packs";

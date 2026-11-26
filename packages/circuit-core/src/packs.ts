@@ -139,9 +139,14 @@ export type ViewSpec =
       pins: string[];
       board: { size: [number, number]; height: number; color: string; note?: string };
       screen?: { size: [number, number]; text: string; bg: string; fg: string };
+      /** The parts on the board's top; `at` = [along the pin header from its middle, away from the header] in mm. */
+      features?: ModuleFeature[];
+      /** The four plated corner holes (default: drawn). */
+      holes?: boolean;
       labels?: boolean;
     }
-  | { shape: "cylinder"; radius: number; height: number; color: string; top?: string; label?: string }
+  /** A round body over its legs (a buzzer). `hole` = radius of a sound hole on top; `plus` = the leg marked "+" on top. */
+  | { shape: "cylinder"; radius: number; height: number; color: string; top?: string; label?: string; hole?: number; plus?: string; note?: string }
   /** A small slide switch: `legs` in a row (outer, middle, outer); `size` = along the legs, across, tall (mm). */
   | { shape: "slide-switch"; legs: [string, string, string]; size: [number, number, number]; body: string; slider: string; note?: string }
   /** A module board standing upright on its pin header, parts on one face (e.g. a buzzer module). `board.size` = across the pins, tall (mm). */
@@ -150,11 +155,124 @@ export type ViewSpec =
       pins: string[];
       board: { size: [number, number]; color: string; note?: string };
       buzzer?: { radius: number; height: number; color: string };
+      /** The parts on the board's face. Without it: the buzzer module's transistor and resistor. */
+      features?: ModuleFeature[];
+      /** The mounting hole near the top (default: drawn). */
+      hole?: boolean;
       /** Printed next to the pins, in the order of `pins`. */
       labels?: string[];
     }
   /** A boxed sensor standing on a row of legs, with a grid of openings on its front (e.g. the DHT11). `body.size` = across the legs, tall, thick (mm). */
-  | { shape: "grid-sensor"; pins: string[]; body: { size: [number, number, number]; color: string; note?: string } };
+  | { shape: "grid-sensor"; pins: string[]; body: { size: [number, number, number]; color: string; note?: string }; grid?: { color: string; cells: [number, number] } }
+  /** A light sensor (LDR): a flat disc facing up on two legs, with the zigzag track on its face. */
+  | { shape: "photo-disc"; legs: [string, string]; radius: number; body: string; face: string; track: string; note?: string }
+  /** A small epoxy bead on two thin legs (an NTC thermistor). */
+  | { shape: "bead"; legs: [string, string]; radius: number; color: string; note?: string }
+  /** A metal can standing on two legs (a ball tilt switch). */
+  | { shape: "metal-can"; legs: [string, string]; radius: number; height: number; color: string; base?: string; note?: string }
+  /** A glass tube lying between its two legs, with the two metal reeds inside (a reed switch). `size` = length, radius (mm). */
+  | { shape: "glass-axial"; legs: [string, string]; size: [number, number]; glass: string; note?: string }
+  /** A small black three-leg case with one flat side (TO-92: a DS18B20, a transistor). `legs` left to right, seen from the flat side. */
+  | { shape: "to92"; legs: [string, string, string]; color: string; label?: string; note?: string }
+  /** A diode lying between its two legs: a round body with a band at the second leg's end. `size` = length, radius (mm). */
+  | { shape: "diode"; legs: [string, string]; size: [number, number]; body: string; band: string; note?: string }
+  /** A capacitor in a round can standing on two legs, with a stripe down the side of the second (negative) leg. */
+  | { shape: "can-capacitor"; legs: [string, string]; radius: number; height: number; color: string; stripe: string; note?: string }
+  /** A small ceramic disc standing on two legs, with an optional printed code. */
+  | { shape: "disc-capacitor"; legs: [string, string]; radius: number; color: string; label?: string; note?: string }
+  /** A flat black three-leg case with a metal tab and its hole (TO-220: a power MOSFET). `legs` left to right, seen from the front. */
+  | { shape: "to220"; legs: [string, string, string]; color: string; label?: string; note?: string }
+  /**
+   * A part that lies on the mat beside the breadboard, joined to the `pins` holes by one wire each
+   * (`wires` = their colours, in the order of `pins`). `plug` = the wires end in one plug, not single pins.
+   */
+  | { shape: "tethered"; pins: string[]; wires: string[]; plug?: boolean; unit: TetherUnit; note?: string }
+  /** A four-leg LED with a frosted dome and three colour chips inside. `legs` = red, common, green, blue, in a row. */
+  | { shape: "rgb-led"; legs: [string, string, string, string]; body: string; note?: string }
+  /** One 7-segment digit on two lines of pins across the centre channel. `size` = along a pin line, across the two lines, tall (mm). */
+  | { shape: "seven-segment"; pins: string[]; size: [number, number, number]; body: string; face: string; lit: string; note?: string }
+  /**
+   * A membrane keypad on a flat cable: its plug stands in the `pins` holes and the keypad lies on the
+   * mat beside the breadboard. `size` = wide, long (mm); `keys` = the printed rows, top row first.
+   */
+  | { shape: "keypad"; pins: string[]; size: [number, number]; keys: string[][]; body: string; key: string; accent: string; note?: string };
+
+/** What hangs on the wires of a `tethered` part. */
+export type TetherUnit =
+  /** A small hobby servo standing on the mat, its horn on top. */
+  | { type: "servo"; color: string }
+  /** A small DC motor lying on the mat. */
+  | { type: "dc-motor" }
+  /** A flat coin vibration motor. */
+  | { type: "coin-motor" }
+  /** A character display lying face up, with two lines of text. */
+  | { type: "lcd"; board: string; screen: string; lines: [string, string] }
+  /** A geared stepper motor with its driver board. */
+  | { type: "stepper"; board: string };
+
+/**
+ * One thing on the face of an upright module. `at` = [across from the board's middle, up from the
+ * board's bottom edge] in mm.
+ */
+export type ModuleFeature =
+  /** The blue adjusting potentiometer with its brass screw. */
+  | { type: "trimmer"; at: [number, number] }
+  /** A small 8-leg chip (the comparator). */
+  | { type: "chip"; at: [number, number] }
+  /** A surface-mount LED. */
+  | { type: "led"; at: [number, number]; color: string }
+  /** A surface-mount resistor. */
+  | { type: "resistor"; at: [number, number] }
+  /** A 3-leg black sensor lying on the board (a Hall sensor). */
+  | { type: "to92"; at: [number, number] }
+  /** An LED-shaped part standing off the board's top edge, pointing up (IR LED, photodiode, flame sensor). */
+  | { type: "emitter"; at: [number, number]; color: string; clear?: boolean }
+  /** A round microphone capsule on the face. */
+  | { type: "mic"; at: [number, number]; radius: number; height: number }
+  /** A printed touch pad: rings on the face. */
+  | { type: "pad"; at: [number, number]; radius: number }
+  /** Bare metal strips running up the board (a water level sensor); `at` = the middle of their lower end. */
+  | { type: "traces"; at: [number, number]; count: number; length: number; width: number }
+  /** A two-prong probe on a cable, lying beside the breadboard (a soil moisture sensor). `size` = across, long (mm). */
+  | { type: "probe"; size: [number, number]; color: string }
+  /** A round ultrasonic transducer with its mesh front. */
+  | { type: "transducer"; at: [number, number]; radius: number; height: number }
+  /** A flat metal crystal. */
+  | { type: "crystal"; at: [number, number] }
+  /** A thumb stick: its housing, the two side potentiometers and the round cap. */
+  | { type: "stick"; at: [number, number] }
+  /** A rotary encoder: metal body, threaded bushing and shaft. */
+  | { type: "encoder"; at: [number, number] }
+  /** A block of 7-segment digits; `size` = across, up (mm). */
+  | { type: "digits"; at: [number, number]; size: [number, number]; count: number; color: string; colon?: boolean }
+  /** A round LED lamp looking out of the face. */
+  | { type: "lamp"; at: [number, number]; radius: number; color: string }
+  /** A small flat sensor or chip without visible legs; `size` = across, up (mm). `vent` = a metal lid with its small hole. */
+  | { type: "sensor"; at: [number, number]; size: [number, number]; color: string; vent?: boolean }
+  /** A plated mounting hole. */
+  | { type: "hole"; at: [number, number]; radius: number }
+  /** A coin cell in its holder, on the back of the board. */
+  | { type: "coin"; at: [number, number]; radius: number }
+  /** A relay: the blue box. */
+  | { type: "relay"; at: [number, number] }
+  /** A screw terminal block with `ways` screws. */
+  | { type: "terminal"; at: [number, number]; ways: number }
+  /** One addressable RGB LED, lit in `color`. */
+  | { type: "pixel"; at: [number, number]; color: string }
+  /** The white lens dome of a motion sensor on its square base. */
+  | { type: "dome"; at: [number, number]; radius: number }
+  /** A square LED dot matrix; `rows` = the picture, top row first, "#" = a lit dot. `size` = its side (mm). */
+  | { type: "matrix"; at: [number, number]; size: number; color: string; rows: string[] }
+  /** An antenna coil printed on the board: nested rectangles. `size` = across, up (mm). */
+  | { type: "coil"; at: [number, number]; size: [number, number] }
+  /** A micro SD card socket with a card in it. */
+  | { type: "sd-slot"; at: [number, number] }
+  /** A colour screen showing colour bars; `size` = across, up (mm). */
+  | { type: "tft"; at: [number, number]; size: [number, number] }
+  /** A flat metal shield over a radio; `size` = across, up (mm). */
+  | { type: "shield"; at: [number, number]; size: [number, number] }
+  /** A square ceramic patch antenna on its short cable; `size` = its side (mm). */
+  | { type: "patch"; at: [number, number]; size: number };
 
 /** Fills {placeholders} from `vars`; unknown ones stay as written. */
 export function fillTemplate(template: string, vars: Record<string, string | number | undefined>): string {
@@ -438,6 +556,54 @@ const textFile = obj({
 
 const color: Check = (v, p) => (str(v, p), /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(v as string) || fail(p, "must be a colour like #1d3c8f"));
 const size2 = arr(num, 2);
+const FEATURES: Record<string, Check> = {
+  trimmer: obj({ type: str, at: size2 }),
+  chip: obj({ type: str, at: size2 }),
+  led: obj({ type: str, at: size2, color }),
+  resistor: obj({ type: str, at: size2 }),
+  to92: obj({ type: str, at: size2 }),
+  emitter: obj({ type: str, at: size2, color, "clear?": bool }),
+  mic: obj({ type: str, at: size2, radius: num, height: num }),
+  pad: obj({ type: str, at: size2, radius: num }),
+  traces: obj({ type: str, at: size2, count: num, length: num, width: num }),
+  probe: obj({ type: str, size: size2, color }),
+  transducer: obj({ type: str, at: size2, radius: num, height: num }),
+  crystal: obj({ type: str, at: size2 }),
+  stick: obj({ type: str, at: size2 }),
+  encoder: obj({ type: str, at: size2 }),
+  digits: obj({ type: str, at: size2, size: size2, count: num, color, "colon?": bool }),
+  lamp: obj({ type: str, at: size2, radius: num, color }),
+  sensor: obj({ type: str, at: size2, size: size2, color, "vent?": bool }),
+  hole: obj({ type: str, at: size2, radius: num }),
+  coin: obj({ type: str, at: size2, radius: num }),
+  relay: obj({ type: str, at: size2 }),
+  terminal: obj({ type: str, at: size2, ways: num }),
+  pixel: obj({ type: str, at: size2, color }),
+  dome: obj({ type: str, at: size2, radius: num }),
+  matrix: obj({ type: str, at: size2, size: num, color, rows: arr(str, 16) }),
+  coil: obj({ type: str, at: size2, size: size2 }),
+  "sd-slot": obj({ type: str, at: size2 }),
+  tft: obj({ type: str, at: size2, size: size2 }),
+  shield: obj({ type: str, at: size2, size: size2 }),
+  patch: obj({ type: str, at: size2, size: num }),
+};
+const feature: Check = (v, p) => {
+  const type = isObj(v) ? v.type : undefined;
+  if (typeof type !== "string" || !FEATURES[type]) fail(`${p}.type`, `must be one of ${Object.keys(FEATURES).join(", ")}`);
+  FEATURES[type as string]!(v, p);
+};
+const UNITS: Record<string, Check> = {
+  servo: obj({ type: str, color }),
+  "dc-motor": obj({ type: str }),
+  "coin-motor": obj({ type: str }),
+  lcd: obj({ type: str, board: color, screen: color, lines: arr(str, 2) }),
+  stepper: obj({ type: str, board: color }),
+};
+const tetherUnit: Check = (v, p) => {
+  const type = isObj(v) ? v.type : undefined;
+  if (typeof type !== "string" || !UNITS[type]) fail(`${p}.type`, `must be one of ${Object.keys(UNITS).join(", ")}`);
+  UNITS[type as string]!(v, p);
+};
 const viewFile: Check = (v, p) => {
   const shape = isObj(v) ? v.shape : undefined;
   const shapes: Record<string, Check> = {
@@ -450,22 +616,44 @@ const viewFile: Check = (v, p) => {
       pins: arr(str, 16),
       board: obj({ size: size2, height: num, color, "note?": str }),
       "screen?": obj({ size: size2, text: str, bg: color, fg: color }),
+      "features?": arr(feature, 24),
+      "holes?": bool,
       "labels?": bool,
     }),
-    cylinder: obj({ shape: str, radius: num, height: num, color, "top?": color, "label?": str }),
+    cylinder: obj({ shape: str, radius: num, height: num, color, "top?": color, "label?": str, "hole?": num, "plus?": str, "note?": str }),
     "slide-switch": obj({ shape: str, legs: arr(str, 3), size: arr(num, 3), body: color, slider: color, "note?": str }),
     "upright-module": obj({
       shape: str,
       pins: arr(str, 16),
       board: obj({ size: size2, color, "note?": str }),
       "buzzer?": obj({ radius: num, height: num, color }),
+      "features?": arr(feature, 24),
+      "hole?": bool,
       "labels?": arr(str, 16),
     }),
-    "grid-sensor": obj({ shape: str, pins: arr(str, 16), body: obj({ size: arr(num, 3), color, "note?": str }) }),
+    "grid-sensor": obj({ shape: str, pins: arr(str, 16), body: obj({ size: arr(num, 3), color, "note?": str }), "grid?": obj({ color, cells: size2 }) }),
+    "photo-disc": obj({ shape: str, legs: arr(str, 2), radius: num, body: color, face: color, track: color, "note?": str }),
+    bead: obj({ shape: str, legs: arr(str, 2), radius: num, color, "note?": str }),
+    "metal-can": obj({ shape: str, legs: arr(str, 2), radius: num, height: num, color, "base?": color, "note?": str }),
+    "glass-axial": obj({ shape: str, legs: arr(str, 2), size: size2, glass: color, "note?": str }),
+    to92: obj({ shape: str, legs: arr(str, 3), color, "label?": str, "note?": str }),
+    diode: obj({ shape: str, legs: arr(str, 2), size: size2, body: color, band: color, "note?": str }),
+    "can-capacitor": obj({ shape: str, legs: arr(str, 2), radius: num, height: num, color, stripe: color, "note?": str }),
+    "disc-capacitor": obj({ shape: str, legs: arr(str, 2), radius: num, color, "label?": str, "note?": str }),
+    to220: obj({ shape: str, legs: arr(str, 3), color, "label?": str, "note?": str }),
+    tethered: obj({ shape: str, pins: arr(str, 16), wires: arr(color, 16), "plug?": bool, unit: tetherUnit, "note?": str }),
+    "rgb-led": obj({ shape: str, legs: arr(str, 4), body: color, "note?": str }),
+    "seven-segment": obj({ shape: str, pins: arr(str, 16), size: arr(num, 3), body: color, face: color, lit: color, "note?": str }),
+    keypad: obj({ shape: str, pins: arr(str, 16), size: size2, keys: arr(arr(str, 8), 8), body: color, key: color, accent: color, "note?": str }),
   };
   if (typeof shape !== "string" || !shapes[shape]) fail(`${p}.shape`, `must be one of ${Object.keys(shapes).join(", ")}`);
   shapes[shape as string]!(v, p);
 };
+
+/** Checks a 3D look against the view.json format (also used for models whose pack isn't written yet). */
+export function checkViewSpec(v: unknown, at: string): asserts v is ViewSpec {
+  viewFile(v, at);
+}
 
 /** Every {placeholder} in text.json must be one the engine fills for this part. */
 function checkText(pack: Pack): void {
@@ -497,7 +685,7 @@ function checkView(pack: Pack): void {
   const v = pack.view!;
   const legs = pack.part.legs.map((l) => l.id);
   const props = Object.keys(pack.part.props ?? {});
-  const named = "legs" in v ? v.legs : "pins" in v ? v.pins : [];
+  const named = ["legs" in v ? v.legs : "pins" in v ? v.pins : [], "plus" in v && v.plus ? [v.plus] : []].flat();
   for (const leg of named) if (!legs.includes(leg)) fail(at, `"${leg}" isn't a leg of ${pack.meta.id}`);
   for (const prop of [("colorProp" in v ? v.colorProp : undefined), ("bandsProp" in v ? v.bandsProp : undefined)]) if (prop && !props.includes(prop)) fail(at, `"${prop}" isn't a prop of ${pack.meta.id}`);
 }

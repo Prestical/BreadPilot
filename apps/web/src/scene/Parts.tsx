@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { CurvePath, LatheGeometry, LineCurve3, QuadraticBezierCurve3, TubeGeometry, Vector2, Vector3, type Curve, type MeshStandardMaterial } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import type { ResolvedPart } from "@breadpilot/circuit-core";
+import type { ResolvedPart, ViewSpec } from "@breadpilot/circuit-core";
 import { labelTexture } from "./labels";
 import { Rod } from "./Rod";
 import type { Vec3 } from "./coords";
-import { partShapes, type Geometry, type ItemState, type Material, type ShapeNode } from "./shapes";
+import { partShapes, viewShapes, type Geometry, type ItemState, type Material, type ShapeNode } from "./shapes";
 
 export type { ItemState } from "./shapes";
 
@@ -14,6 +14,8 @@ export interface PartViewProps {
   part: ResolvedPart;
   state: ItemState;
   lit?: boolean;
+  /** A look to draw instead of the part pack's own (for models whose pack isn't written yet). */
+  view?: ViewSpec;
   onHover(ref: string | null, e?: ThreeEvent<PointerEvent>): void;
 }
 
@@ -40,9 +42,15 @@ function hoverProps(ref: string, onHover: PartViewProps["onHover"]) {
 const defined = <T extends object>(o: T): Partial<T> => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 /** Renders a part from its shape data (scene/shapes.ts). */
-export function PartView({ part, state, lit = false, onHover }: PartViewProps) {
+export function PartView({ part, state, lit = false, view, onHover }: PartViewProps) {
+  const tree = useMemo(() => (view ? viewShapes(view, part, state, lit) : partShapes(part, state, lit)), [part, state, lit, view]);
+  const hover = useMemo(() => hoverProps(part.ref, onHover), [part.ref, onHover]);
+  return <ShapeTree tree={tree} state={state} hover={hover} />;
+}
+
+/** Turns shape data into meshes; groups marked `hover` get the `hover` handlers. */
+export function ShapeTree({ tree, state, hover }: { tree: ShapeNode; state: ItemState; hover?: ReturnType<typeof hoverProps> }) {
   const pulse = usePulse(state);
-  const tree = useMemo(() => partShapes(part, state, lit), [part, state, lit]);
   // Parts not placed yet (ghosts) cast no shadow.
   const solid = state !== "ghost";
   const render = (n: ShapeNode, key: number): React.ReactNode => {
@@ -50,12 +58,12 @@ export function PartView({ part, state, lit = false, onHover }: PartViewProps) {
       case "rod":
         return <Rod key={key} from={n.from} to={n.to} opacity={n.opacity} />;
       case "lead":
-        return <Lead key={key} points={n.points} radius={n.radius} bend={n.bend} opacity={n.opacity} />;
+        return <Lead key={key} points={n.points} radius={n.radius} bend={n.bend} opacity={n.opacity} color={n.color} />;
       case "light":
         return <pointLight key={key} color={n.color} intensity={n.intensity} distance={n.distance} />;
       case "group":
         return (
-          <group key={key} {...defined({ position: n.position, rotation: n.rotation })} {...(n.hover ? hoverProps(part.ref, onHover) : {})}>
+          <group key={key} {...defined({ position: n.position, rotation: n.rotation })} {...(n.hover && hover ? hover : {})}>
             {n.children.map(render)}
           </group>
         );
@@ -80,7 +88,7 @@ function GeometryView({ g }: { g: Geometry }) {
     case "lathe":
       return <Lathe points={g.points} segments={g.args[0]} />;
     case "cylinder":
-      return <cylinderGeometry args={g.args} />;
+      return g.arc ? <cylinderGeometry args={[...g.args, 1, false, g.arc[0], g.arc[1]]} /> : <cylinderGeometry args={g.args} />;
     case "sphere":
       return <sphereGeometry args={g.args} />;
     case "capsule":
@@ -135,13 +143,13 @@ export function leadPath(points: Vec3[], bend: number): Curve<Vector3> {
 }
 
 /** A bent metal lead (a resistor's wire, a button's leg). */
-function Lead({ points, radius, bend, opacity }: { points: Vec3[]; radius: number; bend: number; opacity: number }) {
+function Lead({ points, radius, bend, opacity, color }: { points: Vec3[]; radius: number; bend: number; opacity: number; color?: string }) {
   const key = points.flat().join(",");
   const geometry = useMemo(() => new TubeGeometry(leadPath(points, bend), points.length * 10, radius, 8, false), [key, radius, bend]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh geometry={geometry} castShadow={opacity >= 1} raycast={() => null}>
-      <meshStandardMaterial color="#b8bcc4" metalness={0.7} roughness={0.35} transparent={opacity < 1} opacity={opacity} />
+      {color ? <meshStandardMaterial color={color} roughness={0.55} transparent={opacity < 1} opacity={opacity} /> : <meshStandardMaterial color="#b8bcc4" metalness={0.7} roughness={0.35} transparent={opacity < 1} opacity={opacity} />}
     </mesh>
   );
 }

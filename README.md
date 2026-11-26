@@ -173,10 +173,13 @@ Large (model 10 GB and more)
 | Raspberry Pi Pico 2 W / 2 WH | The board. Its on-board LED, temperature sensor and Wi-Fi need no extra parts. |
 | LED (5 mm) | Red, green, yellow, blue or white. Its resistor is added for you. |
 | Push button (6 mm) | Read with the Pico's internal pull-up. |
+| Slide switch (IC206, 3 legs) | On/off input: middle leg to a GPIO with the internal pull-up, one outer leg to GND. |
 | Potentiometer (10 kΩ knob) | Analog input, up to 3 (the Pico has 3 ADC pins). |
 | 1.3" I2C OLED (SH1106, 128x64) | Up to 2. **Power from 3.3 V only.** Its driver `sh1106.py` is included in the Pico build. |
+| DHT11 temperature and humidity sensor | Air temperature and humidity. Its 10 kΩ pull-up resistor is added for you. One reading every 2 s at most. |
+| Passive buzzer module (MH-FMD, 3 pins) | Tones and melodies with PWM. **Power from 3.3 V only** (the module sounds while its I/O pin is low). |
 
-Ideas that need other parts (motors, sensors, other displays…) get a **handoff bundle**: the plan,
+Ideas that need other parts (motors, servos, distance sensors, other displays…) get a **handoff bundle**: the plan,
 validated wiring and requirements as Markdown, ready to paste into a stronger assistant.
 
 ---
