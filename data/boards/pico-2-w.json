@@ -40,10 +40,15 @@
       "outputLowMaxV": 0.5,
       "maxTotalSourceMa": 100,
       "maxTotalSinkMa": 100,
+      "inputHighMinV": 2.0,
+      "inputLowMaxV": 0.8,
+      "pullUpOhms": [32000, 86000],
+      "pullDownOhms": [36000, 113000],
       "notes": [
         "Each pad's DRIVE field resets to 1 = 4 mA (PADS_BANK0 GPIOx registers). Code that sets another drive strength is not checked.",
         "The 2/4/8/12 mA drive strengths are not hard limits: above the selected current the pin's voltage drops; at the selected current VOH >= 2.62 V and VOL <= 0.5 V (IOVDD 3.3 V).",
-        "The sum of all current sourced by GPIO pins must not exceed 100 mA (IIOVDD_MAX); the sum sunk into GPIO pins must not exceed 100 mA (IIOVSS_MAX)."
+        "The sum of all current sourced by GPIO pins must not exceed 100 mA (IIOVDD_MAX); the sum sunk into GPIO pins must not exceed 100 mA (IIOVSS_MAX).",
+        "Inputs (standard IO, IOVDD 3.3 V): VIH >= 2.0 V reads 1, VIL <= 0.8 V reads 0; the internal pull-up is 32-86 kOhm and the pull-down 36-113 kOhm (Table 1683)."
       ],
       "src": [
         {

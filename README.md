@@ -257,6 +257,7 @@ flowchart LR
 | Pick pins, place parts, route wires, write the steps and their "why" | Code (`packages/circuit-core`) |
 | Check the circuit (shorts, resistors, voltages, pin functions) | Code: the validator, in the API **and** again in your browser |
 | Check the code against the wiring | Code: the MicroPython checker |
+| Run the code on its circuit (crashes, what it says it does) | Code: the behaviour simulator (official MicroPython WebAssembly build) |
 
 ### What the checks don't cover
 
@@ -266,7 +267,7 @@ prove that a project works or is safe. They don't cover:
 | Area | Not checked |
 |---|---|
 | The real board | The checks see the wiring BreadPilot drew, not the breadboard on your desk: a wire one hole off, a loose or broken jumper, a bent leg, a resistor of another value or a damaged part. Compare the board with the 3D view before plugging in USB. |
-| What the code does | The code checker reads the program; it doesn't run it. Logic mistakes (a button that works the wrong way round, a reading in the wrong unit, a loop that waits forever) and errors that only happen on the board can pass. |
+| What the code does | The behaviour simulator runs the program on a simulated copy of its circuit while a fixed test presses each button, turns each knob and changes each sensor. It catches crashes, and code that doesn't do what the AI says it does (such as a button that works the wrong way round). One test run isn't every situation: logic that only shows after many presses, at other sensor values or after a long time can pass. A claim the AI words loosely checks little: when working programs were broken on purpose, about 6 in 10 were caught, and fewer with the small local model. Wi-Fi, the internet and sound aren't simulated, the simulator uses double-precision numbers where the Pico uses single, and code edited in the code panel isn't simulated. |
 | Part facts | Parts marked ❌ in [Supported hardware](#supported-hardware) are described from the usual values of the most common module, not from a datasheet. Modules with the same name can differ in pin order, voltage or active level: follow the labels on your board. |
 | Currents | GPIO and resistor currents are counted through resistors and LEDs in series. Current a module takes through its signal pins isn't counted, module supply currents are typical values, and code that changes a pin's drive strength isn't checked. |
 | Power | Projects run from the Pico's 3.3 V pin and USB. Batteries, external supplies, 5 V modules and mains are not supported, so they aren't checked. |
@@ -379,6 +380,15 @@ npm test
   critical `npm audit` finding.
 - `npm run mutation -w @breadpilot/circuit-core` runs mutation testing (Stryker) on the validator,
   the netlist and the code checker; the report goes to `packages/circuit-core/reports/mutation/`.
+- `npm run sim -w @breadpilot/sim -- "<project title>"` runs a saved project in the behaviour
+  simulator (MicroPython 1.29 on a virtual copy of its circuit) and prints how it ended, what it
+  printed, its LEDs and modules over time, and the display frames as text pictures. `--press
+  BTN1@1-1.3` holds a button, `--knob POT1@2=0.8` turns a knob, `--sense DHT1.temperature@0=30` sets
+  a sensor, `--list` lists the projects (from `.local/saved-projects.json`, or `--file` for a project
+  the app exported). Without those options it runs the automatic test (each button pressed, held and
+  pressed twice; each knob swept; each sensor changed) and lists the findings: S001 crash, S002 a loop
+  that never gives time back, S003 nothing reacts to the inputs, S004 an input never read, S005 a
+  display that never shows anything.
 
 <details>
 <summary><strong>Building the installers</strong></summary>

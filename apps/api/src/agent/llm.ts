@@ -101,12 +101,12 @@ export function grammarSchema(schema: unknown): unknown {
 /**
  * OpenAI's strict structured outputs: every object lists all its properties as required and allows no
  * others, so optional fields become nullable (nulls are dropped again before zod, see dropNulls).
- * minLength isn't a supported keyword there; zod still checks it afterwards.
+ * minLength and default aren't supported keywords there; zod still checks and fills them afterwards.
  */
 export function strictSchema(schema: unknown): unknown {
   if (Array.isArray(schema)) return schema.map(strictSchema);
   if (!schema || typeof schema !== "object") return schema;
-  const s = Object.fromEntries(Object.entries(schema).filter(([k]) => k !== "minLength").map(([k, v]) => [k, strictSchema(v)])) as Record<string, unknown>;
+  const s = Object.fromEntries(Object.entries(schema).filter(([k]) => k !== "minLength" && k !== "default").map(([k, v]) => [k, strictSchema(v)])) as Record<string, unknown>;
   const props = s.properties as Record<string, Record<string, unknown>> | undefined;
   if (s.type !== "object" || !props) return s;
   const required = new Set((s.required as string[] | undefined) ?? []);

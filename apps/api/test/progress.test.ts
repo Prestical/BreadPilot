@@ -36,7 +36,7 @@ function scripted(script: Partial<Record<Stage, unknown[]>>, gate: Promise<void>
     async json<T>(schema: z.ZodType<T>, _m: ChatMessage[]) {
       await gate;
       const sc: unknown = schema;
-      const stage: Stage = sc === IntakeSchema ? "intake" : sc === PlanSchema ? "plan" : sc === CodeSchema ? "code" : (() => { throw new Error("schema"); })();
+      const stage: Stage = sc === IntakeSchema ? "intake" : sc === PlanSchema ? "plan" : "code" in ((sc as { shape?: object }).shape ?? {}) ? "code" : (() => { throw new Error("schema"); })();
       const q = script[stage] ?? [];
       const reply = q[Math.min(++n[stage], q.length) - 1];
       if (reply === undefined) throw new LlmError(`no reply for ${stage}`);

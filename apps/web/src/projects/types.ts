@@ -5,6 +5,18 @@ import type { Build, BuildStep, CodeCheckReport, PowerMode } from "@breadpilot/c
 export type ProjectState = "AWAIT_APPROVAL" | "READY" | "HANDOFF" | "FAILED";
 export type Stage = "intake" | "plan" | "design" | "steps" | "code";
 
+/** M18 18.7f: what the behaviour simulator found when it ran the code with the automatic test. */
+export interface BehaviourSummary {
+  ok: boolean;
+  findings: { code: string; severity: "error" | "warning"; message: string; line?: number; ref?: string }[];
+  /** M18 18.7g: what the code says it does, and whether the simulator saw it (null: not checked). */
+  claims?: { when: string; then: string; held: boolean | null }[];
+  notes: string[];
+  /** Virtual seconds simulated. */
+  seconds: number;
+  ended: string;
+}
+
 export interface StageEvent {
   stage: Stage;
   status: "ok" | "retry" | "error";
@@ -87,6 +99,8 @@ export interface ApiProject {
     code?: string;
     codeExplanation?: string;
     codeCheck?: CodeCheckReport;
+    /** M18 18.7f: the run in the behaviour simulator (missing = not simulated, e.g. older projects). */
+    behaviour?: BehaviourSummary;
     codeAttempts: number;
     citations: string[];
   };

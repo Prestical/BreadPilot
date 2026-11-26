@@ -7,6 +7,8 @@ They keep their own licenses and owners.
 |---|---|---|---|
 | MicroPython v1.29.0 firmware for the Pico 2 W | `data/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2` | Damien P. George and the MicroPython contributors | MIT, see below |
 | MicroPython rp2 port source files (read as facts) | `docs/software/micropython-v1.29.0/` | Damien P. George and the MicroPython contributors | MIT (notice inside each file) |
+| micropython-lib `dht`, `onewire`, `ds18x20` (read as facts; run unchanged by the behaviour simulator) | `docs/software/micropython-v1.29.0/micropython-lib__*`, `packages/sim/src/py/frozen/` | Damien P. George and the micropython-lib contributors | MIT |
+| MicroPython WebAssembly build (npm `@micropython/micropython-webassembly-pyscript` 1.29.0-6), used by the behaviour simulator | installed by npm | Damien P. George and the MicroPython contributors | MIT |
 | littlefs WebAssembly build (npm `littlefs` 0.1.0) | installed by npm | Uri Shaked / Wokwi | ISC |
 | Raspberry Pi Pico 2 W datasheet and pinout | `docs/hardware/pico-2-w/` | Raspberry Pi Ltd | Their own terms; download from raspberrypi.com |
 | npm packages (React, three.js, Fastify, …) | installed by npm | Their authors | See each package's license |

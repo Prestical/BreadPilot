@@ -64,7 +64,7 @@ describe("stageLock", () => {
 
   it("builds the real app's lock from the repository's package-lock.json", () => {
     const root = JSON.parse(readFileSync(join(resolve(import.meta.dirname, "../../.."), "package-lock.json"), "utf8"));
-    const engine = ["@electric-sql/pglite", "@electric-sql/pglite-pgvector", "@fastify/static", "fastify", "pdfjs-dist", "zod"];
+    const engine = ["@electric-sql/pglite", "@electric-sql/pglite-pgvector", "@fastify/static", "@micropython/micropython-webassembly-pyscript", "fastify", "pdfjs-dist", "zod"];
     const wanted = Object.fromEntries(engine.map((p) => [p, root.packages[`node_modules/${p}`].version]));
     const out = stageLock(root, wanted);
     const paths = Object.keys(out.packages).filter(Boolean);

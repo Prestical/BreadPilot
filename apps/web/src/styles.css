@@ -131,6 +131,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .feedback p { margin: 0 0 6px; }
 .feedback.good { background: var(--good-bg); border: 1px solid var(--ok); }
 .feedback.bad { background: var(--bad-bg); border: 1px solid var(--bad); }
+.feedback ul.claims { list-style: none; padding-left: 0; margin: 0; }
 .feedback.info { background: var(--info-bg); border: 1px solid var(--accent); }
 
 .step-list, .chapters { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

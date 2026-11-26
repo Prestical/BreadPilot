@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byDifficulty, difficultyTable, memoryLine, mistakeReport, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh } from "../src/agent/eval-report";
+import { byDifficulty, difficultyTable, memoryLine, mistakeReport, simulatorReport, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh } from "../src/agent/eval-report";
 
 describe("mistakeReport", () => {
   it("summarizes failed attempts per check and per message", () => {
@@ -74,5 +74,24 @@ describe("memory during a model test", () => {
     expect(swapTooHigh(5e9, 5e9, 2)).toBe(false); // swap already in use before the test isn't its fault
     expect(swapTooHigh(null, 9e9, 2)).toBe(false);
     expect(swapTooHigh(0, null, 2)).toBe(false);
+  });
+});
+
+describe("simulatorReport (M18 18.7h)", () => {
+  it("counts code sent back, warnings left and how the final claims fared", () => {
+    const text = simulatorReport([
+      { idea: "a", state: "READY", simulator: { attempts: [{ attempt: 1, codes: ["S006"], claims: [{ when: "BTN1 pressed", then: "LED1 on", held: false }] }, { attempt: 2, codes: [], claims: [{ when: "BTN1 pressed", then: "LED1 on", held: true }] }], notes: [] } },
+      { idea: "b", state: "HANDOFF", simulator: { attempts: [{ attempt: 1, codes: ["S001"], claims: [] }], notes: [] } },
+      { idea: "c", state: "READY", simulator: { attempts: [{ attempt: 1, codes: ["S004"], claims: [{ when: "x", then: "y", held: null }] }], notes: [] } },
+      { idea: "d", state: "FAILED" },
+    ]);
+    expect(text).toContain("ran on 3 project(s)");
+    expect(text).toContain("sent code back: 2 project(s) (crash S001 in 1, claim not held S006 in 1); READY after it: 1, handoff: 1");
+    expect(text).toContain("warnings on the final code: S004 ×1");
+    expect(text).toContain("claims on the final code: 2 in 2 project(s): held 1, not held 0, not checked 1");
+  });
+
+  it("says when it didn't run", () => {
+    expect(simulatorReport([{ idea: "a", state: "FAILED" }])).toMatch(/didn't run/);
   });
 });

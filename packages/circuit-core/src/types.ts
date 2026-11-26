@@ -34,6 +34,12 @@ export interface GpioCurrent {
   /** All GPIOs together: current sourced (outputs high) and sunk (outputs low). */
   maxTotalSourceMa: number;
   maxTotalSinkMa: number;
+  /** Input thresholds at IOVDD 3.3 V: at or above inputHighMinV reads 1, at or below inputLowMaxV reads 0. */
+  inputHighMinV: number;
+  inputLowMaxV: number;
+  /** The internal pull resistors' range [min, max] in ohms. */
+  pullUpOhms: [number, number];
+  pullDownOhms: [number, number];
 }
 
 export interface Board {

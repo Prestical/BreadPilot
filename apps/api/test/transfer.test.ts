@@ -18,7 +18,7 @@ function fakeLlm(script: Partial<Record<Stage, unknown[]>>): LlmClient {
     model: "fake",
     async json<T>(schema: z.ZodType<T>, _messages: ChatMessage[]) {
       const which: unknown = schema;
-      const stage: Stage = which === IntakeSchema ? "intake" : which === PlanSchema ? "plan" : which === CodeSchema ? "code" : (() => { throw new Error("unknown schema"); })();
+      const stage: Stage = which === IntakeSchema ? "intake" : which === PlanSchema ? "plan" : "code" in ((which as { shape?: object }).shape ?? {}) ? "code" : (() => { throw new Error("unknown schema"); })();
       count[stage] = (count[stage] ?? 0) + 1;
       const queue = script[stage] ?? [];
       const reply = queue[Math.min(count[stage]!, queue.length) - 1];

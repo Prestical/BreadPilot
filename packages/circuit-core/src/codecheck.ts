@@ -7,6 +7,7 @@
 // a block header without ":", and a block that isn't indented.
 // It can't check behavior (e.g. inverted button logic); that needs a simulator (Milestone 7).
 
+import { MICROPYTHON_API } from "./micropython-api";
 import { buildNets } from "./netlist";
 import { PACKS, type CodeRules } from "./packs";
 import { resolveBuild } from "./resolve";
@@ -222,6 +223,45 @@ function syntaxIssues(src: string, clean: string): CodeIssue[] {
     }
   }
 
+  // Indentation of each logical line, as MicroPython's tokenizer reads it (18.7i: the simulator found
+  // an "unexpected indent" this checker passed): a line may be deeper than the one before only when
+  // that line ends with ":", and may only step back to a level a line above uses. Blank lines, lines
+  // inside brackets or triple-quoted strings and backslash continuations don't count.
+  const levels = [0];
+  let opens = false; // the logical line before ends with ":" (or is a block header missing it: reported above)
+  let header = false; // the logical line being read starts with a block keyword
+  const HEADER = /^\s*(if|elif|else|for|while|def|try|except|finally|with|class)\b/;
+  let inTriple = false;
+  depth = 0;
+  for (let li = 0; li < lines.length; li++) {
+    const text = lines[li]!;
+    const inside = inTriple;
+    if ((text.match(/"""|'''/g) ?? []).length % 2) inTriple = !inTriple;
+    const startDepth = depth;
+    depth = depthAfter(text, depth);
+    const ends = depth === 0 && !inTriple && !/\\\s*$/.test(text); // this physical line ends the logical one
+    if (inside || startDepth > 0 || (li > 0 && /\\\s*$/.test(lines[li - 1]!)) || !text.trim()) {
+      if (!inside && text.trim() && ends) opens = text.trim().endsWith(":") || (header && !text.includes(":"));
+      continue;
+    }
+    const indent = indentOf(text);
+    if (indent > levels.at(-1)!) {
+      if (!opens) {
+        issues.push({ code: "C001", severity: "error", message: `Line ${li + 1} is indented more than the line before it, but that line doesn't start a block (it doesn't end with ":"), so MicroPython stops with "IndentationError: unexpected indent". Line it up with the lines around it.`, line: li + 1 });
+        break; // MicroPython stops at the first one: the lines after it would only repeat it
+      }
+      levels.push(indent);
+    } else {
+      while (indent < levels.at(-1)!) levels.pop();
+      if (indent !== levels.at(-1)) {
+        issues.push({ code: "C001", severity: "error", message: `Line ${li + 1} steps back to an indentation no line above it uses, so MicroPython stops with "IndentationError: unindent doesn't match any outer indent level". Line it up with the block it belongs to.`, line: li + 1 });
+        break;
+      }
+    }
+    header = HEADER.test(text);
+    opens = ends && (text.trim().endsWith(":") || (header && !text.includes(":")));
+  }
+
   const indents = src.split("\n").map((l) => /^[ \t]*/.exec(l)![0]);
   if (indents.some((i) => i.includes("\t")) && indents.some((i) => i.includes(" "))) {
     issues.push({ code: "C001", severity: "error", message: "Indentation mixes tabs and spaces; use 4 spaces." });
@@ -237,12 +277,7 @@ const MACHINE_NAMES = ["Pin", "ADC", "PWM", "Timer", "I2C", "SoftI2C", "SPI", "U
  * whose rp2 value isn't in our files (mem8, Signal, DAC, CAN…) are kept, so they're never flagged.
  * A test reads both files to keep this list honest.
  */
-export const MACHINE_MODULE_NAMES = [
-  "mem8", "mem16", "mem32", "mem_backup", "unique_id", "soft_reset", "bootloader", "reset", "reset_cause", "idle", "freq", "lightsleep", "deepsleep",
-  "disable_irq", "enable_irq", "bitstream", "dht_readinto", "time_pulse_us", "PinBase", "Signal", "SoftI2C", "SoftSPI",
-  "ADC", "ADCBlock", "CAN", "DAC", "I2C", "I2CTarget", "I2S", "PWM", "SDCard", "SPI", "UART", "USBDevice", "WDT",
-  "Pin", "RTC", "Timer", "PWRON_RESET", "WDT_RESET",
-];
+export const MACHINE_MODULE_NAMES: readonly string[] = MICROPYTHON_API.modules.machine.names;
 
 const MODULES = ["time", "utime", "random", "urandom", "math", "network", "machine", "sys", "rp2", "socket", "urequests", "requests", "bluetooth", "json"];
 
@@ -573,6 +608,62 @@ function unfinishedIssues(src: string, clean: string): CodeIssue[] {
  * and used inside it. Python runs the file from the top, so the loop starts before the `def` line is
  * ever reached and the first call fails with NameError (seen in a small model's program, M15 15.6).
  */
+/** Methods worth naming instead of a missing one (other boards' habits: ESP32's duty(), read()). */
+const METHOD_HINTS: Record<string, Record<string, string>> = {
+  PWM: { duty: "duty_u16(0-65535)" },
+  ADC: { read: "read_u16() (0-65535)", read_uv: "read_u16() (0-65535)" },
+  Pin: { mode: "init(mode) or a new Pin(n, mode)", pull: "init(pull=...)" },
+};
+
+/**
+ * C020: a call to a method the object's class doesn't have on the Pico (MicroPython v1.29.0, rp2):
+ * `led = PWM(Pin(16))` then `led.duty(…)`, or `ADC(26).read()`. The program stops with an
+ * AttributeError there. The names come from MICROPYTHON_API, generated from the firmware's source.
+ * Only objects made in the code with a machine class are checked (a name made from several classes
+ * is flagged only when none of them has the method).
+ */
+function missingMethodIssues(clean: string): CodeIssue[] {
+  const classes = MICROPYTHON_API.classes as Record<string, { methods: string[]; constants: string[] }>;
+  const names = Object.keys(classes).join("|");
+  const made = new Map<string, Set<string>>();
+  for (const m of clean.matchAll(new RegExp(`(?<![\\w.])((?:self\\.)?[A-Za-z_]\\w*)\\s*=\\s*(?:machine\\.)?(${names})\\s*\\(`, "g"))) {
+    made.set(m[1]!, new Set([...(made.get(m[1]!) ?? []), m[2]!]));
+  }
+  const issues: CodeIssue[] = [];
+  const seen = new Set<string>();
+  const flag = (cls: string[], method: string, index: number, what: string) => {
+    if (cls.some((c) => classes[c]!.methods.includes(method) || classes[c]!.constants.includes(method))) return;
+    const key = `${what}.${method}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const line = lineOf(clean, index);
+    const c = cls[0]!;
+    const hint = METHOD_HINTS[c]?.[method];
+    issues.push({
+      code: "C020",
+      severity: "error",
+      message: `Line ${line} calls ${what}.${method}(), but ${c} on the Pico has no ${method}(), so the program stops with an error there.${hint ? ` Use ${what}.${hint}.` : ""} ${c} has: ${classes[c]!.methods.filter((x) => !x.startsWith("_")).join(", ")}.`,
+      line,
+    });
+  };
+  for (const [name, cls] of made) {
+    const esc = name.replace(/\./g, "\\.");
+    for (const m of clean.matchAll(new RegExp(`(?<![\\w.])${esc}\\s*\\.\\s*([A-Za-z_]\\w*)\\s*\\(`, "g"))) flag([...cls], m[1]!, m.index!, name);
+  }
+  // Calls straight on a new object: ADC(26).read(), machine.PWM(Pin(16)).duty(…).
+  for (const m of clean.matchAll(new RegExp(`(?<![\\w.])(?:machine\\.)?(${names})\\s*\\(`, "g"))) {
+    let depth = 0;
+    let end = m.index! + m[0].length - 1;
+    for (; end < clean.length; end++) {
+      if (clean[end] === "(") depth++;
+      else if (clean[end] === ")" && --depth === 0) break;
+    }
+    const after = /^\s*\.\s*([A-Za-z_]\w*)\s*\(/.exec(clean.slice(end + 1));
+    if (after) flag([m[1]!], after[1]!, m.index!, `${m[1]}(…)`);
+  }
+  return issues;
+}
+
 function lateDefinitionIssues(clean: string): CodeIssue[] {
   const lines = clean.split("\n");
   const indent = (l: string) => l.length - l.trimStart().length;
@@ -1431,7 +1522,7 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
     }
   }
 
-  issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean), ...machineNameIssues(clean));
+  issues.push(...importIssues(clean), ...moduleIssues(clean, build), ...dangerIssues(clean), ...aliasIssues(clean), ...machineNameIssues(clean), ...missingMethodIssues(clean));
   const displays = displaysIn(build);
   const consts = moduleConstants(src, clean);
   issues.push(...unfinishedIssues(src, clean), ...inputCallIssues(clean, modes), ...unusedPartIssues(clean, modes, consts.ints), ...activeLowIssues(clean, activeLowPins(build), consts.ints), ...lateDefinitionIssues(clean));
@@ -1443,6 +1534,12 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
   for (const [name, mode] of Object.entries(modes)) {
     if (!(name in used)) err("C006", `The build wires ${name} as ${modeText(mode)}, but the code never uses it. Set it up with ${constructorFor(Number(name.slice(2)), mode, modes)}.`);
   }
+  // C020 only for methods C005 doesn't already explain ("a Pin object has no read_u16()" for a knob
+  // set up as a Pin): one cause, one message for the code AI. (C006's set-up hints say the same words
+  // about unused pins, so only C005 counts.)
+  const told = issues.filter((i) => i.code === "C005").map((i) => i.message);
+  const kept = issues.filter((i) => i.code !== "C020" || !told.some((t) => t.includes(`has no ${/has no (\w+)\(\)/.exec(i.message)?.[1]}()`)));
+  issues.splice(0, issues.length, ...kept);
 
   const errors = issues.filter((i) => i.severity === "error").length;
   return { ok: errors === 0, issues, used };

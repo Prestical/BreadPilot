@@ -1,0 +1,20 @@
+{
+  "name": "@breadpilot/sim",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Behaviour simulator: runs a project's MicroPython on the official WebAssembly build against parts simulated from the circuit (M18 18.7).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "sim": "node --import tsx scripts/run-project.ts",
+    "eval:mutants": "node --import tsx scripts/eval-mutants.ts"
+  },
+  "dependencies": {
+    "@breadpilot/circuit-core": "*",
+    "@micropython/micropython-webassembly-pyscript": "1.29.0-6"
+  }
+}

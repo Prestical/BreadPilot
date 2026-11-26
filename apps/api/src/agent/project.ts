@@ -17,6 +17,19 @@ export interface StageEvent {
   at: string;
 }
 
+/** What the behaviour simulator found (findings S001-S005, notes on what wasn't tried). */
+export interface BehaviourSummary {
+  /** No error finding (warnings may remain). */
+  ok: boolean;
+  findings: { code: string; severity: "error" | "warning"; message: string; line?: number; ref?: string }[];
+  /** M18 18.7g: the code's claims and whether each held (null: couldn't be checked, see notes). */
+  claims?: { when: string; then: string; held: boolean | null }[];
+  notes: string[];
+  /** Virtual seconds the run reached, and how it ended (finished, time limit, error, wall limit). */
+  seconds: number;
+  ended: string;
+}
+
 export interface ProjectBuild {
   build: Build;
   blocks: PlacedBlock[];
@@ -33,7 +46,12 @@ export interface ProjectBuild {
   codeCheck?: CodeCheckReport;
   codeAttempts: number;
   /** Every code attempt with the checker's findings (used for repair stats and debugging). */
-  codeHistory?: { attempt: number; ok: boolean; issues: CodeIssue[]; code: string }[];
+  codeHistory?: { attempt: number; ok: boolean; issues: CodeIssue[]; code: string; behaviour?: BehaviourSummary }[];
+  /**
+   * M18 18.7f: the code run in the behaviour simulator on this build's circuit with the automatic
+   * test run (missing when it wasn't run: before 18.7f, an imported project, or no simulator).
+   */
+  behaviour?: BehaviourSummary;
   /** Documentation excerpts given to the code stage. */
   citations: string[];
 }

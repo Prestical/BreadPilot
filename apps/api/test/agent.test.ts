@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type * as z from "zod/v4";
+import * as z from "zod/v4";
 import { buildApp } from "../src/app";
 import { handoffMarkdown } from "../src/agent/handoff";
 import { createLlm, dropNulls, LlmError, REASONING_HEADROOM, strictSchema, type ChatMessage, type LlmClient } from "../src/agent/llm";
+import { behaviourCheck } from "../src/agent/behaviour";
+import { claimWords } from "@breadpilot/sim";
+import { layoutProject } from "@breadpilot/circuit-core";
 import { approvePlan, cancelChange, createProject, restoreProjectVersion, retryProject, reviseProject, setPower, stopProject, STOPPED_MESSAGE, type AgentDeps } from "../src/agent/pipeline";
 import { addVersion } from "../src/agent/versions";
 import { changeTable, keptParts, runChangeCase } from "../src/agent/change-eval";
 import { memoryStore } from "../src/agent/project";
-import { CodeSchema, IntakeSchema, PlanSchema, type Intake, type Plan } from "../src/agent/schemas";
+import { codeSchemaFor, CodeSchema, IntakeSchema, PlanSchema, type Intake, type Plan } from "../src/agent/schemas";
 
 type Stage = "intake" | "plan" | "code";
 type Reply = unknown | ((messages: ChatMessage[]) => unknown);
@@ -17,7 +20,7 @@ type Reply = unknown | ((messages: ChatMessage[]) => unknown);
 function fakeLlm(script: Partial<Record<Stage, Reply[]>>) {
   const calls: { stage: Stage; messages: ChatMessage[] }[] = [];
   const stageOf = (schema: unknown): Stage =>
-    schema === IntakeSchema ? "intake" : schema === PlanSchema ? "plan" : schema === CodeSchema ? "code" : (() => { throw new Error("unknown schema"); })();
+    schema === IntakeSchema ? "intake" : schema === PlanSchema ? "plan" : schema === CodeSchema || "code" in ((schema as { shape?: object }).shape ?? {}) ? "code" : (() => { throw new Error("unknown schema"); })();
   const llm: LlmClient = {
     model: "fake",
     async json<T>(schema: z.ZodType<T>, messages: ChatMessage[]) {
@@ -433,6 +436,121 @@ describe("code repair loop", () => {
   });
 });
 
+describe("behaviour simulator in the code stage (M18 18.7f)", () => {
+  // Passes the wiring checker, but crashes the moment the button is pressed.
+  const CRASHES = { ...GOOD_CODE, code: GOOD_CODE.code.replace("    time.sleep(0.01)\n", "    if button.value() == 0:\n        print(\"pressed \" + 1)\n    time.sleep(0.01)\n") };
+  const crash = { code: "S001", severity: "error" as const, message: "The program stops with TypeError on line 10.", line: 10 };
+  const fine = { findings: [], notes: [], seconds: 9.4, ended: "time limit" };
+
+  it("a crash goes back to the model like a checker error, and the fixed code is READY", async () => {
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [CRASHES, GOOD_CODE] });
+    const behaviour = vi.fn(async (code: string) => (code.includes('"pressed " + 1') ? { ...fine, findings: [crash] } : fine));
+    const p = await createProject(deps(llm, { behaviour }), "LED and button");
+    expect(p.state).toBe("READY");
+    expect(p.build!.codeAttempts).toBe(2);
+    expect(behaviour).toHaveBeenCalledTimes(2);
+    expect(calls.filter((c) => c.stage === "code")[1]!.messages.at(-1)!.content).toContain("The program stops with TypeError on line 10.");
+    expect(p.build!.behaviour).toEqual({ ...fine, ok: true });
+    expect(p.build!.codeHistory!.map((h) => h.behaviour?.ok)).toEqual([false, true]);
+  });
+
+  it("hands off, saying so, when the code keeps crashing", async () => {
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [CRASHES] });
+    const p = await createProject(deps(llm, { behaviour: async () => ({ ...fine, findings: [crash] }) }), "LED and button");
+    expect(p.state).toBe("HANDOFF");
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(4);
+    expect(p.handoffReason).toMatch(/still crashed in the simulator after 4 tries/);
+    expect(p.build!.behaviour!.ok).toBe(false);
+  });
+
+  it("warnings don't hold the project back; they are kept for the Code view", async () => {
+    const warn = { code: "S004", severity: "warning" as const, message: "BTN1 is never read while the test uses it.", ref: "BTN1" };
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] });
+    const p = await createProject(deps(llm, { behaviour: async () => ({ ...fine, findings: [warn] }) }), "LED and button");
+    expect(p.state).toBe("READY");
+    expect(calls.filter((c) => c.stage === "code")).toHaveLength(1);
+    expect(p.build!.behaviour!.findings).toEqual([warn]);
+  });
+
+  it("a simulator that fails itself never blocks the project: a note says the code wasn't tested", async () => {
+    const { llm } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [GOOD_CODE] });
+    const p = await createProject(deps(llm, { behaviour: async () => { throw new Error("worker exited"); } }), "LED and button");
+    expect(p.state).toBe("READY");
+    expect(p.build!.behaviour).toMatchObject({ ok: true, ended: "not run", notes: [expect.stringMatching(/couldn't run this code \(worker exited\)/)] });
+  });
+
+  it("with the real simulator: the crash is found at its line, and the good code runs clean", async () => {
+    const { llm } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [CRASHES, GOOD_CODE] });
+    const p = await createProject(deps(llm, { behaviour: behaviourCheck }), "LED and button");
+    expect(p.state).toBe("READY");
+    const first = p.build!.codeHistory![0]!.behaviour!;
+    expect(first.findings.map((f) => [f.code, f.line])).toEqual([["S001", 12]]);
+    expect(first.findings[0]!.message).toMatch(/TypeError.*while BTN1 pressed briefly/);
+    expect(p.build!.behaviour).toMatchObject({ ok: true, findings: [] });
+  }, 30_000);
+});
+
+describe("behaviour claims in the code stage (M18 18.7g)", () => {
+  const CLAIM = { when: "BTN1 pressed", then: "LED1 on" };
+  const RIGHT = { ...GOOD_CODE, claims: [CLAIM] };
+  // Valid code on the right pins, but the LED is lit while the button is NOT pressed.
+  const INVERTED = { ...RIGHT, code: GOOD_CODE.code.replace("led.value(1 if button.value() == 0 else 0)", "led.value(button.value())") };
+
+  it("asks for claims in the circuit's own phrases, only when there is a simulator", async () => {
+    const withSim = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [RIGHT] });
+    await createProject(deps(withSim.llm, { behaviour: behaviourCheck }), "LED and button");
+    const prompt = withSim.calls.find((c) => c.stage === "code")!.messages[1]!.content;
+    expect(prompt).toContain('when: "BTN1 pressed"');
+    expect(prompt).toContain('then: "LED1 on", "LED1 off", "LED1 blinks", "LED1 brighter", "LED1 dimmer"');
+    const without = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [RIGHT] });
+    await createProject(deps(without.llm), "LED and button");
+    expect(without.calls.find((c) => c.stage === "code")!.messages[1]!.content).not.toContain("Claims:");
+  });
+
+  it("the inverted button: its claim fails in the simulator, the model gets why, the fixed code is READY", async () => {
+    const { llm, calls } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [INVERTED, RIGHT] });
+    const p = await createProject(deps(llm, { behaviour: behaviourCheck }), "LED and button");
+    expect(p.state).toBe("READY");
+    expect(p.build!.codeAttempts).toBe(2);
+    const first = p.build!.codeHistory![0]!.behaviour!;
+    expect(first.findings.map((f) => f.code)).toEqual(["S006"]);
+    expect(first.claims).toEqual([{ ...CLAIM, held: false }]);
+    const repair = calls.filter((c) => c.stage === "code")[1]!.messages;
+    expect(repair.at(-2)!.content).toContain('"claims":[{"when":"BTN1 pressed","then":"LED1 on"}]');
+    expect(repair.at(-1)!.content).toMatch(/says "when BTN1 pressed, LED1 on", but in the simulator LED1 was on \d+% of the time while BTN1 pressed/);
+    expect(p.build!.behaviour).toMatchObject({ ok: true, findings: [], claims: [{ ...CLAIM, held: true }] });
+  }, 30_000);
+
+  it("18.7i: the claims are the circuit's own phrases (enums), and a free sentence isn't accepted", () => {
+    const words = claimWords(layoutProject([{ kind: "led" }, { kind: "button" }]).build);
+    const schema = codeSchemaFor(words);
+    const json = z.toJSONSchema(schema) as any;
+    expect(json.required).toEqual(["code", "explanation", "claims"]);
+    expect(json.properties.claims.items.properties.when.enum).toEqual(["BTN1 pressed"]);
+    expect(json.properties.claims.items.properties.then.enum).toContain("LED1 on");
+    expect(schema.safeParse({ code: "x", explanation: "y", claims: [{ when: "The user presses the button", then: "LED1 on" }] }).success).toBe(false);
+    expect(schema.parse({ code: "x", explanation: "y" }).claims).toEqual([]);
+  });
+
+  it("18.7i: a circuit with no phrases has no claims field, and claims written anyway are dropped", async () => {
+    const schema = codeSchemaFor(claimWords(layoutProject([{ kind: "led" }]).build));
+    expect((z.toJSONSchema(schema) as any).properties.claims).toBeUndefined();
+    const blink = { code: "from machine import Pin\nimport time\nled = Pin(16, Pin.OUT)\nwhile True:\n    led.toggle()\n    time.sleep(0.5)\n", explanation: "Blinks.", claims: [{ when: "The program runs", then: "The LED blinks" }] };
+    const { llm } = fakeLlm({ intake: [intake("clear")], plan: [plan([{ kind: "led", purpose: "blink" }])], code: [blink] });
+    const behaviour = vi.fn(async (_code: string, _build: unknown, _claims: unknown[]) => ({ findings: [], notes: [], seconds: 5, ended: "time limit" }));
+    const p = await createProject(deps(llm, { behaviour }), "blink an LED");
+    expect(p.state).toBe("READY");
+    expect(behaviour.mock.calls[0]![2]).toEqual([]);
+  });
+
+  it("hands off, saying the code didn't do what it said, when the claim keeps failing", async () => {
+    const { llm } = fakeLlm({ intake: [intake("clear")], plan: [LED_BUTTON], code: [INVERTED] });
+    const p = await createProject(deps(llm, { behaviour: behaviourCheck }), "LED and button");
+    expect(p.state).toBe("HANDOFF");
+    expect(p.handoffReason).toMatch(/didn't do what it said in the simulator after 4 tries/);
+  }, 30_000);
+});
+
 describe("failures and retry", () => {
   it("goes to FAILED when the model is unreachable, then resumes from that stage", async () => {
     let down = true;
@@ -468,7 +586,7 @@ describe("LLM client", () => {
     const f = vi.fn(async () => ok(JSON.stringify({ code: "x", explanation: "y" })));
     const llm = createLlm({ api: "ollama", baseUrl: "http://host:11434/v1", model: "qwen", numCtx: 16384, temperature: 0.2, timeoutMs: 1000, fetchImpl: f as never });
     const r = await llm.json(CodeSchema, [{ role: "user", content: "hi" }]);
-    expect(r.data).toEqual({ code: "x", explanation: "y" });
+    expect(r.data).toEqual({ code: "x", explanation: "y", claims: [] }); // 18.7g: a left-out claims list is []
     const [url, init] = f.mock.calls[0]! as unknown as [string, RequestInit];
     expect(url).toBe("http://host:11434/api/chat");
     const body = JSON.parse(String(init.body));
@@ -476,7 +594,7 @@ describe("LLM client", () => {
     expect(body.options.num_predict).toBeUndefined();
     await llm.json(CodeSchema, [], { maxTokens: 2500 });
     expect(JSON.parse(String((f.mock.calls[1]! as unknown as [string, RequestInit])[1].body)).options.num_predict).toBe(2500);
-    expect(body.format.required).toEqual(["code", "explanation"]);
+    expect(body.format.required).toEqual(["code", "explanation", "claims"]);
     // Upper bounds are left out of the grammar; lower bounds stay (no empty strings).
     expect(JSON.stringify(body.format)).not.toMatch(/maxLength|\$schema/);
     expect(body.format.properties.code.minLength).toBe(1);
@@ -534,6 +652,13 @@ describe("LLM client", () => {
     expect(part.properties.color).toMatchObject({ type: ["string", "null"], enum: ["red", "green", "yellow", "blue", "white", null] });
     expect(part.additionalProperties).toBe(false);
     expect(JSON.stringify(body.response_format)).not.toMatch(/minLength/);
+  });
+
+  it("the strict schema drops 'default' (not an OpenAI keyword); the claims list stays required", () => {
+    const s = strictSchema(z.toJSONSchema(CodeSchema)) as Record<string, any>;
+    expect(s.required).toEqual(["code", "explanation", "claims"]);
+    expect(JSON.stringify(s)).not.toMatch(/"default"/);
+    expect(s.properties.claims.items).toMatchObject({ required: ["when", "then"], additionalProperties: false });
   });
 
   it("strict schema and null dropping leave required fields and arrays alone", () => {

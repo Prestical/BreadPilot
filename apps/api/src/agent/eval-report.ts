@@ -159,3 +159,39 @@ export const memoryLine = (m: MemorySample) => `memory: this test ${size(m.proce
 export function swapTooHigh(startBytes: number | null, nowBytes: number | null, limitGb: number): boolean {
   return startBytes !== null && nowBytes !== null && nowBytes - startBytes > limitGb * 1e9;
 }
+
+/** M18 18.7h: what the behaviour simulator did in one eval project. */
+export interface SimulatorRecord {
+  idea: string;
+  state: string;
+  simulator?: {
+    /** Each code try the simulator ran: its finding codes and claims. */
+    attempts: { attempt: number; codes: string[]; claims: { when: string; then: string; held: boolean | null }[] }[];
+    notes: string[];
+  };
+}
+
+const ERRORS = new Set(["S001", "S006"]);
+
+/**
+ * The simulator's part of an eval run: how often it sent code back (a crash or a claim that didn't
+ * hold), how many of those ended READY, the warnings left on the final code, and how the claims of
+ * the final code fared. Says nothing about whether the findings were right: that is read by hand.
+ */
+export function simulatorReport(results: SimulatorRecord[]): string {
+  const ran = results.filter((r) => r.simulator?.attempts.length);
+  if (!ran.length) return "\nBehaviour simulator: it didn't run (no project got past the wiring check).";
+  const sentBack = ran.filter((r) => r.simulator!.attempts.some((a) => a.codes.some((c) => ERRORS.has(c))));
+  const byCode = (code: string) => ran.filter((r) => r.simulator!.attempts.some((a) => a.codes.includes(code))).length;
+  const final = ran.map((r) => r.simulator!.attempts.at(-1)!);
+  const claims = final.flatMap((a) => a.claims);
+  const warnings = new Map<string, number>();
+  for (const a of final) for (const c of a.codes) if (!ERRORS.has(c)) warnings.set(c, (warnings.get(c) ?? 0) + 1);
+  const lines = [
+    `\nBehaviour simulator: ran on ${ran.length} project(s)`,
+    `  sent code back: ${sentBack.length} project(s) (crash S001 in ${byCode("S001")}, claim not held S006 in ${byCode("S006")}); READY after it: ${sentBack.filter((r) => r.state === "READY").length}, handoff: ${sentBack.filter((r) => r.state !== "READY").length}`,
+    `  warnings on the final code: ${warnings.size ? [...warnings].map(([c, n]) => `${c} ×${n}`).join(", ") : "none"}`,
+    `  claims on the final code: ${claims.length} in ${final.filter((a) => a.claims.length).length} project(s): held ${claims.filter((c) => c.held === true).length}, not held ${claims.filter((c) => c.held === false).length}, not checked ${claims.filter((c) => c.held === null).length}`,
+  ];
+  return lines.join("\n");
+}

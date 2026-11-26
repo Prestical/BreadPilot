@@ -130,7 +130,27 @@ export interface CodeChange {
   rewired: boolean;
 }
 
-export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[] }, network = false, imports: string[] = ["from machine import Pin", "import time"], change?: CodeChange): ChatMessage[] {
+/** M18 18.7g: the phrases the code's claims may use (from the circuit: @breadpilot/sim claimWords). */
+export interface ClaimPhrases {
+  when: string[];
+  then: string[];
+  /** What a sensor phrase means in the test ("DHT1 temperature high" → "30 C"). */
+  values?: Record<string, string>;
+}
+
+/** The claims instruction: only with phrases on both sides (a circuit with no input or output has none). */
+export function claimsLine(words?: ClaimPhrases): string {
+  if (!words?.when.length || !words.then.length) return "";
+  const q = (a: string[]) => a.map((x) => `"${x}"`).join(", ");
+  const values = Object.entries(words.values ?? {});
+  const tested = values.length ? `\nIn the test, ${values.map(([k, v]) => `"${k}" means ${v}`).join("; ")}. Only claim a sensor phrase if the program reacts at that value.` : "";
+  return `\nClaims: in "claims", list 1 to 4 things the program makes happen, each as {"when": ..., "then": ...}, using only these exact phrases (they are tested on a simulated circuit):
+when: ${q(words.when)}
+then: ${q(words.then)}
+Example: {"when": "${words.when[0]}", "then": "${words.then[0]}"}. Leave "claims" empty if the program doesn't react to any of these.${tested}`;
+}
+
+export function codeMessages(plan: Plan, pins: string, references: string, fix?: { code: string; problems: string[]; claims?: { when: string; then: string }[] }, network = false, imports: string[] = ["from machine import Pin", "import time"], change?: CodeChange, words?: ClaimPhrases): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -172,7 +192,7 @@ ${pins}
 
 Imports: start the program with these lines. Below them, add an import line for any other module you use (for example "import random").
 ${imports.join("\n")}
-${references ? `\nReference notes from the official documentation:\n${references}` : ""}`,
+${references ? `\nReference notes from the official documentation:\n${references}` : ""}${claimsLine(words)}`,
     },
   ];
   if (change) {
@@ -187,7 +207,7 @@ Change the program above for it. Keep everything that isn't part of the change t
   }
   if (fix) {
     messages.push(
-      { role: "assistant", content: JSON.stringify({ code: fix.code, explanation: "(previous attempt)" }) },
+      { role: "assistant", content: JSON.stringify({ code: fix.code, explanation: "(previous attempt)", ...(fix.claims?.length ? { claims: fix.claims } : {}) }) },
       { role: "user", content: `That code has problems:\n${fix.problems.map((p) => `- ${p}`).join("\n")}\nFix every problem: where a line is given, write it exactly like that. Keep the rest of the program as it is, and return the whole corrected program.` },
     );
   }

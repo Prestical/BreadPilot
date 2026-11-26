@@ -4,6 +4,7 @@
 //   npm run eval:changes -w @breadpilot/api -- [--openai] [--model <tag>] [--only 1,3] [--json out.json]
 // The code before and after each change is saved in the JSON for review: "correct" means "passes
 // the checks", not "works on the Pico".
+import { behaviourCheck } from "./agent/behaviour";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { changeTable, runChangeCase, type ChangeCase, type ChangeResult } from "./agent/change-eval";
@@ -35,6 +36,7 @@ const deps: AgentDeps = {
     : createLlm({ api: config.LLM_API, baseUrl: config.LLM_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.LLM_TIMEOUT_MS, think: () => think(model) }),
   store: memoryStore(),
   search: async (q) => (await hybridSearch(db, embedder, q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
+  behaviour: behaviourCheck,
 };
 
 try {

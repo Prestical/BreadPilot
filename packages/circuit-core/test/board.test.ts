@@ -37,6 +37,8 @@ describe("Pico 2 W ground truth", () => {
     expect(g.driveStrengthsMa).toEqual([2, 4, 8, 12]);
     expect([g.outputHighMinV, g.outputLowMaxV]).toEqual([2.62, 0.5]);
     expect([g.maxTotalSourceMa, g.maxTotalSinkMa]).toEqual([100, 100]);
+    expect([g.inputHighMinV, g.inputLowMaxV]).toEqual([2.0, 0.8]);
+    expect([g.pullUpOhms, g.pullDownOhms]).toEqual([[32000, 86000], [36000, 113000]]);
     const src = (PICO_2_W.electrical as unknown as { gpioCurrent: { src: { doc: string }[] } }).gpioCurrent.src;
     expect(src.length).toBeGreaterThan(0);
     // The PDF isn't committed (size): each cited file is listed in reference.md with its SHA-256,

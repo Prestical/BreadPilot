@@ -2,6 +2,7 @@
 // (desktop.ts). Migrates the database, wires the AI and documentation search from the settings
 // (rebuilt when they change), listens on 127.0.0.1 and indexes new documentation in the background.
 
+import { behaviourCheck } from "./agent/behaviour";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { FastifyInstance } from "fastify";
@@ -146,6 +147,7 @@ export async function startApi(opts: StartOptions): Promise<RunningApi> {
     store: dbStore(db),
     progress: progressBus(),
     search: async (q) => (await rag.search(q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
+    behaviour: behaviourCheck,
     log: (m) => log(m),
     appVersion: opts.appVersion ?? null,
   };

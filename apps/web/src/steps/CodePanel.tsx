@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { driversFor, type CodeIssue } from "@breadpilot/circuit-core";
 import { handoffUrl } from "../projects/api";
-import type { ApiProject } from "../projects/types";
+import type { ApiProject, BehaviourSummary } from "../projects/types";
 import { checkDraft, editKey, insertIndent, loadEdit, saveEdit } from "./codeEdits";
 import { PlanView } from "../ui/StageOverlay";
 import { PicoBuild } from "./PicoBuild";
@@ -176,6 +176,8 @@ export function CodePanel({ p }: { p: ApiProject }) {
           </div>
         )}
 
+        {!edited && b.behaviour && <BehaviourBlock behaviour={b.behaviour} />}
+
         <PicoBuild title={p.title} code={draft} drivers={drivers} blocked={blocked} />
 
         {b.codeExplanation && (
@@ -240,6 +242,56 @@ export function CodePanel({ p }: { p: ApiProject }) {
           Download handoff bundle (.md)
         </a>
       </div>
+    </div>
+  );
+}
+
+/**
+ * M18 18.7f: the run in the behaviour simulator. The code ran on a simulated Pico with the circuit's
+ * parts while each button was pressed, each knob turned and each sensor changed. Shown for the
+ * generated code only: edits aren't simulated in the browser.
+ */
+function BehaviourBlock({ behaviour: s }: { behaviour: BehaviourSummary }) {
+  const errors = s.findings.filter((f) => f.severity === "error");
+  const warnings = s.findings.filter((f) => f.severity === "warning");
+  const line = (f: BehaviourSummary["findings"][number]) => `${f.line ? `Line ${f.line}: ` : ""}${f.message}`;
+  if (s.ended === "not run") return <p className="small">{s.notes[0] ?? "The code wasn't run in the simulator."}</p>;
+  return (
+    <div className={`feedback ${errors.length ? "bad" : "good"}`}>
+      <p>
+        <strong>{errors.some((f) => f.code === "S001") ? "Crashes in the simulator" : errors.length ? "Doesn't do what it says in the simulator" : warnings.length ? `Ran in the simulator, with ${warnings.length} thing${warnings.length > 1 ? "s" : ""} to check` : "✓ Ran in the simulator with no problems"}</strong>
+        {` (${s.seconds} s of pressing, turning and sensing).`}
+      </p>
+      {s.findings.length > 0 && (
+        <ul className="small">
+          {[...errors, ...warnings].map((f, n) => (
+            <li key={n}>{line(f)}</li>
+          ))}
+        </ul>
+      )}
+      {s.claims && s.claims.length > 0 && (
+        <>
+          <p className="small">What the code says it does:</p>
+          <ul className="small claims">
+            {s.claims.map((c, n) => (
+              <li key={n}>
+                {c.held === true ? "✓" : c.held === false ? "✗" : "–"} When {c.when}: {c.then}
+                {c.held === null ? " (not checked)" : c.held === false ? " (didn't happen)" : ""}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {s.notes.length > 0 && (
+        <details className="small">
+          <summary>Simulator notes ({s.notes.length})</summary>
+          <ul>
+            {s.notes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

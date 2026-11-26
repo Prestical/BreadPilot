@@ -19,7 +19,7 @@ const STAGE = join(DESKTOP, ".stage");
 /** The desktop app's own code (named, not "every file in src": src may hold other files). */
 const APP_FILES = ["main.mjs", "keychain.mjs", "keyfile.mjs", "log.mjs", "menu.mjs", "problems.mjs", "windowState.mjs"];
 /** Packages the engine loads at runtime (esbuild leaves them out of desktop.js). */
-const ENGINE_PACKAGES = ["@electric-sql/pglite", "@electric-sql/pglite-pgvector", "@fastify/static", "fastify", "pdfjs-dist", "zod"];
+const ENGINE_PACKAGES = ["@electric-sql/pglite", "@electric-sql/pglite-pgvector", "@fastify/static", "@micropython/micropython-webassembly-pyscript", "fastify", "pdfjs-dist", "zod"];
 
 /**
  * The oldest Electron the installers may carry: 44.10.1 has Node 24.22.1, the October 2026 Node
@@ -44,7 +44,13 @@ async function checkElectron(desktopPkg) {
   if (newer(MIN_ELECTRON, tested)) throw new Error(`Electron ${tested} is older than ${MIN_ELECTRON}, which has the latest Node security fixes: update it.`);
 }
 
-/** Copies `from` → `to` recursively, keeping only files `keep(name)` accepts; hidden entries never. */
+/** Copies `from` → `to` recursively, keeping only files `keep(name, folder)` accepts; hidden entries never. */
+/** File names a folder's .ragignore lists (the same rule as the engine's documentation index). */
+async function ragIgnored(dir) {
+  const text = await readFile(join(dir, ".ragignore"), "utf8").catch(() => "");
+  return new Set(text.split("\n").map((l) => l.replace(/#.*/, "").trim()).filter(Boolean));
+}
+
 async function copyTree(from, to, keep) {
   let count = 0;
   for (const entry of await readdir(from, { withFileTypes: true })) {
@@ -52,7 +58,7 @@ async function copyTree(from, to, keep) {
     const src = join(from, entry.name);
     const dst = join(to, entry.name);
     if (entry.isDirectory()) count += await copyTree(src, dst, keep);
-    else if (entry.isFile() && keep(entry.name)) {
+    else if (entry.isFile() && (await keep(entry.name, from))) {
       await mkdir(dirname(dst), { recursive: true });
       await copyFile(src, dst);
       count++;
@@ -113,10 +119,14 @@ async function main() {
   const engine = await readFile(join(REPO, "apps/api/dist/desktop.js"), "utf8");
   await mkdir(join(STAGE, "engine"), { recursive: true });
   await writeFile(join(STAGE, "engine/desktop.js"), engine.replace(/\n\/\/# sourceMappingURL=\S+\s*$/, "\n"));
+  // The behaviour simulator's worker thread and the files it loads (M18 18.7f): JavaScript modules and
+  // MicroPython modules only.
+  const sim = await copyTree(join(REPO, "apps/api/dist/sim"), join(STAGE, "engine/sim"), (n) => n.endsWith(".mjs") || n.endsWith(".py"));
   const web = await copyTree(join(REPO, "apps/web/dist"), join(STAGE, "web"), (n) => !n.endsWith(".map"));
   const sql = await copyTree(join(REPO, "db/migrations"), join(STAGE, "migrations"), (n) => n.endsWith(".sql"));
-  // Documentation to index: the datasheet PDFs and the verified pinout text, nothing else.
-  const pdfs = await copyTree(join(REPO, "docs/hardware"), join(STAGE, "rag/docs/hardware"), (n) => n.endsWith(".pdf"));
+  // Documentation to index: the datasheet PDFs and the verified pinout text, nothing else. A PDF its
+  // folder's .ragignore lists (the RP2350 datasheet: not in the repository, not republished) stays out.
+  const pdfs = await copyTree(join(REPO, "docs/hardware"), join(STAGE, "rag/docs/hardware"), async (n, dir) => n.endsWith(".pdf") && !(await ragIgnored(dir)).has(n));
   for (const n of await readdir(join(REPO, "data/boards"))) {
     if (n.endsWith(".pinout.generated.md")) await copyOne(join(REPO, "data/boards", n), join(STAGE, "rag/data/boards", n));
   }
@@ -162,7 +172,7 @@ async function main() {
 
   const pruned = await prune(join(STAGE, "node_modules"));
 
-  console.log(`staged ${STAGE} (${pruned} unneeded package files removed): ${APP_FILES.length} app files, engine, ${web} web files, ${sql} migrations, ${pdfs} PDFs, template: ${hasTemplate ? "yes" : "no (docs are indexed on first start)"}, packages: ${Object.entries(dependencies).map(([k, v]) => `${k}@${v}`).join(", ")}`);
+  console.log(`staged ${STAGE} (${pruned} unneeded package files removed): ${APP_FILES.length} app files, engine (+ ${sim} simulator files), ${web} web files, ${sql} migrations, ${pdfs} PDFs, template: ${hasTemplate ? "yes" : "no (docs are indexed on first start)"}, packages: ${Object.entries(dependencies).map(([k, v]) => `${k}@${v}`).join(", ")}`);
 }
 
 main().catch((err) => {

@@ -13,6 +13,7 @@ export { buildNets, type Net, type Nets } from "./netlist";
 export { validateBuild, isDriven } from "./validate";
 export { layoutProject, stableRequests, allocate, allocatePins, gpioPreference, i2cPairs, LayoutError, WIRE_COLORS, POWER_MODES, WIRES_PER_PICO_PIN, type BlockKind, type BlockPlace, type BlockRequest, type Layout, type LayoutOptions, type PinChoice, type PlacedBlock, type PowerMode } from "./layout";
 export { pinoutMarkdown } from "./pinout-text";
+export { MICROPYTHON_API, type MachineClass } from "./micropython-api";
 export { buildSteps, changeSteps, canonicalJson, resistorBands, formatOhms, wireRole, defaultColor, StepsError, type BuildStep, type StepKind, type WireRole } from "./steps";
 export { holeKey, stripOfHole, railNode, RAIL_IDS, PICO_LAST_ROW } from "./breadboard";
 export { checkMicroPython, stripStringsAndComments, PICO_MODULES, type CodeCheckReport, type CodeIssue } from "./codecheck";

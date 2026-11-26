@@ -17,4 +17,20 @@ first five files are under `ports/rp2/`, the drawing files under `docs/` and `ex
 | `extmod__modmachine.c` | `extmod/modmachine.c` | names of the `machine` module (`machine_module_globals_table`, with the build flags that switch them on; rp2's values in `mpconfigport.h`). Code check C015 (`MACHINE_MODULE_NAMES`). Downloaded 08/11/2026 with the user's OK |
 | `ports__rp2__modmachine.c` | `ports/rp2/modmachine.c` | the Pico port's extra `machine` names (`MICROPY_PY_MACHINE_EXTRA_GLOBALS`: Pin, RTC, Timer, PWRON_RESET, WDT_RESET). Downloaded 08/11/2026 with the user's OK |
 
+| `ports__rp2__machine_pin.c` | `ports/rp2/machine_pin.c` | `Pin`'s methods, constants and `init()`/`irq()` arguments on the Pico (behaviour simulator, `packages/sim`). Downloaded 22/11/2026 with the user's OK, as are the rows below |
+| `extmod__machine_pwm.c`, `ports__rp2__machine_pwm.c` | `extmod/machine_pwm.c`, `ports/rp2/machine_pwm.c` | `PWM`'s methods (`duty()` only with `MICROPY_PY_MACHINE_PWM_DUTY`, not set for rp2) and its arguments |
+| `extmod__machine_adc.c`, `ports__rp2__machine_adc.c` | `extmod/machine_adc.c`, `ports/rp2/machine_adc.c` | `ADC`'s methods (rp2: only `read_u16`) and the `CORE_TEMP` constant |
+| `extmod__machine_i2c.c`, `ports__rp2__machine_i2c.c` | `extmod/machine_i2c.c`, `ports/rp2/machine_i2c.c` | `I2C`'s methods and constructor arguments |
+| `ports__rp2__machine_timer.c` | `ports/rp2/machine_timer.c` | `Timer`'s methods, constants and `init()` arguments |
+| `extmod__modtime.c`, `ports__rp2__modtime.c` | `extmod/modtime.c`, `ports/rp2/modtime.c` | the `time` module's names (rp2 adds none) |
+| `py__mpconfig.h` | `py/mpconfig.h` | default values of the build flags (flags it doesn't set either are 0) |
+| `ports__rp2__boards__manifest.py`, `ports__rp2__boards__RPI_PICO2_W__manifest.py` | `ports/rp2/boards/manifest.py`, `ports/rp2/boards/RPI_PICO2_W/manifest.py` | the Python modules frozen into the firmware (`onewire`, `ds18x20`, `dht`, `neopixel`, asyncio, networking) |
+| `micropython-lib__micropython__drivers__sensor__dht__dht.py`, `micropython-lib__micropython__drivers__bus__onewire__onewire.py`, `micropython-lib__micropython__drivers__sensor__ds18x20__ds18x20.py` | micropython-lib at commit `ee4bb8ff139e24c42b739935fbd8ec7c4d061e02` (the submodule MicroPython v1.29.0 pins), `micropython/drivers/...` | the frozen `dht` (reads through `rp2.dht_readinto`), `onewire` (on the built-in `_onewire`) and `ds18x20` modules, MIT |
+
+| `micropython-lib__micropython__bundles__bundle-networking__manifest.py` | micropython-lib (same commit) `micropython/bundles/bundle-networking/manifest.py` | the networking modules frozen into the Pico 2 W firmware: `mip`, `ntptime`, `ssl`, `requests`, `webrepl`, `urequests` (no `umqtt`) |
+
+`packages/circuit-core/scripts/gen-api.ts` turns these tables into
+`packages/circuit-core/src/micropython-api.generated.json` (`npm run gen:api -w @breadpilot/circuit-core`);
+a test fails when it is stale.
+
 Also checked (read, not saved): `lib/littlefs/lfs2.h` = LittleFS 2.11, disk format 2.1.

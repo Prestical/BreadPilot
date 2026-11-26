@@ -24,6 +24,7 @@ import {
   canonicalJson,
   type BlockRequest,
   type Board,
+  type Build,
   type CodeIssue,
   type Layout,
   type PowerMode,
@@ -32,12 +33,13 @@ import { assertEngineBuild } from "./gate";
 import { addUsage, LlmError, type LlmCallOptions, type LlmClient, type LlmResult, type TokenUsage } from "./llm";
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { ProgressBus } from "./progress";
-import { currentPlan, type LlmChoice, type Project, type ProjectBuild, type ProjectStore, type StageEvent } from "./project";
-import { codeMessages, importBlock, intakeMessages, needsNetwork, pinTable, planMessages, type CodeChange } from "./prompts";
+import { currentPlan, type BehaviourSummary, type LlmChoice, type Project, type ProjectBuild, type ProjectStore, type StageEvent } from "./project";
+import { claimWords } from "@breadpilot/sim";
+import { codeMessages, importBlock, intakeMessages, needsNetwork, pinTable, planMessages, type ClaimPhrases, type CodeChange } from "./prompts";
 import { repairProblems } from "./repair";
 import { addVersion, currentVersionOf, ensureVersions, restoreVersion, RestoreError, syncCurrent } from "./versions";
 import { analyzeIdea, mergeRequirements, minimumParts, planProblems, unsupportedMessage, type Requirements } from "./requirements";
-import { CodeSchema, IntakeSchema, normalizeIntake, normalizePlan, PlanSchema, type Plan } from "./schemas";
+import { codeSchemaFor, IntakeSchema, normalizeIntake, normalizePlan, PlanSchema, type Plan } from "./schemas";
 
 export const MAX_REPAIRS = 3;
 /** Output caps per stage (tokens), so a looping model stops early. */
@@ -67,6 +69,12 @@ export interface AgentDeps {
   budgetMs?: number;
   /** Live stage events for the SSE route (optional). */
   progress?: ProgressBus;
+  /**
+   * M18 18.7f: runs code on the build's circuit in the behaviour simulator (optional: without it the
+   * code stage stops at the checker). A crash finding sends the code back for a repair like a checker
+   * error; warnings are kept with the project.
+   */
+  behaviour?: (code: string, build: Build, claims: { when: string; then: string }[]) => Promise<Omit<BehaviourSummary, "ok">>;
 }
 
 /** `background`: return as soon as the request is accepted; the run continues and reports
@@ -749,27 +757,79 @@ async function generateCode(run: Run, deps: AgentDeps, layout: Layout, board: Bo
   const pins = pinTable(layout.blocks, colors);
   const network = needsNetwork([p.idea, plan.goal, ...plan.behavior, ...p.plans.map((x) => x.feedback ?? "")].join(" "));
 
-  let fix: { code: string; problems: string[] } | undefined;
+  // M18 18.7g: with a simulator, the code AI states what its program does in the circuit's phrases.
+  let words: ClaimPhrases | undefined;
+  if (deps.behaviour) {
+    try {
+      words = claimWords(layout.build);
+    } catch {
+      words = undefined; // a circuit the simulator can't read: no claims asked
+    }
+  }
+  let fix: { code: string; problems: string[]; claims?: { when: string; then: string }[] } | undefined;
   let previous: CodeIssue[] = [];
+  // What the simulator found on the last try: a crash (S001) or a claim that didn't hold (S006).
+  let simulated: "crash" | "claim" | null = null;
   for (let attempt = 0; attempt <= MAX_REPAIRS; attempt++) {
-    const out = await run.llm("code", (o) => clientFor(deps, p).json(CodeSchema, codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network), change), { ...o, maxTokens: MAX_TOKENS.code }));
+    const out = await run.llm("code", (o) => clientFor(deps, p).json(codeSchemaFor(words), codeMessages(plan, pins, refText, fix, network, importBlock(layout.blocks, network), change, words), { ...o, maxTokens: MAX_TOKENS.code }));
     const check = checkMicroPython(out.code, layout.build, board);
+    // No claims field when the circuit has no phrases (codeSchemaFor).
+    const claims = out.claims ?? [];
     pb.code = out.code;
     pb.codeExplanation = out.explanation;
     pb.codeCheck = check;
     pb.codeAttempts = attempt + 1;
-    (pb.codeHistory ??= []).push({ attempt: attempt + 1, ok: check.ok, issues: check.issues, code: out.code });
+    delete pb.behaviour;
+    const entry: NonNullable<ProjectBuild["codeHistory"]>[number] = { attempt: attempt + 1, ok: check.ok, issues: check.issues, code: out.code };
+    (pb.codeHistory ??= []).push(entry);
+    let issues = check.issues;
     if (check.ok) {
-      p.state = "READY";
-      return;
-    }
-    const problems = check.issues.filter((i) => i.severity === "error").map((i) => i.message);
+      // M18 18.7f: the checked code runs on the circuit in the simulator; a crash is repaired like a
+      // checker error (never fixed automatically: the model gets the finding and its own line).
+      const behaviour = await simulate(run, deps, out.code, layout.build, claims);
+      if (behaviour) {
+        pb.behaviour = behaviour;
+        entry.behaviour = behaviour;
+      }
+      const errors = behaviour?.findings.filter((f) => f.severity === "error") ?? [];
+      if (!errors.length) {
+        p.state = "READY";
+        return;
+      }
+      simulated = errors.some((f) => f.code === "S001") ? "crash" : "claim";
+      issues = errors.map((f) => ({ code: f.code, severity: "error" as const, message: f.message, ...(f.line ? { line: f.line } : {}) }));
+    } else simulated = null;
+    const problems = issues.filter((i) => i.severity === "error").map((i) => i.message);
     run.event("code", attempt < MAX_REPAIRS ? "retry" : "error", 0, problems.join(" | "));
     // The model gets its own wrong lines, the corrected lines and imports, and which mistakes repeat.
-    fix = { code: out.code, problems: repairProblems(out.code, check.issues, previous) };
-    previous = check.issues;
+    fix = { code: out.code, problems: repairProblems(out.code, issues, previous), claims };
+    previous = issues;
   }
-  handoff(p, `The wiring and build steps are ready and checked, but the local model couldn't write code that matches the wiring after ${MAX_REPAIRS + 1} tries.`);
+  handoff(
+    p,
+    simulated
+      ? `The wiring and build steps are ready and checked, but the code still ${simulated === "crash" ? "crashed in the simulator" : "didn't do what it said in the simulator"} after ${MAX_REPAIRS + 1} tries.`
+      : `The wiring and build steps are ready and checked, but the local model couldn't write code that matches the wiring after ${MAX_REPAIRS + 1} tries.`,
+  );
+}
+
+/**
+ * Runs the code in the behaviour simulator (when the engine has one). The simulator never blocks a
+ * project by failing itself: then the result says it couldn't run.
+ */
+async function simulate(run: Run, deps: AgentDeps, code: string, build: Build, claims: { when: string; then: string }[]): Promise<BehaviourSummary | undefined> {
+  if (!deps.behaviour) return undefined;
+  const start = performance.now();
+  try {
+    const r = await deps.behaviour(code, build, claims);
+    const summary: BehaviourSummary = { ...r, ok: !r.findings.some((f) => f.severity === "error") };
+    const said = r.findings.map((f) => `${f.code} ${f.message}`);
+    run.event("code", summary.ok ? "ok" : "retry", Math.round(performance.now() - start), `simulated ${r.seconds} s: ${said.length ? said.join(" | ") : "no problems found"}`);
+    return summary;
+  } catch (err) {
+    deps.log?.(`behaviour simulator failed: ${(err as Error).message}`);
+    return { ok: true, findings: [], notes: [`The simulator couldn't run this code (${(err as Error).message}); it wasn't tested.`], seconds: 0, ended: "not run" };
+  }
 }
 
 export { BudgetExceeded };

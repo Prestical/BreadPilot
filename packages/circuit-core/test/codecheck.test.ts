@@ -106,6 +106,39 @@ describe("checkMicroPython", () => {
     expect(codes(GOOD + "if True:\n\tpass\n")).toContain("C001");
   });
 
+  it("C001: a line indented deeper without a block, or stepping back to a level no line uses (18.7i)", () => {
+    // The local model's knob picker (18.7h): two lines lost their indent, so the next indented line
+    // is "unexpected" (the simulator found it as IndentationError; the checker passed it).
+    const lost = GOOD.replace("    if button.value() == 0:", "    led.duty_u16(0)\nled.duty_u16(1)\n    if button.value() == 0:");
+    const c = check(lost).issues.filter((i) => i.code === "C001");
+    expect(c.map((i) => i.line)).toEqual([13]);
+    expect(c[0]!.message).toMatch(/^Line 13 is indented more than the line before it, .*IndentationError: unexpected indent/);
+    const back = GOOD.replace("        led.duty_u16(0)\n", "        led.duty_u16(0)\n  time.sleep(0)\n");
+    expect(check(back).issues.filter((i) => i.code === "C001").map((i) => i.message)).toEqual([expect.stringMatching(/^Line 15 steps back to an indentation no line above it uses/)]);
+  });
+
+  it("C001 indentation: no alarm for continuation lines, docstrings, comments or one-line blocks", () => {
+    const fine = `${GOOD}
+def show(a,
+         b):
+    """Shows two values.
+        Indented text inside a docstring is fine.
+    """
+    total = (a +
+                 b)
+    x = 1 + \\
+            2
+        # a comment indented anywhere
+    if total: print(total)
+    return [
+        total,
+    ]
+`;
+    expect(check(fine).issues.filter((i) => i.code === "C001")).toEqual([]);
+    // A one-line block opens nothing: a deeper line after it is still unexpected.
+    expect(check(`${GOOD}if True: print(1)\n    print(2)\n`).issues.filter((i) => i.code === "C001").map((i) => i.line)).toEqual([17]);
+  });
+
   it("ignores pins mentioned in comments and strings, and allows Pin('LED')", () => {
     expect(codes(GOOD + '# Pin(5, Pin.OUT) is not used\nprint("Pin(5) is free")\nonboard = Pin("LED", Pin.OUT)\n')).toEqual([]);
   });
@@ -326,7 +359,7 @@ describe("C015: names the machine module doesn't have (MicroPython v1.29.0, rp2)
     expect(c015(`from machine import Pin\nimport time\n${led}time.temperature = 3\n# machine.temperature()\n`)).toEqual([]);
   });
 
-  it("the list is exactly the names in the v1.29.0 module tables (extmod + the rp2 port's extras)", () => {
+  it("the list is the Pico's: every name in v1.29.0's tables, with the switches the rp2 build leaves off removed", () => {
     const dir = new URL("../../../docs/software/micropython-v1.29.0/", import.meta.url);
     const common = readFileSync(new URL("extmod__modmachine.c", dir), "utf8");
     const rp2 = readFileSync(new URL("ports__rp2__modmachine.c", dir), "utf8");
@@ -334,7 +367,13 @@ describe("C015: names the machine module doesn't have (MicroPython v1.29.0, rp2)
     const extras = /#define MICROPY_PY_MACHINE_EXTRA_GLOBALS \\\n([\s\S]*?)\n\n/.exec(rp2)![1]!;
     // Each entry is { key, value }: only the key is a name (the __name__ entry's value is "machine").
     const names = [...`${table}\n${extras}`.matchAll(/\{\s*MP_ROM_QSTR\(MP_QSTR_(\w+)\)/g)].map((m) => m[1]!).filter((n) => n !== "__name__");
-    expect([...names].sort()).toEqual([...MACHINE_MODULE_NAMES].sort());
+    const off = ["PinBase", "ADCBlock", "CAN", "DAC", "SDCard"]; // their flags are set nowhere for rp2 (M18 18.7b)
+    expect([...MACHINE_MODULE_NAMES].sort()).toEqual(names.filter((n) => !off.includes(n)).sort());
+  });
+
+  it("C015: machine.DAC, CAN, SDCard and friends aren't on the Pico", () => {
+    expect(c015(`from machine import Pin, DAC\nimport time\n${led}`)[0]).toMatch(/has no DAC/);
+    expect(c015(`import machine\nfrom machine import Pin\nimport time\n${led}c = machine.CAN(0)\n`)[0]).toMatch(/has no CAN/);
   });
 });
 
@@ -413,5 +452,36 @@ describe("found by mutation testing (code checker)", () => {
     const r = check("from machine import Pin, ADC, PWM\nled = PWM(Pin(16))\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\nwhile True:\n    led.duty_u16(k.read_u16() if b.value() else 0)\n    time.sleep(1)\n");
     expect(r.issues.map((i) => i.code)).toEqual(["C002"]);
     expect(r.issues[0]!.message).toBe("Line 7 uses time but never imports it. Add: import time");
+  });
+});
+
+// M18 18.7b: C020, methods the Pico's machine classes don't have (MICROPYTHON_API, from v1.29.0's source).
+describe("C020: a method the Pico's class doesn't have", () => {
+  const H = "from machine import Pin, ADC, PWM\nimport time\n";
+  const c020 = (src: string) => check(src).issues.filter((i) => i.code === "C020").map((i) => i.message);
+
+  it("PWM.duty() and ADC.read() (other boards' habits) stop the program on the Pico", () => {
+    const msgs = c020(`${H}led = PWM(Pin(16))\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\nwhile True:\n    led.duty(k.read() // 64)\n    time.sleep(0.1)\n`);
+    expect(msgs).toEqual([
+      "Line 7 calls led.duty(), but PWM on the Pico has no duty(), so the program stops with an error there. Use led.duty_u16(0-65535). PWM has: init, deinit, freq, duty_u16, duty_ns.",
+      "Line 7 calls k.read(), but ADC on the Pico has no read(), so the program stops with an error there. Use k.read_u16() (0-65535). ADC has: read_u16.",
+    ]);
+  });
+
+  it("calls straight on a new object, and machine.X(...) objects", () => {
+    expect(c020(`${H}import machine\nled = machine.PWM(Pin(16))\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nwhile True:\n    led.duty_u16(ADC(26).read_uv())\n    time.sleep(0.1)\n`)[0]).toMatch(/^Line 7 calls ADC\(…\)\.read_uv\(\), but ADC on the Pico has no read_uv\(\)/);
+    expect(c020(`${H}import machine\nled = machine.PWM(Pin(16))\nled.duty(5)\n`)[0]).toMatch(/calls led\.duty\(\)/);
+  });
+
+  it("a digital pin read as analog is C020; a knob set up as a Pin is told once, by C005", () => {
+    expect(c020(`${H}led = Pin(16, Pin.OUT)\nwhile True:\n    print(led.read_u16())\n    time.sleep(1)\n`)[0]).toMatch(/Pin on the Pico has no read_u16\(\)/);
+    const knob = check(`${H}led = PWM(Pin(16))\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = Pin(26)\nwhile True:\n    led.duty_u16(k.read_u16() if b.value() else 0)\n    time.sleep(0.1)\n`).issues.map((i) => i.code);
+    expect(knob).toContain("C005");
+    expect(knob).not.toContain("C020");
+  });
+
+  it("code using only the Pico's methods passes (GOOD and every method in the list)", () => {
+    expect(c020(GOOD)).toEqual([]);
+    expect(c020(`${H}led = PWM(Pin(16), freq=1000)\nled.freq(500)\nled.duty_u16(1)\nled.duty_ns(5)\nled.init(freq=50)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nb.init(Pin.IN, Pin.PULL_UP)\nb.irq(lambda p: None, Pin.IRQ_FALLING)\nb.on()\nb.off()\nb.low()\nb.high()\nb.toggle()\nb.value()\nk = ADC(26)\nk.read_u16()\nled.deinit()\n`)).toEqual([]);
   });
 });

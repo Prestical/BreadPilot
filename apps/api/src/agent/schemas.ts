@@ -56,10 +56,29 @@ export const PlanSchema = z.object({
 });
 export type Plan = Omit<z.infer<typeof PlanSchema>, "parts"> & { parts: PlanPart[] };
 
-export const CodeSchema = z.object({
+/**
+ * M18 18.7g: what the program makes happen, in words built from the circuit ("BTN1 pressed" →
+ * "LED1 on"); the behaviour simulator checks each one. Required in the JSON schema the models get,
+ * [] when an answer leaves it out (older scripted answers, a model that skips it).
+ */
+export const ClaimSchema = z.object({ when: z.string(), then: z.string() });
+const CodeOnlySchema = z.object({
   code: z.string().min(1),
   explanation: z.string().min(1),
 });
+export const CodeSchema = CodeOnlySchema.extend({ claims: z.array(ClaimSchema).default([]) });
+
+/**
+ * M18 18.7i: the code answer's schema for one circuit. The claims are enums of the circuit's own
+ * phrases, so constrained decoding (and OpenAI's strict schema) only allows phrases the simulator can
+ * check: in 18.7h the 4B model wrote free sentences in 14 of 21 claims. A circuit with no phrases
+ * gets no claims field at all (the model filled one anyway).
+ */
+export function codeSchemaFor(words?: { when: string[]; then: string[] }): z.ZodType<{ code: string; explanation: string; claims?: { when: string; then: string }[] }> {
+  if (!words?.when.length || !words.then.length) return CodeOnlySchema;
+  const phrase = (list: string[]) => z.enum(list as [string, ...string[]]);
+  return CodeOnlySchema.extend({ claims: z.array(z.object({ when: phrase(words.when), then: phrase(words.then) })).default([]) });
+}
 export type CodeOutput = z.infer<typeof CodeSchema>;
 
 const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s.trim());

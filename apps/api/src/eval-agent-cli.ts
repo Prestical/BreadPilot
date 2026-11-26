@@ -18,13 +18,14 @@
 // is the stricter, user-level measure: right outcome, right parts, working code. Every result is
 // re-checked here with validateBuild + checkMicroPython instead of trusting the pipeline's verdicts.
 
+import { behaviourCheck } from "./agent/behaviour";
 import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { join } from "node:path";
 import { checkMicroPython, getBoard, validateBuild } from "@breadpilot/circuit-core";
 import { totalmem } from "node:os";
-import { byDifficulty, difficultyTable, memoryLine, mistakeReport, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh, type Difficulty, type MemorySample } from "./agent/eval-report";
+import { byDifficulty, difficultyTable, memoryLine, mistakeReport, simulatorReport, type SimulatorRecord, ollamaProcessBytes, parseMeminfoSwap, parseSwapUsage, swapTooHigh, type Difficulty, type MemorySample } from "./agent/eval-report";
 import { ollamaModels, sameTag, thinkSetting } from "./local-models";
 import { loadConfig } from "./config";
 import { devKey, openDataDir } from "./datadir";
@@ -67,6 +68,10 @@ interface Result {
   /** What the plan said the project must do, and the final code: for reviewing whether it really does it. */
   behaviors?: string[];
   code?: string;
+  /** M18 18.7h: what the behaviour simulator found on each code try that passed the wiring check. */
+  simulator?: SimulatorRecord["simulator"];
+  /** The circuit the code runs on (to re-run it in the simulator later). */
+  build?: NonNullable<Project["build"]>["build"];
 }
 
 const run = promisify(execFile);
@@ -129,6 +134,7 @@ const deps: AgentDeps = {
     : createLlm({ api: config.LLM_API, baseUrl: config.LLM_BASE_URL, model, numCtx: config.LLM_NUM_CTX, temperature: config.LLM_TEMPERATURE, timeoutMs: config.LLM_TIMEOUT_MS, think }),
   store: memoryStore(),
   search: async (q) => (await hybridSearch(db, embedder, q, { board: "pico-2-w", k: 2 })).hits.map((h) => ({ content: h.content, citation: h.citation })),
+  behaviour: behaviourCheck,
 };
 
 const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "n/a");
@@ -198,8 +204,15 @@ try {
       designRetries: p.events.filter((e) => e.stage === "design" && e.status !== "ok").map((e) => e.detail ?? ""),
       ...(p.failure ? { note: p.failure } : p.handoffReason && p.build ? { note: "code handoff" } : {}),
       behaviors: currentPlan(p)?.behavior ?? [],
-      ...(p.build?.code ? { code: p.build.code } : {}),
+      ...(p.build?.code ? { code: p.build.code, build: p.build.build } : {}),
     };
+    const simulated = (p.build?.codeHistory ?? []).filter((h) => h.behaviour);
+    if (simulated.length) {
+      r.simulator = {
+        attempts: simulated.map((h) => ({ attempt: h.attempt, codes: h.behaviour!.findings.map((f) => f.code), claims: h.behaviour!.claims ?? [] })),
+        notes: p.build?.behaviour?.notes ?? [],
+      };
+    }
     results.push(r);
     r.memory = await sampleMemory();
     const partsText = Object.entries(parts).map(([k, v]) => `${v}×${k}`).join(" ") || "-";
@@ -207,6 +220,7 @@ try {
       `${String(i + 1).padStart(2)}. ${r.correct ? "✓" : "✗"} ${r.difficulty ? `[${r.difficulty}] ` : ""}${r.state.padEnd(14)} ` +
         `clarity ${r.clarity ?? "?"}${r.clarity === r.expectedClarity ? "" : ` (expected ${r.expectedClarity})`} · parts ${partsText}` +
         `${r.partsMatch === false ? " (≠ expected)" : ""} · code ${r.codeOk ? `ok after ${r.codeAttempts}` : r.codeAttempts ? "FAILED" : "-"} · ${r.seconds}s  ${c.idea}` +
+        `${r.simulator ? `\n      simulator: ${r.simulator.attempts.map((a) => `try ${a.attempt} ${a.codes.join(" ") || "ok"}${a.claims.length ? ` (claims ${a.claims.map((c) => (c.held === true ? "✓" : c.held === false ? "✗" : "?")).join("")})` : ""}`).join(", ")}` : ""}` +
         `${r.note ? `\n      note: ${r.note}` : ""}\n      ${memoryLine(r.memory)}`,
     );
     if (out) await writeFile(out, JSON.stringify({ partial: true, model, results }, null, 2));
@@ -257,6 +271,7 @@ try {
     console.log(`\nDetails written to ${out}`);
   }
   console.log(mistakeReport(results));
+  console.log(simulatorReport(results));
   if (stopped) console.log(`\n${stopped}`);
   if (stopped || built.length / Math.max(1, supported.length) < 0.9) process.exitCode = 1;
 } finally {
