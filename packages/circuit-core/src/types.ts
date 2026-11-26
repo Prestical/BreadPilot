@@ -23,11 +23,24 @@ export interface BoardPin {
   src: DocRef[];
 }
 
+/** GPIO output current facts of the board's chip (RP2350 datasheet for the Pico 2 W). */
+export interface GpioCurrent {
+  /** Drive strength every pad starts with (MicroPython keeps it unless the code sets another). */
+  defaultDriveMa: number;
+  driveStrengthsMa: number[];
+  /** Guaranteed output levels at the selected drive current. */
+  outputHighMinV: number;
+  outputLowMaxV: number;
+  /** All GPIOs together: current sourced (outputs high) and sunk (outputs low). */
+  maxTotalSourceMa: number;
+  maxTotalSinkMa: number;
+}
+
 export interface Board {
   id: string;
   name: string;
   variants: string[];
-  electrical: { logicVoltage: number; gpioMaxInputVoltage: number; adcPinMaxInputVoltage: number };
+  electrical: { logicVoltage: number; gpioMaxInputVoltage: number; adcPinMaxInputVoltage: number; gpioCurrent?: GpioCurrent };
   internalGpio: { name: string; use: string }[];
   pins: BoardPin[];
 }
@@ -51,7 +64,7 @@ export interface LegDef {
   kind?: LegKind;
   /**
    * "vcc": the line can reach the component's supply voltage (a digital_out swings to it; an
-   * I2C line may be pulled up to it on the module).
+   * I2C line may be pulled up to it on the module; an analog_out can rise to it).
    */
   level?: "vcc";
   voltageRange?: [number, number];
@@ -60,6 +73,8 @@ export interface LegDef {
   highCurrent?: boolean;
   /** An input that switches the part ON while it is LOW (e.g. a buzzer module's PNP stage): C018. */
   activeLow?: boolean;
+  /** A data line that only works with a resistor pulling it up to the part's supply (W012). */
+  needsPullUp?: boolean;
 }
 
 export type ElementKind = "led" | "resistor" | "switch" | "short" | "load";

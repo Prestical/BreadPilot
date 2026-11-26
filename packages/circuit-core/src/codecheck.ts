@@ -463,7 +463,7 @@ function importIssues(clean: string): CodeIssue[] {
   }
   for (const mod of MODULES) {
     const line = firstLine(new RegExp(`(?<![\\w.])${mod}\\.\\w`));
-    if (line && !imported.has(mod)) issues.push({ code: "C002", severity: "error", message: `Line ${line} uses ${mod}. but never imports it. Add: import ${mod}`, line });
+    if (line && !imported.has(mod)) issues.push({ code: "C002", severity: "error", message: `Line ${line} uses ${mod} but never imports it. Add: import ${mod}`, line });
   }
   return issues;
 }
@@ -1314,7 +1314,8 @@ export function checkMicroPython(src: string, build: Build, board: Board): CodeC
       const inner = /^(?:machine\.)?Pin\s*\(\s*([^,)]+)/.exec(value);
       const target = gpioOf(inner ? inner[1]! : value);
       if (target.unknown !== undefined) {
-        issues.push({ code: "C007", severity: "warning", message: `Can't tell which GPIO "${target.unknown}" is on line ${call.line}.`, line: call.line });
+        // Quote the whole value: the inner text stops at the first ")" (Pin(pick()) gave "pick(").
+        issues.push({ code: "C007", severity: "warning", message: `Can't tell which GPIO "${inner ? value.trim() : target.unknown}" is on line ${call.line}.`, line: call.line });
         continue;
       }
       for (const gpio of target.gpios!) {

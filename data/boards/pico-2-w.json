@@ -27,7 +27,47 @@
         "page": 5,
         "section": "1"
       }
-    ]
+    ],
+    "gpioCurrent": {
+      "defaultDriveMa": 4,
+      "driveStrengthsMa": [
+        2,
+        4,
+        8,
+        12
+      ],
+      "outputHighMinV": 2.62,
+      "outputLowMaxV": 0.5,
+      "maxTotalSourceMa": 100,
+      "maxTotalSinkMa": 100,
+      "notes": [
+        "Each pad's DRIVE field resets to 1 = 4 mA (PADS_BANK0 GPIOx registers). Code that sets another drive strength is not checked.",
+        "The 2/4/8/12 mA drive strengths are not hard limits: above the selected current the pin's voltage drops; at the selected current VOH >= 2.62 V and VOL <= 0.5 V (IOVDD 3.3 V).",
+        "The sum of all current sourced by GPIO pins must not exceed 100 mA (IIOVDD_MAX); the sum sunk into GPIO pins must not exceed 100 mA (IIOVSS_MAX)."
+      ],
+      "src": [
+        {
+          "doc": "rp2350-datasheet.pdf",
+          "page": 706,
+          "section": "9.11.3 (PADS_BANK0: GPIO0, Table 885)"
+        },
+        {
+          "doc": "rp2350-datasheet.pdf",
+          "page": 1337,
+          "section": "14.9.4 (Table 1683)"
+        },
+        {
+          "doc": "rp2350-datasheet.pdf",
+          "page": 1338,
+          "section": "14.9.4 (Table 1683)"
+        },
+        {
+          "doc": "rp2350-datasheet.pdf",
+          "page": 1340,
+          "section": "14.9.4.1"
+        }
+      ]
+    }
   },
   "mechanical": {
     "boardMm": [

@@ -26,6 +26,13 @@
     }
   },
   "specs": {
+    "maxPowerW": {
+      "value": 0.25,
+      "src": {
+        "typical": true,
+        "note": "the usual 1/4 W through-hole resistor of breadboard kits; check your resistor"
+      }
+    },
     "note": "Direction doesn't matter."
   }
 }

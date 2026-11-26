@@ -49,7 +49,7 @@ code, built into one file you drag onto the board. It runs on your own computer 
 | | |
 |---|---|
 | **Idea → plan** | Type an idea. Clear ideas are planned at once; vague ones get a short plan for you to approve or change. |
-| **Safe wiring** | Code picks the pins, places the parts and draws every wire, then a validator checks for shorts, missing resistors, 5 V on a GPIO and more. |
+| **Checked wiring** | Code picks the pins, places the parts and draws every wire, then a validator checks for shorts, missing resistors, 5 V on a GPIO and more. |
 | **3D steps** | Each step pops up next to its part or wire, with a plain-English "why". Hover any hole to see what it's connected to. |
 | **Checked code** | MicroPython is generated and cross-checked against your wiring before you see it. You can edit it; edits are re-checked live. |
 | **Build for Pico** | One `.uf2` file with MicroPython and your code. Drag it onto the Pico and it runs. |
@@ -257,6 +257,22 @@ flowchart LR
 | Pick pins, place parts, route wires, write the steps and their "why" | Code (`packages/circuit-core`) |
 | Check the circuit (shorts, resistors, voltages, pin functions) | Code: the validator, in the API **and** again in your browser |
 | Check the code against the wiring | Code: the MicroPython checker |
+
+### What the checks don't cover
+
+The circuit validator and the code checker catch many beginner mistakes, but passing them doesn't
+prove that a project works or is safe. They don't cover:
+
+| Area | Not checked |
+|---|---|
+| The real board | The checks see the wiring BreadPilot drew, not the breadboard on your desk: a wire one hole off, a loose or broken jumper, a bent leg, a resistor of another value or a damaged part. Compare the board with the 3D view before plugging in USB. |
+| What the code does | The code checker reads the program; it doesn't run it. Logic mistakes (a button that works the wrong way round, a reading in the wrong unit, a loop that waits forever) and errors that only happen on the board can pass. |
+| Part facts | Parts marked ❌ in [Supported hardware](#supported-hardware) are described from the usual values of the most common module, not from a datasheet. Modules with the same name can differ in pin order, voltage or active level: follow the labels on your board. |
+| Currents | GPIO and resistor currents are counted through resistors and LEDs in series. Current a module takes through its signal pins isn't counted, module supply currents are typical values, and code that changes a pin's drive strength isn't checked. |
+| Power | Projects run from the Pico's 3.3 V pin and USB. Batteries, external supplies, 5 V modules and mains are not supported, so they aren't checked. |
+| Handoff bundles | Parts in a handoff bundle that BreadPilot doesn't support, and code another assistant writes from it, are not checked. |
+| Code changed elsewhere | The code panel's Edit mode checks code as you type; code changed or copied outside BreadPilot isn't checked. |
+| Many switches | With more than 8 switch contacts, shorts are still found in every combination, but the LED checks only look at none, one, two or all switches pressed. |
 
 ### System overview
 
@@ -499,4 +515,5 @@ Third-party files (MicroPython firmware, datasheets, npm packages) keep their ow
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 > **Warning:** BreadPilot gives wiring and code suggestions for real electronics. Its checks can be
-> incomplete and AI output can be wrong. Always check your wiring before plugging in the USB cable.
+> incomplete (see [What the checks don't cover](#what-the-checks-dont-cover)) and AI output can be
+> wrong. Always check your wiring before plugging in the USB cable.

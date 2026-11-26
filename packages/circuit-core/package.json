@@ -11,9 +11,12 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "gen:pinout": "node --import tsx scripts/gen-pinout.ts",
-    "gen:parts": "node --import tsx scripts/gen-parts.ts"
+    "gen:parts": "node --import tsx scripts/gen-parts.ts",
+    "mutation": "stryker run"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
     "tsx": "^4.20.0"
   }
 }

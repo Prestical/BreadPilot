@@ -22,7 +22,8 @@
       "id": "data",
       "label": "DATA (leg 2)",
       "kind": "digital_out",
-      "level": "vcc"
+      "level": "vcc",
+      "needsPullUp": { "value": true, "src": { "typical": true, "note": "single-bus data line like the DHT11's: pulled up to VDD by an external resistor" } }
     },
     {
       "id": "nc",

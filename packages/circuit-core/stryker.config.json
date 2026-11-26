@@ -1,0 +1,18 @@
+{
+  "_comment": "M18 18.5: mutation testing of the safety code (npm run mutation -w @breadpilot/circuit-core). A manual run before releases, not part of npm test. In place: the tests read ../../../parts, data and docs, which a sandbox copy would break; an interrupted run is undone with git checkout.",
+  "testRunner": "vitest",
+  "vitest": { "configFile": "vitest.config.ts" },
+  "inPlace": true,
+  "mutate": ["src/validate.ts", "src/netlist.ts", "src/codecheck.ts"],
+  "disableTypeChecks": "src/{validate,netlist,codecheck}.ts",
+  "disableTypeChecks_comment": "only the mutated files get // @ts-nocheck: a test compares parts.generated.ts with the generator's output",
+  "coverageAnalysis": "perTest",
+  "ignoreStatic": true,
+  "concurrency": 4,
+  "timeoutMS": 20000,
+  "reporters": ["clear-text", "progress", "json", "html"],
+  "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
+  "htmlReporter": { "fileName": "reports/mutation/mutation.html" },
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": "always"
+}

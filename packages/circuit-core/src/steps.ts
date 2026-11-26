@@ -8,6 +8,7 @@ import { holeKey, picoPinHole, stripOfHole } from "./breadboard";
 import { formatWire } from "./dsl";
 import { legLabel, resolveBuild, type Resolved, type ResolvedEnd, type ResolvedPart } from "./resolve";
 import { PACKS, packOfPart, type TextTemplates } from "./packs";
+import { formatOhms } from "./units";
 import { validateBuild } from "./validate";
 import type { Build, Issue, RailId } from "./types";
 
@@ -53,11 +54,7 @@ export function resistorBands(ohms: number): [string, string, string, string] {
   return [BAND_COLORS[d1]!, BAND_COLORS[d2]!, BAND_COLORS[exp]!, "gold"];
 }
 
-export function formatOhms(ohms: number): string {
-  if (ohms >= 1_000_000) return `${+(ohms / 1_000_000).toFixed(2)} MΩ`;
-  if (ohms >= 1000) return `${+(ohms / 1000).toFixed(2)} kΩ`;
-  return `${ohms} Ω`;
-}
+export { formatOhms };
 
 const RAIL_TEXT: Record<RailId, string> = {
   "RL+": "the left + rail (red line)",
@@ -345,7 +342,7 @@ export function buildSteps(build: Build): BuildStep[] {
     kind: "usb",
     title: "Check, then plug in USB",
     text: "Compare your board with the 3D view one more time. If every wire matches, plug the USB cable into the Pico. Power always goes in last.",
-    why: "Power goes in last, so a misplaced wire can't cause a short while you're still building.",
+    why: "Power goes in last, so a misplaced wire can't cause a short while you're still building. BreadPilot checked the wiring it drew, not your real board, so this last look is yours.",
     tip: "If anything gets hot or smells, unplug the USB cable right away.",
     focus: { holes: ["1c", "1h"], rails: [] },
   });
@@ -449,7 +446,7 @@ export function changeSteps(before: Build, after: Build): BuildStep[] {
     kind: "usb",
     title: "Check, then plug in USB",
     text: "Compare your board with the 3D view. If every part and wire matches, plug the USB cable back in.",
-    why: "Power goes in last, so a misplaced wire can't cause a short while you're still changing the board.",
+    why: "Power goes in last, so a misplaced wire can't cause a short while you're still changing the board. BreadPilot checked the wiring it drew, not your real board, so this last look is yours.",
     tip: "If anything gets hot or smells, unplug the USB cable right away.",
     focus: { holes: ["1c", "1h"], rails: [] },
   });

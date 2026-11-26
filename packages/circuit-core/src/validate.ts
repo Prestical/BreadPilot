@@ -2,11 +2,14 @@
 // test/validate.test.ts. Messages are written for beginners.
 //
 // Switches (buttons) are checked in every position: a circuit that is only
-// shorted while a button is pressed is still a short.
+// shorted while a button is pressed is still a short. Above MAX_EXHAUSTIVE_SWITCHES
+// contacts the net checks stay complete (see switchStates); the LED path checks then
+// see none, one, two or the largest sets of pressed switches.
 
 import { pinByGpio } from "./board";
 import { buildNets, partElements, type Net, type Nets, type PartElement } from "./netlist";
 import { legLabel, resolveBuild, type Resolved, type ResolvedPart } from "./resolve";
+import { formatOhms } from "./units";
 import type { BoardPin, Build, GpioMode, Issue, ValidationReport } from "./types";
 
 const MAX_EXHAUSTIVE_SWITCHES = 8;
@@ -48,9 +51,33 @@ function switchStates(elements: PartElement[]): SwitchState[] {
   if (switches.length <= MAX_EXHAUSTIVE_SWITCHES) {
     for (let mask = 0; mask < 1 << switches.length; mask++) subsets.push(switches.filter((_, i) => mask & (1 << i)));
   } else {
-    subsets.push([], switches, ...switches.map((s) => [s]));
+    // Too many for every combination. Closing a switch only joins nets, so whatever a net check
+    // finds (shorts, 5 V into a GPIO, two outputs joined) is still there with more switches
+    // closed: the largest possible states cover every combination for those checks. Smaller
+    // states come first so a message names the fewest switches ("when BTN1 and BTN2 are pressed").
+    subsets.push([], ...switches.map((s) => [s]));
+    for (let i = 0; i < switches.length; i++) {
+      for (let j = i + 1; j < switches.length; j++) subsets.push([switches[i]!, switches[j]!]);
+    }
+    subsets.push(...largestStates(switches));
   }
   return subsets.filter(possible).map((s) => ({ closed: new Set(s.map((x) => x.id)), when: describe(s) }));
+}
+
+/**
+ * Every largest set of switch contacts that can be closed together: all ungrouped contacts, plus
+ * one contact from each group (a slide switch is slid to one side at a time).
+ */
+function largestStates(switches: PartElement[]): PartElement[][] {
+  const free = switches.filter((s) => !s.el.group);
+  const groups = new Map<string, PartElement[]>();
+  for (const s of switches.filter((x) => x.el.group)) {
+    const key = `${s.part.ref}#${s.el.group}`;
+    groups.set(key, [...(groups.get(key) ?? []), s]);
+  }
+  let states: PartElement[][] = [free];
+  for (const contacts of groups.values()) states = states.flatMap((st) => contacts.map((c) => [...st, c]));
+  return states;
 }
 
 class IssueList {
@@ -137,6 +164,7 @@ function checkCircuit(resolved: Resolved, build: Build, out: IssueList) {
   const leds = elements.filter((e) => e.el.kind === "led");
   const ledFacts = new Map<string, LedFacts[]>(leds.map((l) => [l.id, []]));
   let worstLoad3v3 = 0;
+  const worstResistor = new Map<string, { pe: PartElement; ma: number }>();
 
   for (const state of switchStates(elements)) {
     const nets = buildNets(resolved, state.closed);
@@ -147,7 +175,20 @@ function checkCircuit(resolved: Resolved, build: Build, out: IssueList) {
     if (allReleased) checkReleasedOnly(nets, resolved, elements, modeOf, out);
 
     for (const led of leds) ledFacts.get(led.id)!.push(analyzeLed(led, nets, elements, modeOf));
-    worstLoad3v3 = Math.max(worstLoad3v3, load3v3(nets, elements));
+    const cur = stateCurrents(nets, elements, resolved, modeOf);
+    checkGpioCurrents(cur, resolved, when, out);
+    for (const [id, r] of cur.resistors) if (r.ma > (worstResistor.get(id)?.ma ?? 0)) worstResistor.set(id, r);
+    worstLoad3v3 = Math.max(worstLoad3v3, load3v3(nets, elements) + cur.chain3v3);
+  }
+
+  // E017: a resistor past its power rating (P = I² × R), at its worst switch state and output level.
+  for (const { pe, ma } of worstResistor.values()) {
+    const rating = Number(pe.part.def.specs?.maxPowerW) || 0;
+    const ohms = Number(pe.part.props.ohms) || 0;
+    const watts = (ma / 1000) ** 2 * ohms;
+    if (rating > 0 && watts > rating) {
+      out.add({ code: "E017", severity: "error", message: `${pe.part.ref} (${formatOhms(ohms)}) would turn about ${Math.round(watts * 1000)} mW into heat with ${fmtMa(ma)} mA through it, more than the ${Math.round(rating * 1000)} mW a usual breadboard resistor can take. It gets hot and can burn. Use a bigger resistor.`, parts: [pe.part.ref] });
+    }
   }
 
   // LEDs: aggregate over all switch positions.
@@ -172,7 +213,7 @@ function checkCircuit(resolved: Resolved, build: Build, out: IssueList) {
 
   const threeV3 = resolved.board.pins.find((p) => p.type === "power" && p.voltage === 3.3);
   if (threeV3?.maxLoadMa && worstLoad3v3 > threeV3.maxLoadMa) {
-    out.add({ code: "W001", severity: "warning", message: `Parts on the 3V3 pin draw about ${worstLoad3v3} mA, more than the ${threeV3.maxLoadMa} mA the datasheet recommends. Power big loads from a separate supply.`, pins: [threeV3.name] });
+    out.add({ code: "W001", severity: "warning", message: `Parts on the 3V3 pin draw about ${Math.round(worstLoad3v3)} mA, more than the ${threeV3.maxLoadMa} mA the datasheet recommends. Power big loads from a separate supply.`, pins: [threeV3.name] });
   }
 }
 
@@ -227,7 +268,7 @@ function checkNet(
   if (gpios.length) {
     const fiveV = powers.find((p) => (p.voltage ?? 0) > resolved.board.electrical.adcPinMaxInputVoltage);
     const highOutput = net.legs.find(
-      (l) => (l.leg.kind === "digital_out" || l.leg.kind === "i2c_sda" || l.leg.kind === "i2c_scl") && l.leg.level === "vcc" && partSupplyVoltage(l.part, nets) > resolved.board.electrical.adcPinMaxInputVoltage,
+      (l) => (l.leg.kind === "digital_out" || l.leg.kind === "analog_out" || l.leg.kind === "i2c_sda" || l.leg.kind === "i2c_scl") && l.leg.level === "vcc" && partSupplyVoltage(l.part, nets) > resolved.board.electrical.adcPinMaxInputVoltage,
     );
     for (const g of gpios) {
       if (fiveV) {
@@ -238,6 +279,8 @@ function checkNet(
         const message =
           highOutput.leg.kind === "digital_out"
             ? `${legLabel(highOutput.part, highOutput.leg)} outputs ~${v} V into ${pinText(g)}. Pico GPIOs work at 3.3 V: add a voltage divider (e.g. 1 kΩ + 2 kΩ) or a level shifter.`
+            : highOutput.leg.kind === "analog_out"
+            ? `${legLabel(highOutput.part, highOutput.leg)} can rise to the module's ~${v} V supply, and it's wired to ${pinText(g)}. Pico pins take at most 3.3 V: power ${highOutput.part.ref} from 3V3 (pin 36).`
             : `${legLabel(highOutput.part, highOutput.leg)} can be pulled up to the module's ~${v} V supply, and it's wired to ${pinText(g)}. Pico GPIOs work at 3.3 V: power ${highOutput.part.ref} from 3V3 (pin 36).`;
         out.add({ code: "E007", severity: "error", message, pins: [g.name], parts: [highOutput.part.ref], ...when });
       }
@@ -330,6 +373,26 @@ function checkReleasedOnly(
         out.add({ code: "W008", severity: "warning", message: `${legLabel(part, leg)} isn't connected to a power pin, so ${part.ref} won't work.`, parts: [part.ref] });
       } else if (leg.voltageRange && (v < leg.voltageRange[0] || v > leg.voltageRange[1])) {
         out.add({ code: "W010", severity: "warning", message: `${part.ref} needs ${leg.voltageRange[0]}-${leg.voltageRange[1]} V on ${leg.label}, but it gets ~${v} V.`, parts: [part.ref] });
+      }
+    }
+    // E018 / W008: ground legs on a supply (the part is in the wrong way round), or on nothing.
+    const powered = part.def.legs.some((l) => l.kind === "power_in" && part.legs[l.id] && partSupplyVoltage(part, nets) > 0);
+    for (const leg of part.def.legs.filter((l) => l.kind === "ground" && part.legs[l.id])) {
+      const net = nets.legNet(part, leg.id);
+      const supply = net.pins.find(isPower);
+      if (supply) {
+        out.add({ code: "E018", severity: "error", message: `${legLabel(part, leg)} is connected to ${pinText(supply)}. ${part.ref} is in the wrong way round or its GND wire goes to a supply; reversed power can destroy it. Its GND leg goes to GND.`, parts: [part.ref], pins: [supply.name] });
+      } else if (powered && !net.pins.some(isGround)) {
+        out.add({ code: "W008", severity: "warning", message: `${legLabel(part, leg)} isn't connected to GND, so ${part.ref} won't work.`, parts: [part.ref] });
+      }
+    }
+    // W012: a data line that needs a pull-up resistor to a supply (DHT, 1-Wire).
+    for (const leg of part.def.legs.filter((l) => l.needsPullUp && part.legs[l.id])) {
+      const net = nets.legNet(part, leg.id);
+      if (!net.pins.some(isGpio)) continue;
+      const pulled = reachable(nets, elements, net, (n) => n !== net && n.pins.some(isPower), ["resistor"]);
+      if (!pulled) {
+        out.add({ code: "W012", severity: "warning", message: `${legLabel(part, leg)} needs a pull-up resistor to the part's supply (a few kΩ, from ${leg.label.split(" ")[0]} to VCC). Without it ${part.ref} can't answer the Pico, and every reading fails.`, parts: [part.ref] });
       }
     }
     // Completely unconnected parts.
@@ -458,6 +521,8 @@ function analyzeLed(led: PartElement, nets: Nets, elements: PartElement[], modeO
     while (queue.length) {
       const n = queue.shift()!;
       if (pred(n)) return true;
+      // Current can't flow up out of GND or down into a supply: those nets end a walk.
+      if (dir === "up" ? n.pins.some(isGround) : n.pins.some(isPower)) continue;
       const step = (to: Net) => {
         if (!seen.has(to.id)) {
           seen.add(to.id);
@@ -487,7 +552,8 @@ function analyzeLed(led: PartElement, nets: Nets, elements: PartElement[], modeO
   if (!facts.forward && walk(cathode, "down", isSink)) {
     let found: BoardPin | undefined;
     walk(anode, "up", (n) => {
-      found = n.pins.find((p) => isGpio(p) && INPUT_MODES.has(modeOf(p)!));
+      // An input joined to GND (by a pressed button) can't be what would light the LED.
+      found = n.pins.some(isGround) ? undefined : n.pins.find((p) => isGpio(p) && INPUT_MODES.has(modeOf(p)!));
       return !!found;
     });
     if (found) facts.inputSourcedBy = found;
@@ -495,6 +561,139 @@ function analyzeLed(led: PartElement, nets: Nets, elements: PartElement[], modeO
   facts.resistorFree = walk(anode, "up", isSource, false) && walk(cathode, "down", isSink, false);
   return facts;
 }
+// ---------- Currents through resistors and LEDs (W011, E016, E017, part of W001) ----------
+
+interface CurrentPath {
+  ma: number;
+  resistors: PartElement[];
+}
+
+const MAX_PATH_ELEMENTS = 8;
+const MAX_PATHS = 64;
+
+/** The LED's forward voltage for its colour (pack fact); 1.8 V when unknown (more current: the safe side). */
+function forwardVoltage(part: ResolvedPart): number {
+  const table = (part.def.specs?.forwardVoltage ?? {}) as Record<string, number>;
+  return table[String(part.props.color)] ?? 1.8;
+}
+
+/**
+ * Series paths of resistors and LEDs from `start` to a net where `endVolts` gives a voltage, with
+ * the current each would carry: (voltage difference − LED drops) / resistance. `downhill` means
+ * current flows from `start` toward the end (LEDs only anode → cathode), else from the end into
+ * `start`. A path stops at any other net with a Pico pin (another driver). Paths with no resistor
+ * are E003/E004's job; parts with no resistance value (modules) aren't counted.
+ */
+function currentPaths(nets: Nets, elements: PartElement[], start: Net, startVolts: number, endVolts: (n: Net) => number | undefined, downhill: boolean): CurrentPath[] {
+  const edges = elements.filter((e) => (e.el.kind === "resistor" || e.el.kind === "led") && e.part.legs[e.el.a] && e.part.legs[e.el.b]);
+  const paths: CurrentPath[] = [];
+  const visit = (net: Net, seen: Set<string>, ohms: number, drop: number, resistors: PartElement[]) => {
+    for (const e of edges) {
+      if (paths.length >= MAX_PATHS) return;
+      const a = nets.legNet(e.part, e.el.a);
+      const b = nets.legNet(e.part, e.el.b);
+      let next: Net | undefined;
+      if (e.el.kind === "resistor") next = a.id === net.id ? b : b.id === net.id ? a : undefined;
+      else next = downhill ? (a.id === net.id ? b : undefined) : b.id === net.id ? a : undefined;
+      if (!next || seen.has(next.id)) continue;
+      const r = e.el.kind === "resistor" ? Number(e.part.props.ohms) || 0 : 0;
+      const nOhms = ohms + r;
+      const nDrop = drop + (e.el.kind === "led" ? forwardVoltage(e.part) : 0);
+      const nRes = e.el.kind === "resistor" ? [...resistors, e] : resistors;
+      const v = endVolts(next);
+      if (v !== undefined) {
+        const ma = nOhms > 0 ? (Math.max(0, Math.abs(startVolts - v) - nDrop) / nOhms) * 1000 : 0;
+        if (ma > 0) paths.push({ ma, resistors: nRes });
+      } else if (!next.pins.length && seen.size < MAX_PATH_ELEMENTS) {
+        visit(next, new Set([...seen, next.id]), nOhms, nDrop, nRes);
+      }
+    }
+  };
+  visit(start, new Set([start.id]), 0, 0, []);
+  return paths;
+}
+
+const sumMa = (paths: CurrentPath[]) => paths.reduce((s, p) => s + p.ma, 0);
+const fmtMa = (ma: number) => (ma >= 10 ? String(Math.round(ma)) : String(Math.round(ma * 10) / 10));
+
+interface StateCurrents {
+  /** Per driven GPIO: current given when HIGH (to GND) and taken when LOW (from a supply). */
+  pins: { pin: BoardPin; source: number; sink: number }[];
+  /** Current through each resistor (by element id), worst of the two output levels plus supply paths. */
+  resistors: Map<string, { pe: PartElement; ma: number }>;
+  /** Current from the 3V3 pin through resistor/LED paths to GND. */
+  chain3v3: number;
+}
+
+function stateCurrents(nets: Nets, elements: PartElement[], resolved: Resolved, modeOf: (p: BoardPin) => GpioMode | undefined): StateCurrents {
+  const high = resolved.board.electrical.logicVoltage;
+  const toGround = (n: Net) => (n.pins.some(isGround) ? 0 : undefined);
+  const toSupply = (n: Net) => {
+    const v = n.pins.filter(isPower).map((p) => p.voltage ?? 0);
+    return v.length ? Math.max(...v) : undefined;
+  };
+  const sourced = new Map<string, { pe: PartElement; ma: number }>();
+  const sunk = new Map<string, { pe: PartElement; ma: number }>();
+  const add = (m: Map<string, { pe: PartElement; ma: number }>, paths: CurrentPath[]) => {
+    for (const p of paths) for (const r of p.resistors) m.set(r.id, { pe: r, ma: (m.get(r.id)?.ma ?? 0) + p.ma });
+  };
+  const pins: StateCurrents["pins"] = [];
+  for (const pin of resolved.board.pins.filter((p) => isGpio(p) && isDriven(modeOf(p)))) {
+    const net = nets.pinNet(pin.phys);
+    if (net.pins.some((p) => !isGpio(p))) continue; // tied to a rail: E003
+    const up = currentPaths(nets, elements, net, high, toGround, true);
+    const down = currentPaths(nets, elements, net, 0, toSupply, false);
+    add(sourced, up);
+    add(sunk, down);
+    pins.push({ pin, source: sumMa(up), sink: sumMa(down) });
+  }
+  // Supply → resistors/LEDs → GND: flows whatever the outputs do.
+  const always = new Map<string, { pe: PartElement; ma: number }>();
+  let chain3v3 = 0;
+  const supplyNets = new Map<string, Net>();
+  for (const p of resolved.board.pins.filter(isPower)) supplyNets.set(nets.pinNet(p.phys).id, nets.pinNet(p.phys));
+  for (const net of supplyNets.values()) {
+    if (net.pins.some(isGround)) continue; // E001
+    const paths = currentPaths(nets, elements, net, toSupply(net)!, toGround, true);
+    add(always, paths);
+    if (net.pins.some((p) => isPower(p) && p.voltage === high)) chain3v3 += sumMa(paths);
+  }
+  const resistors = new Map<string, { pe: PartElement; ma: number }>();
+  for (const id of new Set([...sourced.keys(), ...sunk.keys(), ...always.keys()])) {
+    const pe = (sourced.get(id) ?? sunk.get(id) ?? always.get(id))!.pe;
+    resistors.set(id, { pe, ma: Math.max(sourced.get(id)?.ma ?? 0, sunk.get(id)?.ma ?? 0) + (always.get(id)?.ma ?? 0) });
+  }
+  return { pins, resistors, chain3v3 };
+}
+
+/** W011 (one pin past its drive strength) and E016 (all GPIOs together past the chip's limit) in one switch state. */
+function checkGpioCurrents(cur: StateCurrents, resolved: Resolved, when: { when?: string }, out: IssueList) {
+  const g = resolved.board.electrical.gpioCurrent;
+  if (!g) return;
+  for (const { pin, source, sink } of cur.pins) {
+    const worst = Math.max(source, sink);
+    if (worst <= g.defaultDriveMa + 1e-9) continue;
+    const how = source >= sink ? `give about ${fmtMa(source)} mA when HIGH` : `take about ${fmtMa(sink)} mA when LOW`;
+    out.add({
+      code: "W011",
+      severity: "warning",
+      message: `${pinText(pin)} would ${how}, more than the ${g.defaultDriveMa} mA its output is set up for. Past that the pin's voltage drops below what the RP2350 datasheet guarantees (${g.outputHighMinV} V for HIGH, ${g.outputLowMaxV} V for LOW), so an LED gets dimmer and other parts may misread it. Use a bigger resistor (330 Ω keeps a red LED under ${g.defaultDriveMa} mA).`,
+      pins: [pin.name],
+      ...when,
+    });
+  }
+  const total = (key: "source" | "sink") => cur.pins.reduce((s, p) => s + p[key], 0);
+  const list = (key: "source" | "sink") => cur.pins.filter((p) => p[key] > 0).map((p) => `${p.pin.name} ${fmtMa(p[key])} mA`).join(", ");
+  const src = total("source");
+  if (src > g.maxTotalSourceMa) {
+    out.add({ code: "E016", severity: "error", message: `With all outputs HIGH at once the GPIOs give about ${fmtMa(src)} mA together (${list("source")}), more than the ${g.maxTotalSourceMa} mA the RP2350 datasheet allows for all GPIOs together. Use bigger resistors, fewer parts on GPIOs, or a transistor for big loads.`, pins: cur.pins.filter((p) => p.source > 0).map((p) => p.pin.name), ...when });
+  }
+  const snk = total("sink");
+  if (snk > g.maxTotalSinkMa) {
+    out.add({ code: "E016", severity: "error", message: `With all outputs LOW at once the GPIOs take about ${fmtMa(snk)} mA together (${list("sink")}), more than the ${g.maxTotalSinkMa} mA the RP2350 datasheet allows into all GPIOs together. Use bigger resistors, fewer parts on GPIOs, or a transistor for big loads.`, pins: cur.pins.filter((p) => p.sink > 0).map((p) => p.pin.name), ...when });
+  }
+}
+
 /** Current drawn from the 3V3 pin by parts with a known load. */
 function load3v3(nets: Nets, elements: PartElement[]): number {
   let total = 0;

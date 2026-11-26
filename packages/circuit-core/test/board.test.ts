@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isPinLikeLabel, labelMatchesPin, parseBoard, PICO_2_W, pinByPhys } from "../src/board";
 import { picoFreeHoles, picoPinHole } from "../src/breadboard";
@@ -26,6 +28,28 @@ describe("Pico 2 W ground truth", () => {
     const at = (n: number) => pinByPhys(PICO_2_W, n)!.name;
     expect([at(30), at(35), at(36), at(37), at(39), at(40)]).toEqual(["RUN", "ADC_VREF", "3V3", "3V3_EN", "VSYS", "VBUS"]);
     expect(pinByPhys(PICO_2_W, 36)!.maxLoadMa).toBe(300);
+  });
+
+  // RP2350 datasheet: PADS_BANK0 DRIVE reset (Table 885), Table 1683 and §14.9.4.1.
+  it("has the RP2350's GPIO current facts, each with its source", () => {
+    const g = PICO_2_W.electrical.gpioCurrent!;
+    expect(g.defaultDriveMa).toBe(4);
+    expect(g.driveStrengthsMa).toEqual([2, 4, 8, 12]);
+    expect([g.outputHighMinV, g.outputLowMaxV]).toEqual([2.62, 0.5]);
+    expect([g.maxTotalSourceMa, g.maxTotalSinkMa]).toEqual([100, 100]);
+    const src = (PICO_2_W.electrical as unknown as { gpioCurrent: { src: { doc: string }[] } }).gpioCurrent.src;
+    expect(src.length).toBeGreaterThan(0);
+    // The PDF isn't committed (size): each cited file is listed in reference.md with its SHA-256,
+    // and a local copy, if there is one, must match it.
+    const dir = join(__dirname, "../../../docs/hardware/rp2350");
+    const reference = readFileSync(join(dir, "reference.md"), "utf8");
+    for (const s of src) {
+      const row = reference.split("\n").find((l) => l.startsWith(`| ${s.doc} |`));
+      expect(row, s.doc).toBeDefined();
+      const sha = /\b([0-9a-f]{64})\b/.exec(row!)![1];
+      const local = join(dir, s.doc);
+      if (existsSync(local)) expect(createHash("sha256").update(readFileSync(local)).digest("hex")).toBe(sha);
+    }
   });
 
   it("puts ADC0-2 on GP26-28 (pins 31, 32, 34)", () => {

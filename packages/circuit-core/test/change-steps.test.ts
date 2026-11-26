@@ -64,12 +64,20 @@ describe("change steps (M9 9.4)", () => {
 
   it("changing the LED's colour: take it out and put the new one in the same holes; no wire steps", () => {
     const before = layoutProject([{ kind: "led", props: { color: "red" } }, { kind: "button" }]);
-    const after = change(before, [{ kind: "led", props: { color: "blue" } }, { kind: "button" }]);
+    const after = change(before, [{ kind: "led", props: { color: "green" } }, { kind: "button" }]);
     const steps = changeSteps(before.build, after.build);
     expect(kinds(steps)).toEqual(["unplug", "remove-part LED1", "place-part LED1", "usb"]);
     expect(steps[1]!.why).toBe("LED1 changes: the next steps put it back in its new form or place.");
     expect(steps[1]!.focus.holes).toEqual(steps[2]!.focus.holes);
     expect(steps[1]!.text).toMatch(/^Pull .* LED1 out of holes \d+[a-j], \d+[a-j]\.$/);
+  });
+
+  it("red to blue also changes the resistor (blue and white LEDs get 100 Ω, M18 18.3)", () => {
+    const before = layoutProject([{ kind: "led", props: { color: "red" } }, { kind: "button" }]);
+    const after = change(before, [{ kind: "led", props: { color: "blue" } }, { kind: "button" }]);
+    expect(after.build.parts.find((p) => p.ref === "R1")!.props).toEqual({ ohms: 100 });
+    expect(kinds(changeSteps(before.build, after.build))).toEqual(["unplug", "remove-part R1", "remove-part LED1", "place-part R1", "place-part LED1", "usb"]);
+    expect(changeSteps(before.build, after.build).at(-1)!.why).toMatch(/checked the wiring it drew, not your real board/);
   });
 
   it("removal steps describe where the old wire was, in plain words", () => {

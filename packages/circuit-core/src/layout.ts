@@ -22,7 +22,7 @@
 
 import { PICO_2_W } from "./board";
 import { PICO_LAST_ROW, PICO_PINS_PER_SIDE, picoPinHole, BREADBOARD } from "./breadboard";
-import { packByKind, type LayoutTemplate, type Pack, type TemplateHole } from "./packs";
+import { packByKind, type LayoutTemplate, type Pack, type TemplateHole, type TemplateProp } from "./packs";
 import type { Board, BoardPin, Build, Column, Endpoint, GpioMode, Part, Wire } from "./types";
 
 /** A part pack's plan kind, e.g. "led", "button", "pot", "oled" (see parts/<id>/pack.json). */
@@ -441,6 +441,19 @@ function directSupply(board: Board, crowd: PinCrowd) {
   };
 }
 
+/**
+ * A prop picked by another requested value (layout.json `by`), e.g. the LED resistor's ohms by the
+ * LED's color; a value not asked for takes the default of the prop that asks for it.
+ */
+function byValue(prop: TemplateProp, t: LayoutTemplate, req: BlockRequest): string | number | undefined {
+  for (const [request, table] of Object.entries(prop.by ?? {})) {
+    const asking = t.parts.flatMap((p) => Object.values(p.props ?? {})).find((x) => x.request === request);
+    const value = req.props?.[request] ?? asking?.default;
+    if (value !== undefined && table[String(value)] !== undefined) return table[String(value)];
+  }
+  return undefined;
+}
+
 export function layoutProject(requests: BlockRequest[], board: Board = PICO_2_W, opts: LayoutOptions = {}): Layout {
   // No parts (e.g. a project that only uses the Pico's on-board LED): just the Pico, no wires.
   if (requests.length === 0) return { build: { boardId: board.id, parts: [], wires: [], gpioModes: {} }, blocks: [] };
@@ -529,7 +542,7 @@ export function layoutProject(requests: BlockRequest[], board: Board = PICO_2_W,
       const ref = refOf.get(tp.ref) ?? nextRef(tp.ref);
       refOf.set(tp.ref, ref);
       const part: Part = { ref, type: tp.type === "self" ? templateOf(req.kind).pack.part.id : tp.type, legs: Object.fromEntries(Object.entries(tp.legs).map(([leg, [dr, c]]) => [leg, hole(r + dr, col(c))])) };
-      if (tp.props) part.props = Object.fromEntries(Object.entries(tp.props).map(([k, v]) => [k, (v.request !== undefined ? req.props?.[v.request] : undefined) ?? v.default]));
+      if (tp.props) part.props = Object.fromEntries(Object.entries(tp.props).map(([k, v]) => [k, (v.request !== undefined ? req.props?.[v.request] : undefined) ?? byValue(v, t, req) ?? v.default]));
       parts.push(part);
     }
     const end_ = ([dr, c, label]: TemplateHole) => {

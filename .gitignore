@@ -42,3 +42,10 @@ apps/web/.model-sheet/
 apps/desktop/.stage/
 apps/desktop/release/
 apps/desktop/build/template.tar.gz
+
+# Large datasheets kept out of git (link + checksum in the folder's reference.md)
+docs/hardware/rp2350/*.pdf
+
+# Mutation testing output (npm run mutation -w @breadpilot/circuit-core)
+packages/circuit-core/reports/
+packages/circuit-core/.stryker-tmp/

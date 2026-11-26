@@ -22,13 +22,13 @@ import {
   stableRequests,
   changeSteps,
   canonicalJson,
-  validateBuild,
   type BlockRequest,
   type Board,
   type CodeIssue,
   type Layout,
   type PowerMode,
 } from "@breadpilot/circuit-core";
+import { assertEngineBuild } from "./gate";
 import { addUsage, LlmError, type LlmCallOptions, type LlmClient, type LlmResult, type TokenUsage } from "./llm";
 import { AGENT_PACKS, agentOf, joinList } from "./packText";
 import type { ProgressBus } from "./progress";
@@ -367,8 +367,7 @@ export async function setPower(deps: AgentDeps, id: string, power: PowerMode): P
         // The code was written for these GPIOs; a different allocation would invalidate it.
         // Key order doesn't count: stored blocks come back from JSONB with their keys re-ordered.
         if (canonicalJson(layout.blocks) !== canonicalJson(pb.blocks)) throw new AgentError("Switching the power wiring would change the parts' pins, so it was not applied.", 409);
-        const report = validateBuild(layout.build);
-        if (!report.ok) throw new Error(`Internal error: the ${power} layout failed validation (${report.issues[0]?.message}).`);
+        assertEngineBuild(layout.build, `${power} layout`);
         const check = pb.code ? checkMicroPython(pb.code, layout.build, board) : undefined;
         if (pb.codeCheck?.ok && check && !check.ok) throw new AgentError("The code doesn't match the new wiring, so the switch was not applied.", 409);
         pb.build = layout.build;
@@ -709,9 +708,8 @@ async function build(run: Run, deps: AgentDeps, board: Board, change?: BuildChan
     p.plans.push({ ...fixed, version: p.plans.length + 1, approved: true, autoFix: problem });
   }
 
-  // Safety gate: never continue with a build the validator rejects.
-  const report = validateBuild(layout.build);
-  if (!report.ok) throw new Error(`Internal error: the generated layout failed validation (${report.issues[0]?.message}).`);
+  // Safety gate: never continue with a build that has any validator issue, warnings included.
+  assertEngineBuild(layout.build, "generated layout");
 
   const steps = buildSteps(layout.build);
   run.event("steps", "ok", 0, `${steps.length} steps`);

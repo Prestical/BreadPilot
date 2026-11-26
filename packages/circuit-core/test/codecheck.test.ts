@@ -337,3 +337,81 @@ describe("C015: names the machine module doesn't have (MicroPython v1.29.0, rp2)
     expect([...names].sort()).toEqual([...MACHINE_MODULE_NAMES].sort());
   });
 });
+
+// M18 18.5 pass 2: inputs and branches of checkMicroPython that no test reached (mutation testing).
+describe("found by mutation testing (code checker)", () => {
+  const H = "from machine import Pin, ADC, PWM, I2C\nimport time\n";
+  const USE = "\nwhile True:\n    led.value(b.value())\n    print(k.read_u16())\n    time.sleep(1)\n";
+  const oled = layoutProject([{ kind: "oled" }]).build; // GP16 = I2C0 SDA, GP17 = I2C0 SCL
+  const SCREEN = "\noled = SH1106_I2C(128, 64, i2c)\nwhile True:\n    oled.fill(0)\n    oled.text('hi', 0, 0)\n    oled.show()\n    time.sleep(1)\n";
+  const onOled = (setup: string) => checkMicroPython(`from machine import Pin, I2C\nfrom sh1106 import SH1106_I2C\nimport time\n${setup}${SCREEN}`, oled, PICO_2_W);
+
+  it("extra spaces don't hide pins or modes", () => {
+    expect(codes(`${H}LED_PIN  =  16\nled = Pin( LED_PIN ,  Pin.OUT )\nb = Pin(  17,Pin.IN,Pin.PULL_UP)\nk = ADC( 26 )\n${USE}`)).toEqual([]);
+    expect(check(`${H}led = Pin(16 ,  Pin.IN)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\n${USE}`).issues.map((i) => i.code)).toContain("C005");
+  });
+
+  it("pins from a dict, looped with .items() or .values()", () => {
+    for (const loop of ["for name, p in PINS.items():", "for p in PINS.values():"]) {
+      const r = check(`${H}PINS = {'led': 16}\n${loop}\n    led = Pin(p, Pin.OUT)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\n${USE}`);
+      expect(r.used.GP16, loop).toBe("out");
+      expect(r.issues.filter((i) => i.code === "C005" || i.code === "C007"), loop).toEqual([]);
+    }
+  });
+
+  it("C003: a number that isn't a header GPIO, and ADC(3), which reads GP29 inside the Pico", () => {
+    expect(check(GOOD + "x = Pin(30, Pin.OUT)\n").issues.find((i) => i.code === "C003")!.message).toBe("GP30 isn't a GPIO on the Pico 2 W header.");
+    expect(check(GOOD + "v = ADC(3)\n").issues.find((i) => i.code === "C003")!.message).toMatch(/^GP29 is used inside the Pico 2 W/);
+  });
+
+  it("ADC(2) is GP28", () => {
+    const knob28 = layoutProject([{ kind: "pot", pin: "GP28" }]).build;
+    const r = checkMicroPython(`${H}k = ADC(2)\nwhile True:\n    print(k.read_u16())\n    time.sleep(1)\n`, knob28, PICO_2_W);
+    expect(r.used).toEqual({ GP28: "adc" });
+    expect(r.issues).toEqual([]);
+  });
+
+  it("C005: PWM on a pin wired as an input", () => {
+    const r = check(`${H}led = Pin(16, Pin.OUT)\nb = PWM(Pin(17))\nk = ADC(26)\n${USE}`);
+    expect(r.issues.find((i) => i.code === "C005")!.message).toMatch(/^GP17 is wired as an input with pull-up, but line 4 drives it with PWM/);
+  });
+
+  it("C005: .init(Pin.IN) on a pin wired as an output", () => {
+    const r = check(`${H}led = Pin(16, Pin.OUT)\nled.init(Pin.IN)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\n${USE}`);
+    expect(r.issues.find((i) => i.code === "C005")!.message).toBe("Line 4 changes GP16 to an input, but it's wired as an output. Keep the mode from Pin(16, Pin.OUT) (on/off) or PWM(Pin(16)) (brightness).");
+  });
+
+  it("C005: a mode from a variable can't be confirmed", () => {
+    const r = check(`${H}MODE = Pin.OUT if True else Pin.IN\nled = Pin(16, MODE)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\n${USE}`);
+    expect(r.issues.find((i) => i.code === "C005")?.message).toMatch(/gives GP16 a mode the checker can't confirm/);
+  });
+
+  it("no one-line fix for a call written over two lines", () => {
+    const r = check(`${H}led = Pin(16,\n          Pin.IN)\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\n${USE}`);
+    const c005 = r.issues.find((i) => i.code === "C005")!;
+    expect(c005.message).toMatch(/GP16 is wired as an output, but line 3 sets it up as an input/);
+    expect(c005.fix).toBeUndefined();
+  });
+
+  it("C005: I2C on pins wired for an LED and a button", () => {
+    const msgs = check(`${H}i2c = I2C(0, sda=Pin(16), scl=Pin(17))\nk = ADC(26)\n`).issues.filter((i) => i.code === "C005").map((i) => i.message);
+    expect(msgs).toEqual(["GP16 is wired as an output, but line 3 uses it as I2C SDA.", "GP17 is wired as an input with pull-up, but line 3 uses it as I2C SCL."]);
+  });
+
+  it("I2C: keyword id, wrong bus, only one pin, swapped pins named by the part, a pin that can't be worked out", () => {
+    expect(onOled("i2c = I2C(id=0, scl=Pin(17), sda=Pin(16))").issues).toEqual([]);
+    expect(onOled("i2c = I2C(id=1, scl=Pin(17), sda=Pin(16))").issues.map((i) => i.message)[0]).toBe("Line 4 uses I2C1, but GP16 is wired on I2C0. Write I2C(0, sda=Pin(16), scl=Pin(17), freq=400000).");
+    expect(onOled("i2c = I2C(0, sda=Pin(16))").issues.find((i) => i.code === "C005")!.message).toMatch(/^Line 4 sets up I2C without both sda= and scl= pins/);
+    expect(onOled("def pick():\n    return 16\ni2c = I2C(0, sda=Pin(pick()), scl=Pin(17))").issues.find((i) => i.code === "C007")!.message).toBe('Can\'t tell which GPIO "Pin(pick())" is on line 6.');
+    const bme = layoutProject([{ kind: "bme280" }]).build;
+    const pins = Object.entries(bme.gpioModes).sort(([, a], [, b]) => a.localeCompare(b)).map(([g]) => g.slice(2)); // [scl, sda]
+    const swapped = checkMicroPython(`from machine import Pin, I2C\nfrom bme280 import BME280\nimport time\ni2c = I2C(0, sda=Pin(${pins[0]}), scl=Pin(${pins[1]}))\nbme = BME280(i2c=i2c)\nwhile True:\n    print(bme.values)\n    time.sleep(1)\n`, bme, PICO_2_W);
+    expect(swapped.issues.find((i) => i.code === "C005")!.message).toMatch(/wired to the pressure sensor's SCL: SDA and SCL are swapped/);
+  });
+
+  it("a missing module import is one C002 (not also C011), worded plainly", () => {
+    const r = check("from machine import Pin, ADC, PWM\nled = PWM(Pin(16))\nb = Pin(17, Pin.IN, Pin.PULL_UP)\nk = ADC(26)\nwhile True:\n    led.duty_u16(k.read_u16() if b.value() else 0)\n    time.sleep(1)\n");
+    expect(r.issues.map((i) => i.code)).toEqual(["C002"]);
+    expect(r.issues[0]!.message).toBe("Line 7 uses time but never imports it. Add: import time");
+  });
+});

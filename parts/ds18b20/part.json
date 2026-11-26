@@ -12,7 +12,8 @@
       "id": "dq",
       "label": "DQ (leg 2, data)",
       "kind": "digital_out",
-      "level": "vcc"
+      "level": "vcc",
+      "needsPullUp": { "value": true, "src": { "typical": true, "note": "1-Wire data line: open drain, pulled up to VDD by an external resistor (usually 4.7 kOhm)" } }
     },
     {
       "id": "vdd",

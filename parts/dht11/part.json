@@ -9,7 +9,7 @@
       "kind": "power_in",
       "voltageRange": { "value": [3.3, 5.5], "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "Pin Description: 1. VDD supply 3.3~5.5V DC" } }
     },
-    { "id": "data", "label": "DATA (leg 2)", "kind": "digital_out", "level": "vcc" },
+    { "id": "data", "label": "DATA (leg 2)", "kind": "digital_out", "level": "vcc", "needsPullUp": { "value": true, "src": { "doc": "DHT11-Aosong-product-manual.pdf", "page": 4, "note": "typical circuit: DATA has a pull-up resistor to VDD" } } },
     { "id": "nc", "label": "NC (leg 3, not connected)" },
     { "id": "gnd", "label": "GND (leg 4)", "kind": "ground" }
   ],

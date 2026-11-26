@@ -75,6 +75,16 @@ export function driverMethods(source: string): string[] {
 export type TemplateHole = [number, Column, string];
 
 /** layout.json: how one block sits on the breadboard and is wired (read by layout.ts). */
+/**
+ * A template part's prop: a value the plan may ask for (`request`), else one picked by another
+ * requested value (`by`, e.g. the LED resistor's ohms by the LED's color), else `default`.
+ */
+export interface TemplateProp {
+  request?: string;
+  by?: Record<string, Record<string, string | number>>;
+  default: string | number;
+}
+
 export interface LayoutTemplate {
   /** Short noun used in layout messages, e.g. "potentiometer", "display". */
   name: string;
@@ -92,7 +102,7 @@ export interface LayoutTemplate {
   /** The block's one pin need. `gpio`: any header GPIO; `adc`: an ADC pin; `i2c-pair`: SDA + SCL on one bus. */
   pins: Record<string, { need: "gpio" | "adc" | "i2c-pair"; mode?: GpioMode }>;
   /** Parts in placement order; `type` "self" = this pack's part. `ref` is the designator prefix. */
-  parts: { ref: string; type: string; legs: Record<string, [number, Column]>; props?: Record<string, { request?: string; default: string | number }> }[];
+  parts: { ref: string; type: string; legs: Record<string, [number, Column]>; props?: Record<string, TemplateProp> }[];
   /** The part that names the block (its ref comes first). */
   main: string;
   /** Wires in order. Signal wires come from the pin ("signal", or "bus.sda"/"bus.scl"). */
@@ -489,6 +499,7 @@ const partFile = obj({
       "maxSafeVoltage?": fact(num),
       "highCurrent?": bool,
       "activeLow?": bool,
+      "needsPullUp?": fact(bool),
     }),
   ),
   elements: arr(obj({ kind: oneOf(ELEMENT_KINDS), a: str, b: str, "currentMa?": fact(num), "group?": str, "closed?": str })),
@@ -527,7 +538,7 @@ const layoutFile = obj({
     // One pin need per block for now; a part with two independent pins needs a new layout capability.
     if (Object.keys(v as object).length !== 1) fail(p, "must name exactly one pin need");
   },
-  parts: arr(obj({ ref: (v, p) => (str(v, p), /^[A-Z]+$/.test(v as string) || fail(p, "must be capital letters, e.g. LED")), type: str, legs: record(holeAt), "props?": record(obj({ "request?": str, default: any(str, num) })) }), 8),
+  parts: arr(obj({ ref: (v, p) => (str(v, p), /^[A-Z]+$/.test(v as string) || fail(p, "must be capital letters, e.g. LED")), type: str, legs: record(holeAt), "props?": record(obj({ "request?": str, "by?": record(record(any(str, num))), default: any(str, num) })) }), 8),
   main: str,
   wires: arr(any(obj({ pin: str, to: wireEnd, "color?": str }), obj({ ground: wireEnd }), obj({ power: wireEnd })), 16),
 });

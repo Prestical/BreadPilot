@@ -2,6 +2,9 @@
 // must produce its code; each good circuit must produce no issues at all.
 
 import { describe, expect, it } from "vitest";
+import { parseConnections } from "../src/dsl";
+import { layoutProject } from "../src/layout";
+import type { Build } from "../src/types";
 import { validateBuild } from "../src/validate";
 import { btn, codes, led, mk, motor, pot, res, sonar } from "./helpers";
 
@@ -356,5 +359,290 @@ describe("report shape", () => {
   });
   it("rejects unknown boards", () => {
     expect(codes({ boardId: "arduino-uno", parts: [], wires: [], gpioModes: {} })).toEqual(["E006"]);
+  });
+});
+
+// More than MAX_EXHAUSTIVE_SWITCHES contacts: not every combination is tried, but no short may be
+// missed. Buttons sit at rows 24, 28 … 56 (contacts on rows r and r + 2); a slide switch at rows 60-62.
+describe("many switches (more than 8 contacts)", () => {
+  const rows = [24, 28, 32, 36, 40, 44, 48, 52, 56];
+  const buttons = (n: number) => rows.slice(0, n).map((r, i) => btn(`BTN${i + 1}`, r));
+  const slide = { ref: "SW1", type: "slide-switch", legs: { end1: "60a", com: "61a", end2: "62a" } };
+
+  it("finds a short that needs two buttons pressed, with a slide switch present", () => {
+    // 8 buttons + 2 slide contacts = 10. Before, the slide switch removed the "all pressed" state.
+    const b = mk(
+      [...buttons(8), slide],
+      `#36(3V3) -> #24j(BTN1.1b)
+       #26j(BTN1.2b) -> #28j(BTN2.1b)
+       #30j(BTN2.2b) -> #38(GND)`,
+    );
+    expect(issue(b, "E001")?.when).toBe("when BTN1 and BTN2 are pressed");
+  });
+
+  it("finds a short that needs three contacts, through the slide switch's second side", () => {
+    const b = mk(
+      [...buttons(9), slide],
+      `#36(3V3) -> #61b(SW1.com)
+       #62b(SW1.end2) -> #24j(BTN1.1b)
+       #26j(BTN1.2b) -> #28j(BTN2.1b)
+       #30j(BTN2.2b) -> #38(GND)`,
+    );
+    const short = issue(b, "E001");
+    expect(short).toBeDefined();
+    expect(short!.when).toMatch(/SW1 is slid toward outer leg 3/);
+  });
+
+  it("finds an output shorted to GND through three buttons", () => {
+    const b = mk(
+      [...buttons(9)],
+      `#21(GP16) -> #24j(BTN1.1b)
+       #26j(BTN1.2b) -> #28j(BTN2.1b)
+       #30j(BTN2.2b) -> #32j(BTN3.1b)
+       #34j(BTN3.2b) -> #38(GND)`,
+      { GP16: "out" },
+    );
+    expect(codes(b)).toContain("E003");
+  });
+
+  it("nine buttons on their own inputs and a slide switch: no false alarms", () => {
+    const pins: [number, string][] = [[20, "GP15"], [21, "GP16"], [22, "GP17"], [24, "GP18"], [25, "GP19"], [26, "GP20"], [27, "GP21"], [29, "GP22"], [19, "GP14"]];
+    const grounds = [3, 3, 8, 8, 13, 13, 18, 18, 23];
+    const lines = rows.map((r, i) => `#${pins[i]![0]}(${pins[i]![1]}) -> #${r}j(BTN${i + 1}.1b)\n#${r + 2}j(BTN${i + 1}.2b) -> #${grounds[i]}(GND)`);
+    lines.push(`#17(GP13) -> #61b(SW1.com)`, `#60b(SW1.end1) -> #28(GND)`);
+    const modes = Object.fromEntries([...pins.map(([, g]) => g), "GP13"].map((g) => [g, "in_pullup" as const]));
+    const b = mk([...buttons(9), slide], lines.join("\n"), modes);
+    expect(codes(b)).toEqual([]);
+  });
+});
+
+// M18 18.3: currents from the RP2350 datasheet (pads start at 4 mA drive; all GPIOs together at most
+// 100 mA sourced and 100 mA sunk) and resistor power. LED forward voltages are the pack's typical ones.
+describe("GPIO current and resistor power", () => {
+  const ledOn = (n: number, pin: [number, string], gnd: number, ohms: number) => {
+    const r = 24 + 5 * n;
+    return {
+      parts: [res(`R${n + 1}`, `${r}h`, `${r + 3}h`, ohms), led(`LED${n + 1}`, `${r + 3}g`, `${r + 4}g`)],
+      dsl: `#${pin[0]}(${pin[1]}) -> #${r}j(R${n + 1}.a)\n#${r + 4}j(LED${n + 1}.cathode) -> #${gnd}(GND)`,
+    };
+  };
+
+  it("a red LED through 330 Ω stays under the pin's 4 mA (no issues)", () => {
+    const l = ledOn(0, [21, "GP16"], 38, 330);
+    expect(codes(mk(l.parts, l.dsl, { GP16: "out" }))).toEqual([]);
+  });
+
+  it("W011: a red LED through 100 Ω wants about 13 mA from one pin", () => {
+    const l = ledOn(0, [21, "GP16"], 38, 100);
+    const b = mk(l.parts, l.dsl, { GP16: "out" });
+    expect(codes(b)).toEqual(["W011"]);
+    expect(issue(b, "W011")!.message).toMatch(/GP16 \(pin 21\) would give about 13 mA when HIGH, more than the 4 mA/);
+  });
+
+  it("W011: an LED lit when the pin is LOW (from 3V3) counts as current into the pin", () => {
+    const b = mk(
+      [res("R1", "30h", "33h", 100), led("LED1", "33g", "34g")],
+      `#36(3V3) -> #30j(R1.a)\n#34j(LED1.cathode) -> #21(GP16)`,
+      { GP16: "out" },
+    );
+    expect(issue(b, "W011")!.message).toMatch(/take about 13 mA when LOW/);
+  });
+
+  it("a pull-down resistor on an output is a tiny current (no issues)", () => {
+    const b = mk([res("R1", "30h", "33h", 10000)], `#21(GP16) -> #30j(R1.a)\n#33j(R1.b) -> #38(GND)`, { GP16: "out" });
+    expect(codes(b)).toEqual([]);
+  });
+
+  it("E016: eight LEDs at about 13 mA each pass the 100 mA limit for all GPIOs together", () => {
+    const pins: [number, string][] = [[21, "GP16"], [22, "GP17"], [24, "GP18"], [25, "GP19"], [26, "GP20"], [27, "GP21"], [29, "GP22"], [20, "GP15"]];
+    const grounds = [3, 3, 8, 8, 13, 13, 18, 18];
+    const ls = pins.map((p, i) => ledOn(i, p, grounds[i]!, 100));
+    const b = mk(ls.flatMap((l) => l.parts), ls.map((l) => l.dsl).join("\n"), Object.fromEntries(pins.map(([, g]) => [g, "out" as const])));
+    expect(codes(b).filter((c) => c === "E016")).toEqual(["E016"]);
+    expect(issue(b, "E016")!.message).toMatch(/all outputs HIGH at once the GPIOs give about 104 mA together .*more than the 100 mA/);
+  });
+
+  it("eight red LEDs through 330 Ω stay well under the total (no issues)", () => {
+    const pins: [number, string][] = [[21, "GP16"], [22, "GP17"], [24, "GP18"], [25, "GP19"], [26, "GP20"], [27, "GP21"], [29, "GP22"], [20, "GP15"]];
+    const grounds = [3, 3, 8, 8, 13, 13, 18, 18];
+    const ls = pins.map((p, i) => ledOn(i, p, grounds[i]!, 330));
+    expect(codes(mk(ls.flatMap((l) => l.parts), ls.map((l) => l.dsl).join("\n"), Object.fromEntries(pins.map(([, g]) => [g, "out" as const]))))).toEqual([]);
+  });
+
+  it("E017: 22 Ω straight from 3V3 to GND burns about 495 mW in a 250 mW resistor", () => {
+    const b = mk([res("R1", "30h", "33h", 22)], `#36(3V3) -> #30j(R1.a)\n#33j(R1.b) -> #38(GND)`);
+    expect(codes(b)).toEqual(["E017"]);
+    expect(issue(b, "E017")!.message).toMatch(/R1 \(22 Ω\) would turn about 495 mW into heat with 150 mA through it, more than the 250 mW/);
+  });
+
+  it("W001 counts current through resistors too: 10 Ω from 3V3 to GND is 330 mA", () => {
+    const b = mk([res("R1", "30h", "33h", 10)], `#36(3V3) -> #30j(R1.a)\n#33j(R1.b) -> #38(GND)`);
+    expect(codes(b)).toEqual(["E017", "W001"]);
+    expect(issue(b, "W001")!.message).toMatch(/about 330 mA/);
+  });
+
+  it("a button that closes a low-resistance path is checked while pressed", () => {
+    const b = mk(
+      [btn("BTN1", 30), res("R1", "34h", "37h", 100), led("LED1", "37g", "38g")],
+      `#21(GP16) -> #30j(BTN1.1b)\n#32j(BTN1.2b) -> #34j(R1.a)\n#38j(LED1.cathode) -> #38(GND)`,
+      { GP16: "out" },
+    );
+    expect(issue(b, "W011")?.when).toBe("when BTN1 is pressed");
+  });
+});
+
+// M18 18.4: gaps found by breaking good circuits (test/breaks.test.ts).
+describe("found by breaking good circuits", () => {
+  const dht = () => layoutProject([{ kind: "dht11" }]).build;
+  const legsOf = (b: Build, ref: string) => b.parts.find((p) => p.ref === ref)!.legs;
+  const unlabel = (b: Build) => {
+    for (const w of b.wires) for (const e of [w.from, w.to]) if (e.kind === "hole") delete e.label;
+    return b;
+  };
+
+  it("the engine's DHT11 block is clean", () => {
+    expect(codes(dht())).toEqual([]);
+  });
+
+  it("E018: a module in the wrong way round (supply and GND legs swapped)", () => {
+    const b = unlabel(dht());
+    const l = legsOf(b, "DHT1");
+    [l.vcc, l.gnd] = [l.gnd!, l.vcc!];
+    expect(codes(b)).toContain("E018");
+    expect(issue(b, "E018")!.message).toMatch(/GND \(leg 4\) is connected to 3V3 \(pin 36\)\. DHT1 is in the wrong way round/);
+  });
+
+  it("W008: a powered module whose GND leg goes nowhere", () => {
+    const b = dht();
+    const gndRow = Number(/^\d+/.exec(legsOf(b, "DHT1").gnd!)![0]);
+    b.wires = b.wires.filter((w) => !(w.from.kind === "hole" && w.from.row === gndRow) && !(w.to.kind === "hole" && w.to.row === gndRow));
+    expect(codes(b)).toEqual(["W008"]);
+    expect(issue(b, "W008")!.message).toBe("DHT1 GND (leg 4) isn't connected to GND, so DHT1 won't work.");
+  });
+
+  it("W012: a DHT11 without its pull-up resistor", () => {
+    const b = dht();
+    b.parts = b.parts.filter((p) => p.type !== "resistor");
+    expect(codes(b)).toEqual(["W012"]);
+    expect(issue(b, "W012")!.message).toMatch(/^DHT1 DATA \(leg 2\) needs a pull-up resistor .*from DATA to VCC/);
+  });
+
+  it("E007: an analog output that follows a 5 V supply (water level sensor on VBUS)", () => {
+    const b = unlabel(layoutProject([{ kind: "water-level" }]).build);
+    const l = legsOf(b, "WL1");
+    const row = Number(/^\d+/.exec(l.vcc!)![0]);
+    b.wires = b.wires.filter((w) => !(w.to.kind === "hole" && w.to.row === row) && !(w.from.kind === "hole" && w.from.row === row));
+    b.wires.push(...parseConnections(`#40(VBUS) -> #${row}j`).wires);
+    expect(codes(b)).toContain("E007");
+    expect(issue(b, "E007")!.message).toMatch(/can rise to the module's ~5 V supply/);
+  });
+
+  it("W009: a backwards LED is found even when other parts share its GND strip", () => {
+    const b = unlabel(layoutProject([{ kind: "led" }, { kind: "pot" }, { kind: "dht11" }]).build);
+    const l = legsOf(b, "LED1");
+    [l.anode, l.cathode] = [l.cathode!, l.anode!];
+    expect(codes(b)).toEqual(["W009"]);
+  });
+
+  it("a backwards LED next to a button is W009, not E011 (a pressed button joins the input to GND)", () => {
+    const b = unlabel(layoutProject([{ kind: "led" }, { kind: "button" }]).build);
+    const l = legsOf(b, "LED1");
+    [l.anode, l.cathode] = [l.cathode!, l.anode!];
+    expect(codes(b)).toEqual(["W009"]);
+  });
+});
+
+// M18 18.5: rules and branches no test reached, found by mutation testing (npm run mutation -w
+// @breadpilot/circuit-core). Each test fails when its line of validate.ts is changed.
+describe("found by mutation testing", () => {
+  const redLed = (pin: string, row = 30) => ({
+    parts: [res("R1", `${row}h`, `${row + 3}h`), led("LED1", `${row + 3}g`, `${row + 4}g`)],
+    dsl: `${pin} -> #${row}j(R1.a)\n#${row + 4}j(LED1.cathode) -> #38(GND)`,
+  });
+
+  it("W006: anything wired to ADC_VREF", () => {
+    expect(codes(mk([], "#35(ADC_VREF) -> #30j"))).toContain("W006");
+  });
+
+  it("E012: a wired GPIO with no mode", () => {
+    const l = redLed("#21(GP16)");
+    expect(codes(mk(l.parts, l.dsl))).toContain("E012");
+  });
+
+  it("E002: 3V3 joined to VSYS (not only VBUS)", () => {
+    expect(codes(mk([], "#36(3V3) -> #39(VSYS)"))).toContain("E002");
+  });
+
+  it("E008: a knob's wiper on a pin without an ADC, or on an ADC pin not in adc mode", () => {
+    const knob = (pin: string) => mk([pot("POT1", 30)], `#36(3V3) -> #30j(POT1.end1)\n${pin} -> #31j(POT1.wiper)\n#32j(POT1.end2) -> #38(GND)`, { GP16: "in", GP26: "in" });
+    expect(issue(knob("#21(GP16)"), "E008")!.message).toMatch(/GP16 \(pin 21\) can't read analog values; use GP26, GP27 or GP28/);
+    expect(issue(knob("#31(GP26)"), "E008")!.message).toMatch(/set GP26 to "adc" mode/);
+  });
+
+  it("E004: a button that bypasses the LED's resistor while pressed", () => {
+    const l = redLed("#21(GP16)");
+    const b = mk([...l.parts, btn("BTN1", 40)], `${l.dsl}\n#30i -> #40j(BTN1.1b)\n#42j(BTN1.2b) -> #33i`, { GP16: "out" });
+    expect(codes(b)).toContain("E004");
+  });
+
+  it("an LED in series with a button is a complete circuit (it lights while pressed)", () => {
+    const b = mk(
+      [btn("BTN1", 40), res("R1", "30h", "33h"), led("LED1", "33g", "34g")],
+      `#21(GP16) -> #40j(BTN1.1b)\n#42j(BTN1.2b) -> #30j(R1.a)\n#34j(LED1.cathode) -> #38(GND)`,
+      { GP16: "out" },
+    );
+    expect(codes(b)).toEqual([]);
+  });
+
+  it("a slide switch between 3V3 and GND isn't a short: its two sides are never closed together", () => {
+    const sw = { ref: "SW1", type: "slide-switch", legs: { end1: "30a", com: "31a", end2: "32a" } };
+    const b = mk([sw], `#36(3V3) -> #30b(SW1.end1)\n#31b(SW1.com) -> #21(GP16)\n#32b(SW1.end2) -> #38(GND)`, { GP16: "in" });
+    expect(codes(b)).not.toContain("E001");
+  });
+
+  it("E016: eight LEDs lit while their pins are LOW take more than 100 mA together", () => {
+    const pins: [number, string][] = [[21, "GP16"], [22, "GP17"], [24, "GP18"], [25, "GP19"], [26, "GP20"], [27, "GP21"], [29, "GP22"], [20, "GP15"]];
+    const parts = pins.flatMap((_, i) => [res(`R${i + 1}`, `${24 + 5 * i}h`, `${27 + 5 * i}h`, 100), led(`LED${i + 1}`, `${27 + 5 * i}g`, `${28 + 5 * i}g`)]);
+    const dsl = ["#36(3V3) -> #RR+(3V3)", ...pins.flatMap(([phys, name], i) => [`#RR+(3V3) -> #${24 + 5 * i}j(R${i + 1}.a)`, `#${28 + 5 * i}j(LED${i + 1}.cathode) -> #${phys}(${name})`])].join("\n");
+    const b = mk(parts, dsl, Object.fromEntries(pins.map(([, g]) => [g, "out" as const])));
+    expect(issue(b, "E016")!.message).toMatch(/all outputs LOW at once the GPIOs take about 104 mA together/);
+  });
+
+  it("E017 through a GPIO: 10 Ω from GP16 to GND", () => {
+    const b = mk([res("R1", "30h", "33h", 10)], "#21(GP16) -> #30j(R1.a)\n#33j(R1.b) -> #38(GND)", { GP16: "out" });
+    expect(codes(b)).toEqual(expect.arrayContaining(["E017", "W011", "E016"]));
+  });
+
+  it("E017 into a GPIO: 10 Ω from 3V3 to GP16 while it's LOW", () => {
+    const b = mk([res("R1", "30h", "33h", 10)], "#36(3V3) -> #30j(R1.a)\n#33j(R1.b) -> #21(GP16)", { GP16: "out" });
+    expect(issue(b, "E017")!.message).toMatch(/R1 \(10 Ω\) would turn about 1089 mW into heat with 330 mA/);
+  });
+
+  it("current from VBUS doesn't count toward the 3V3 pin's load (W001)", () => {
+    const b = mk([res("R1", "30h", "33h", 10)], "#40(VBUS) -> #30j(R1.a)\n#33j(R1.b) -> #38(GND)");
+    expect(codes(b)).toEqual(["E017"]);
+  });
+
+  it("W001 counts known part loads between 3V3 and GND (three 150 mA motors on the rails)", () => {
+    const rows = [30, 40, 50];
+    const dsl = ["#36(3V3) -> #RR+(3V3)", "#38(GND) -> #RR-(GND)", ...rows.flatMap((r, i) => [`#RR+(3V3) -> #${r}j(M${i + 1}.a)`, `#${r + 1}j(M${i + 1}.b) -> #RR-(GND)`])].join("\n");
+    const b = mk(rows.map((r, i) => motor(`M${i + 1}`, `${r}g`, `${r + 1}g`)), dsl);
+    expect(issue(b, "W001")!.message).toMatch(/about 450 mA, more than the 300 mA/);
+  });
+
+  it("an unpowered module gets one W008 (no power), not a second one for its GND", () => {
+    const b = layoutProject([{ kind: "dht11" }]).build;
+    const vcc = Number(/^\d+/.exec(b.parts.find((p) => p.ref === "DHT1")!.legs.vcc!)![0]);
+    b.wires = b.wires.filter((w) => !(w.from.kind === "hole" && w.from.row === vcc) && !(w.to.kind === "hole" && w.to.row === vcc));
+    expect(codes(b).filter((c) => c === "W008")).toHaveLength(1);
+  });
+
+  it("messages: W005 for 3V3_EN, E005 for a shorted-out LED, E007 for an I2C module on 5 V", () => {
+    expect(issue(mk([], "#37(3V3_EN) -> #38(GND)"), "W005")!.message).toMatch(/turns off the Pico's 3.3 V supply/);
+    const shorted = mk([res("R1", "30h", "33h"), led("LED1", "33g", "33f")], "#21(GP16) -> #30j(R1.a)", { GP16: "out" });
+    expect(issue(shorted, "E005")!.message).toMatch(/LED1 is shorted out: its .* are in the same connected strip/);
+    const oled = layoutProject([{ kind: "oled" }]).build;
+    oled.wires = oled.wires.map((w) => (w.from.kind === "pico" && w.from.phys === 36 ? { ...w, from: { kind: "pico", phys: 40, label: "VBUS" } } : w));
+    expect(validateBuild(oled).issues.find((i) => i.code === "E007")?.message).toMatch(/can be pulled up to the module's ~5 V supply/);
   });
 });

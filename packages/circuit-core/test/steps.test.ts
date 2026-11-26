@@ -67,6 +67,8 @@ describe("buildSteps", () => {
     expect(why((s) => s.dsl === "#21(GP16) -> #24j(R1.a)")).toBe("GP16 is an output: when the code turns it on (3.3 V), current flows through R1 and lights LED1.");
     expect(why((s) => s.dsl === "#24(GP18) -> #30j(BTN1.1b)")).toBe("GP18 is the input the code reads to see BTN1: 1 while it's released and 0 while it's pressed.");
     expect(why((s) => s.kind === "usb")).toMatch(/Power goes in last/);
+    // M18 18.8: the last step says what the checks can't see.
+    expect(why((s) => s.kind === "usb")).toMatch(/checked the wiring it drew, not your real board/);
   });
 
   it("explains knob wiring and uses each LED's own forward voltage", () => {
@@ -74,7 +76,8 @@ describe("buildSteps", () => {
     expect(s2.find((s) => s.dsl === "#36(3V3) -> #RR+(3V3)")!.why).toMatch(/puts 3V3 on the whole \+ rail/);
     expect(s2.find((s) => s.dsl?.startsWith("#31(GP26)"))!.why).toMatch(/GP26 is an analog input \(ADC\)/);
     expect(s2.find((s) => s.dsl?.includes("POT1.end1"))!.why).toMatch(/3.3 V on the other outer leg of POT1/);
-    expect(s2.find((s) => s.partRef === "R1")!.why).toContain("about 0.9 mA ((3.3 V − 3 V)");
+    // M18 18.3: a blue LED gets 100 Ω, so it stays under the pin's 4 mA but isn't dim (330 Ω gave 0.9 mA).
+    expect(s2.find((s) => s.partRef === "R1")!.why).toContain("about 3 mA ((3.3 V − 3 V) ÷ 100 Ω)");
   });
 
   it("refuses to make steps for an unsafe build", () => {

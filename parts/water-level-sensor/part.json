@@ -26,7 +26,8 @@
     {
       "id": "sig",
       "label": "S (signal)",
-      "kind": "analog_out"
+      "kind": "analog_out",
+      "level": "vcc"
     }
   ],
   "elements": [
