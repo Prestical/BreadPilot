@@ -57,7 +57,8 @@ describe("log file", () => {
     await log.close();
     const text = await readFile(log.path, "utf8");
     expect(text).toMatch(/^\d{4}-\d\d-\d\dT[\d:.]+Z \[main\] starting\n.+\[main\] engine ready\n.+\[engine\] token \?t=REDACTED in a link\n$/);
-    expect((await stat(log.path)).mode & 0o777).toBe(0o600);
+    // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+    if (process.platform !== "win32") expect((await stat(log.path)).mode & 0o777).toBe(0o600);
 
     // One session filling it: a notice, then nothing more until the next launch.
     const busy = await openLog(logs, { maxBytes: 400 });

@@ -2,9 +2,10 @@
 // machine module and the sh1106 driver (debug_runner_check.py): the LED patterns, error.txt and the
 // error on the display, per kind of program.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { picoFiles } from "../src/pico/build";
 
@@ -18,7 +19,8 @@ interface Result {
   shown: string[][];
 }
 
-const RUNNER = new URL("../src/pico/debug_main.py", import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: on Windows .pathname is "/D:/..." (a path Python can't open).
+const RUNNER = fileURLToPath(new URL("../src/pico/debug_main.py", import.meta.url));
 const python = spawnSync("python3", ["--version"]).status === 0;
 
 function runScenarios(scenarios: Record<string, { app: string | null; maxSleeps?: number }>): Record<string, Result> {
@@ -26,8 +28,8 @@ function runScenarios(scenarios: Record<string, { app: string | null; maxSleeps?
   try {
     writeFileSync(join(dir, "scenarios.json"), JSON.stringify(scenarios));
     const work = join(dir, "pico");
-    spawnSync("mkdir", [work]);
-    const r = spawnSync("python3", ["-I", new URL("./debug_runner_check.py", import.meta.url).pathname, RUNNER, join(dir, "scenarios.json"), work], { encoding: "utf8" });
+    mkdirSync(work); // not spawnSync("mkdir"): on Windows mkdir is a shell command, not a program
+    const r = spawnSync("python3", ["-I", fileURLToPath(new URL("./debug_runner_check.py", import.meta.url)), RUNNER, join(dir, "scenarios.json"), work], { encoding: "utf8" });
     if (r.status !== 0) throw new Error(r.stderr);
     return JSON.parse(r.stdout.trim().split("\n").at(-1)!) as Record<string, Result>;
   } finally {

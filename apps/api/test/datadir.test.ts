@@ -34,7 +34,8 @@ describe("data folder", () => {
     async () => {
       const key = randomBytes(32);
       const data = await openDataDir({ dir: join(dir, "app"), key });
-      expect((await stat(join(dir, "app"))).mode & 0o777).toBe(0o700);
+      // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+      if (process.platform !== "win32") expect((await stat(join(dir, "app"))).mode & 0o777).toBe(0o700);
       await expect(lockDataDir(join(dir, "app"))).rejects.toBeInstanceOf(DataLockedError); // even from this process
       await expect(openDataDir({ dir: join(dir, "app"), key })).rejects.toBeInstanceOf(DataLockedError);
       await data.close();
@@ -49,6 +50,7 @@ describe("data folder", () => {
     const b = await devKey(join(dir, "dev"));
     expect(a.equals(b)).toBe(true);
     expect(a.length).toBe(32);
-    expect((await stat(join(dir, "dev", "dev-key.hex"))).mode & 0o777).toBe(0o600);
+    // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+    if (process.platform !== "win32") expect((await stat(join(dir, "dev", "dev-key.hex"))).mode & 0o777).toBe(0o600);
   });
 });

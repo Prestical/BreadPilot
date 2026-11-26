@@ -66,7 +66,8 @@ describe("encrypted database file", () => {
       const raw = await readFile(file);
       expect(raw.subarray(0, 5).toString()).toBe("BPDB1");
       expect(raw.includes(Buffer.from("blink an LED on GP15"))).toBe(false);
-      expect((await stat(file)).mode & 0o777).toBe(0o600);
+      // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+      if (process.platform !== "win32") expect((await stat(file)).mode & 0o777).toBe(0o600);
 
       const again = await openEncryptedDb({ file, key });
       const rows = await again.db.query<{ title: string; data: { n: number } }>("SELECT title, data FROM projects");

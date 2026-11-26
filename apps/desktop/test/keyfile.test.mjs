@@ -40,7 +40,8 @@ describe("Linux with no keyring", () => {
     expect(first.weak).toBe(true);
     expect(first.key).toMatch(/^[0-9a-f]{64}$/);
     expect(existsSync(files.keyFile)).toBe(false);
-    expect((await stat(files.plainFile)).mode & 0o777).toBe(0o600);
+    // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+    if (process.platform !== "win32") expect((await stat(files.plainFile)).mode & 0o777).toBe(0o600);
     // The next start without a keyring reads the same key.
     expect(await loadKey({ platform: "linux", safe: fakeSafe("none"), ...files })).toEqual(first);
     // Electron's built-in password (basic_text) isn't a keyring either.

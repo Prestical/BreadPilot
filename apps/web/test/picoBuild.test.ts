@@ -1,6 +1,7 @@
 // "Build for Pico": the real MicroPython v1.29.0 firmware + a LittleFS image made by the real
 // littlefs WebAssembly, assembled into one UF2, checked block by block, then (when littlefs-python
 // is available) mounted by LittleFS 2.11 exactly like MicroPython does.
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -79,7 +80,7 @@ describe("Build for Pico (UF2)", () => {
     const dir = mkdtempSync(join(tmpdir(), "breadpilot-uf2-"));
     writeFileSync(join(dir, "build.uf2"), build.uf2);
     writeFileSync(join(dir, "spec.json"), JSON.stringify({ addr: build.info.fs.address, size: build.info.fs.size, files: Object.fromEntries(files.map((f) => [f.name, f.content])) }));
-    const r = spawnSync("python3", [new URL("./lfs_image_check.py", import.meta.url).pathname, join(dir, "build.uf2"), join(dir, "spec.json")], {
+    const r = spawnSync("python3", [fileURLToPath(new URL("./lfs_image_check.py", import.meta.url)), join(dir, "build.uf2"), join(dir, "spec.json")], {
       encoding: "utf8",
       env: { ...process.env, PYTHONPATH: process.env.LITTLEFS_PYTHON ?? "" },
     });

@@ -4,7 +4,7 @@
 
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { basename, join, relative } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import type { Db } from "../db";
 import { getBoard } from "@breadpilot/circuit-core";
 import { CHUNKER_VERSION, chunkMarkdown, chunkPages, type Chunk } from "./chunk";
@@ -57,6 +57,9 @@ async function ignored(dir: string): Promise<Set<string>> {
   }
 }
 
+/** A source's path as stored: relative to the repo, with "/" on every system (Windows too). */
+const repoPath = (repoDir: string, abs: string) => relative(repoDir, abs).split(sep).join("/");
+
 export async function discoverSources(repoDir: string): Promise<Source[]> {
   const sources: Source[] = [];
   const hw = join(repoDir, "docs", "hardware");
@@ -69,7 +72,7 @@ export async function discoverSources(repoDir: string): Promise<Source[]> {
       const topic = basename(file, ".pdf").replace(new RegExp(`^${board}-?`), "").replace(/[-_]+/g, " ").trim();
       // Board folders: "Raspberry Pi Pico 2 W datasheet"; part folders (e.g. components): "SH1106 datasheet".
       const title = getBoard(board) ? `${boardName(board)} ${topic || "document"}` : `${topic} datasheet`;
-      sources.push({ path: relative(repoDir, abs), abs, board: canonicalBoard(board), title, kind: "pdf" });
+      sources.push({ path: repoPath(repoDir, abs), abs, board: canonicalBoard(board), title, kind: "pdf" });
     }
   }
   const boards = join(repoDir, "data", "boards");
@@ -77,7 +80,7 @@ export async function discoverSources(repoDir: string): Promise<Source[]> {
     const m = /^(.+)\.pinout\.generated\.md$/.exec(file);
     if (!m) continue;
     const abs = join(boards, file);
-    sources.push({ path: relative(repoDir, abs), abs, board: canonicalBoard(m[1]!), title: `${boardName(m[1]!)} pinout (verified data)`, kind: "markdown" });
+    sources.push({ path: repoPath(repoDir, abs), abs, board: canonicalBoard(m[1]!), title: `${boardName(m[1]!)} pinout (verified data)`, kind: "markdown" });
   }
   return sources;
 }

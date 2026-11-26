@@ -67,7 +67,8 @@ describe("settings.enc", () => {
     expect(raw.subarray(0, 5).toString()).toBe("BPST1");
     expect(raw.includes(Buffer.from(KEY))).toBe(false);
     expect(raw.includes(Buffer.from("gpt-x"))).toBe(false);
-    expect((await stat(file)).mode & 0o777).toBe(0o600);
+    // Windows has no owner-only file modes: the user's own profile folder protects the file there.
+    if (process.platform !== "win32") expect((await stat(file)).mode & 0o777).toBe(0o600);
     const again = await fileSettings({ file, key: dataKey, defaults });
     expect(again.get().openai).toMatchObject({ apiKey: KEY, model: "gpt-x" });
   });

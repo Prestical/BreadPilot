@@ -48,7 +48,11 @@ const quiet = (fn) => {
 async function secretsHere() {
   const out = [];
   const add = (label, value) => {
-    if (value && value.length >= 6) out.push({ label, bytes: Buffer.from(value) });
+    if (!value || value.length < 6) return;
+    out.push({ label, bytes: Buffer.from(value) });
+    // Inside JavaScript and JSON a Windows path is written escaped ("C:\\Users\\..."): look for that too.
+    const escaped = JSON.stringify(value).slice(1, -1);
+    if (escaped !== value) out.push({ label, bytes: Buffer.from(escaped) });
   };
   add("home folder path", homedir());
   const user = quiet(() => userInfo().username);
@@ -144,7 +148,10 @@ async function main() {
 
 /** Adds a finding for each private value or key-shaped text in `buf`. */
 function check(secrets, findings, where, buf) {
-  for (const s of secrets) if (buf.includes(s.bytes)) findings.push(`${where}: contains the ${s.label}`);
+  for (const s of secrets) {
+    const line = `${where}: contains the ${s.label}`;
+    if (buf.includes(s.bytes) && !findings.includes(line)) findings.push(line); // a value and its escaped form: one line
+  }
   if (OPENAI_KEY_SHAPE.test(buf.toString("latin1"))) findings.push(`${where}: contains something shaped like an OpenAI key`);
 }
 
