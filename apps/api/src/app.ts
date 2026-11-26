@@ -40,6 +40,10 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "permissions-policy": "camera=(), microphone=(), geolocation=(), usb=(), serial=()",
+  // Cross-origin isolation (M8 8.C3): the Code tab's preview needs SharedArrayBuffer to feed a running
+  // program its inputs in real time. Everything the page loads is its own, so nothing is blocked.
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-embedder-policy": "require-corp",
 };
 
 export const SESSION_COOKIE = "bp_session";

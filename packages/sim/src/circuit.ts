@@ -13,7 +13,7 @@ export interface ElectricalModel {
   /** Number of base nets (all switches open). */
   nodes: number;
   /** Switch elements: closed, they join nodes a and b. `id` is "<ref>#<element index>". */
-  switches: { id: string; ref: string; a: number; b: number; group?: string }[];
+  switches: { id: string; ref: string; a: number; b: number; group?: string; type: string; restsClosed?: boolean }[];
   resistors: { ref: string; a: number; b: number; ohms: number }[];
   /** Knobs: end1 —((1 − position) × ohms)— wiper —(position × ohms)— end2 (position 1 = wiper at end1). */
   pots: { ref: string; end1: number; wiper: number; end2: number; ohms: number }[];
@@ -103,7 +103,7 @@ export function electricalModel(build: Build): ElectricalModel {
     }
     part.def.elements.forEach((el, i) => {
       if (!has(part, el.a) || !has(part, el.b)) return;
-      if (el.kind === "switch") model.switches.push({ id: `${part.ref}#${i}`, ref: part.ref, a: legNode(part, el.a), b: legNode(part, el.b), ...(el.group ? { group: el.group } : {}) });
+      if (el.kind === "switch") model.switches.push({ id: `${part.ref}#${i}`, ref: part.ref, a: legNode(part, el.a), b: legNode(part, el.b), ...(el.group ? { group: el.group } : {}), type: part.def.id, ...(el.restsClosed ? { restsClosed: true } : {}) });
       if (el.kind === "led") {
         const table = (specs.forwardVoltage ?? {}) as Record<string, number>;
         model.leds.push({ ref: part.ref, anode: legNode(part, el.a), cathode: legNode(part, el.b), vf: table[String(part.props.color)] ?? 1.8 });

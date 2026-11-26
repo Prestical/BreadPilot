@@ -17,7 +17,8 @@
       "kind": "switch",
       "a": "a",
       "b": "b",
-      "closed": "standing upright (the ball rests on both contacts)"
+      "closed": "standing upright (the ball rests on both contacts)",
+      "restsClosed": true
     }
   ],
   "specs": {

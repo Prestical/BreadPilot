@@ -5,7 +5,8 @@
 //   npm run model-sheet -w @breadpilot/web
 //   then open apps/web/.model-sheet/index.html#kinds=ldr          (a part kind from parts/)
 //                                            #kinds=dht22,oled,buzzer  (neighbours, as laid out)
-//                                            #model=hall-sensor        (a model in upcoming.ts)
+// (Models of parts without a pack were moved to .local/m17-models for v0.4.0; a new model is checked
+// here once it is in its pack's view.json.)
 import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Canvas, useThree } from "@react-three/fiber";
@@ -16,7 +17,6 @@ import { ShapeTree } from "../../src/scene/Parts";
 import { viewShapes, partShapes } from "../../src/scene/shapes";
 import { StudioLights } from "../../src/scene/Studio";
 import { overlap, shapeBounds, type Box3 } from "../../src/scene/bounds";
-import { UPCOMING_MODELS, upcomingPart } from "../../src/scene/upcoming";
 
 const COLS: Column[] = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
 
@@ -28,13 +28,6 @@ interface Item {
 
 function read(): { items: Item[]; title: string; blocks: { ref: string; kind: string; rows: [number, number] }[] } {
   const hash = new URLSearchParams(location.hash.slice(1));
-  const model = hash.get("model");
-  if (model) {
-    const m = UPCOMING_MODELS.find((x) => x.id === model);
-    if (!m) throw new Error(`No model "${model}" in upcoming.ts`);
-    const part = upcomingPart(m);
-    return { items: [{ part, tree: viewShapes(m.view, part, "done"), block: m.id }], title: `${m.name} (upcoming.ts)`, blocks: [] };
-  }
   const kinds = (hash.get("kinds") ?? "led").split(",").filter(Boolean);
   for (const k of kinds) if (!packByKind(k)) throw new Error(`No part kind "${k}". Kinds: ${PACKS.flatMap((p) => p.meta.kind ?? []).join(", ")}`);
   const lay = layoutProject(kinds.map((kind) => ({ kind })));

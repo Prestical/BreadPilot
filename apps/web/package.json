@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@breadpilot/circuit-core": "*",
+    "@breadpilot/sim": "*",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "littlefs": "0.1.0",

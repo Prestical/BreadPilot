@@ -36,6 +36,8 @@ export interface PackMeta {
   kind?: string;
   /** MicroPython driver file in the pack, e.g. "driver/sh1106.py". */
   driver?: string;
+  /** Wired and run on a real Pico 2 W by the maintainer (README "Tried" ✅); missing = not yet. */
+  triedOnPico?: boolean;
 }
 
 /** A pack as it sits on disk (what parts.generated.ts holds). */
@@ -480,6 +482,7 @@ const packMeta = obj({
   review: obj({ status: oneOf(["reviewed", "draft"]), by: str, date: (v, p) => (str(v, p), /^\d{4}-\d{2}-\d{2}$/.test(v as string) || fail(p, "use YYYY-MM-DD")) }),
   "kind?": id,
   "driver?": (v, p) => (str(v, p), /^driver\/[a-z0-9_]+\.py$/.test(v as string) || fail(p, "must be driver/<name>.py")),
+  "triedOnPico?": bool,
 });
 
 const LEG_KINDS = ["power_in", "ground", "digital_in", "digital_out", "analog_out", "i2c_sda", "i2c_scl"] as const;
@@ -502,7 +505,7 @@ const partFile = obj({
       "needsPullUp?": fact(bool),
     }),
   ),
-  elements: arr(obj({ kind: oneOf(ELEMENT_KINDS), a: str, b: str, "currentMa?": fact(num), "group?": str, "closed?": str })),
+  elements: arr(obj({ kind: oneOf(ELEMENT_KINDS), a: str, b: str, "currentMa?": fact(num), "group?": str, "closed?": str, "restsClosed?": bool })),
   "props?": record(obj({ "enum?": arr(str), "type?": str, default: any(str, num) })),
   // Every spec is a fact with a source, except the plain-language note.
   "specs?": (v, p) => {

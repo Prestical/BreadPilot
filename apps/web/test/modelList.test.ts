@@ -54,8 +54,8 @@ describe("texts", () => {
     const vision = model({ tag: "qwen3.5:2b", name: "Qwen 3.5 2B", sizes: sizes(2_012_012_448, { visionBytes: 671_372_768, downloadBytes: 2_683_396_812 }) });
     expect(optionText(vision, 16384)).toBe("Qwen 3.5 2B · 2.7 GB · 2.0 GB+ memory");
     const big = model({ tag: "g", name: "Gemma 4 31B", sizes: sizes(18_670_033_120, { downloadBytes: 20_385_458_234 }), fit: { kind: "too-big", reason: "" } });
-    expect(optionText(big, 16384)).toBe("Gemma 4 31B · 20.4 GB · 18.7 GB+ memory · ⚠ too big for this computer");
-    expect(warningShort(model({ tag: "t", fit: { kind: "tight", reason: "" } }))).toBe("⚠ tight on memory");
+    expect(optionText(big, 16384)).toBe("Gemma 4 31B · 20.4 GB · 18.7 GB+ memory · too big for this computer");
+    expect(warningShort(model({ tag: "t", fit: { kind: "tight", reason: "" } }))).toBe("tight on memory");
     expect(warningShort(def)).toBeNull();
     // A measurement at another context size doesn't count.
     expect(memoryShort(def, 8192)).toBe("2.5 GB+ memory");

@@ -20,5 +20,5 @@ await build({
 // MicroPython modules: not bundled, they run in their own thread / inside MicroPython).
 const SIM = new URL("../../packages/sim/src/", import.meta.url);
 rmSync(new URL("./dist/sim", import.meta.url), { recursive: true, force: true });
-for (const f of ["worker.mjs", "solver.mjs", "chips.mjs", "py"]) cpSync(new URL(f, SIM), new URL(`./dist/sim/${f}`, import.meta.url), { recursive: true, filter: (src) => !/__pycache__|\.pyc$|\.d\.mts$/.test(src) });
+for (const f of ["worker.mjs", "core.mjs", "live.mjs", "solver.mjs", "chips.mjs", "py"]) cpSync(new URL(f, SIM), new URL(`./dist/sim/${f}`, import.meta.url), { recursive: true, filter: (src) => !/__pycache__|\.pyc$|\.d\.mts$/.test(src) });
 console.log("api built → dist/server.js, dist/desktop.js + CLIs (ingest, eval-rag, eval-agent), dist/sim (behaviour simulator)");

@@ -1,10 +1,13 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { driversFor, type CodeIssue } from "@breadpilot/circuit-core";
 import { handoffUrl } from "../projects/api";
 import type { ApiProject, BehaviourSummary } from "../projects/types";
 import { checkDraft, editKey, insertIndent, loadEdit, saveEdit } from "./codeEdits";
 import { PlanView } from "../ui/StageOverlay";
 import { PicoBuild } from "./PicoBuild";
+
+// M8 8.C3c: the live preview loads with the Code tab, MicroPython on its first Run.
+const TryIt = lazy(() => import("./TryIt"));
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/x-python" }));
@@ -39,7 +42,11 @@ type View = "preview" | "edit";
 
 export function CodePanel({ p }: { p: ApiProject }) {
   const b = p.build!;
-  const drivers = driversFor(b.build.parts.map((x) => x.type));
+  const drivers = useMemo(() => driversFor(b.build.parts.map((x) => x.type)), [b.build]);
+  const driverFiles = useMemo(() => Object.fromEntries(drivers.map((d) => [d.file, d.source])), [drivers]);
+  // A line the preview stopped on (Try it → Show line): highlighted in the code until it changes.
+  const [shownLine, setShownLine] = useState<number | null>(null);
+  const codeRef = useRef<HTMLPreElement>(null);
   const generated = b.code ?? "";
   const [view, setView] = useState<View>("preview");
   // Edits belong to this version of the project (M9: a change starts a fresh draft).
@@ -56,6 +63,10 @@ export function CodePanel({ p }: { p: ApiProject }) {
   }, [ek, generated]);
 
   useEffect(() => saveEdit(ek, generated, draft), [ek, generated, draft]);
+  useEffect(() => setShownLine(null), [draft]);
+  useEffect(() => {
+    if (shownLine && view === "preview") codeRef.current?.querySelector(".ln-error")?.scrollIntoView({ block: "center" });
+  }, [shownLine, view]);
 
   // The code is always re-checked in the browser with the CURRENT checker (edited or not): a result
   // stored when the project was generated can be out of date once the checks get stricter, and the
@@ -117,10 +128,10 @@ export function CodePanel({ p }: { p: ApiProject }) {
         </div>
 
         {view === "preview" ? (
-          <pre className="code numbered" tabIndex={0} aria-label="MicroPython code (preview)">
+          <pre ref={codeRef} className="code numbered" tabIndex={0} aria-label="MicroPython code (preview)">
             <code>
               {draft.replace(/\n$/, "").split("\n").map((line, i) => (
-                <span key={i} className="ln">
+                <span key={i} className={i + 1 === shownLine ? "ln ln-error" : "ln"}>
                   {line || " "}
                 </span>
               ))}
@@ -151,6 +162,19 @@ export function CodePanel({ p }: { p: ApiProject }) {
 
       {/* Right: is it safe to run, put it on the Pico, what it does. */}
       <div className="code-aside">
+        <Suspense fallback={<p className="small muted">Loading Try it…</p>}>
+          <TryIt
+            code={draft}
+            build={b.build}
+            files={driverFiles}
+            blocked={blocked}
+            onShowLine={(line) => {
+              setView("preview");
+              setShownLine(line);
+            }}
+          />
+        </Suspense>
+
         {!edited && check?.ok && (
           <div className="feedback good">
             <p>

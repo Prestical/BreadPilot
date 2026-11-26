@@ -37,7 +37,7 @@ function Section({ title, intro, children }: { title: string; intro?: ReactNode;
   );
 }
 
-/** The ⚙ Settings dialog: a tab per subject (settingsTabs.ts). Everything is saved encrypted on this computer. */
+/** The Settings dialog: a tab per subject (settingsTabs.ts). Everything is saved encrypted on this computer. */
 export function SettingsDialog() {
   const open = useApp((s) => s.settingsOpen);
   const setOpen = useApp((s) => s.setSettingsOpen);
@@ -103,7 +103,7 @@ export function SettingsDialog() {
               onClick={() => setTab(t.id)}
               onKeyDown={onTabKey}
             >
-              <span aria-hidden="true">{t.icon}</span> {t.label}
+              <Icon name={t.icon} /> {t.label}
             </button>
           ))}
         </div>
@@ -273,7 +273,7 @@ export function OpenAiSection({ view, onChange, title = "OpenAI (optional)" }: {
           <p className={`key-state${view.openai.keySet ? " set" : ""}`}>
             {view.openai.keySet ? (
               <>
-                ✓ Key saved, ends in <code>{view.openai.keyHint}</code>
+                <Icon name="check" /> Key saved, ends in <code>{view.openai.keyHint}</code>
               </>
             ) : (
               "No key yet: only the local AI is available."

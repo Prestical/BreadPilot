@@ -98,6 +98,11 @@ export interface ElementDef {
    */
   group?: string;
   closed?: string;
+  /**
+   * For "switch": closed when nobody uses it (a ball tilt switch standing upright), so using it opens
+   * the contact. The behaviour simulator's test run and the Code tab's preview start it closed.
+   */
+  restsClosed?: boolean;
 }
 
 export interface ComponentDef {

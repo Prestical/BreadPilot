@@ -518,7 +518,11 @@ dialog.parts-dialog { width: min(820px, calc(100vw - 32px)); }
 .part-3d { height: 164px; border-bottom: 1px solid var(--border); background: radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--accent) 16%, var(--surface-3)) 0%, var(--surface) 78%); display: grid; place-items: center; cursor: grab; }
 .part-3d:active { cursor: grabbing; }
 .part-3d canvas { touch-action: none; }
-.part-onboard { margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border); }
+/* A part not yet tried on a real Pico (pack.json triedOnPico): a small yellow caution tag. */
+.part-tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; line-height: 1.5; white-space: nowrap; vertical-align: middle; }
+.part-tag .icon { flex: none; }
+.part-tag.untested { color: var(--warn); background: color-mix(in srgb, #facc15 22%, transparent); border: 1px solid color-mix(in srgb, #eab308 60%, transparent); }
+.part-card .part-tag { align-self: flex-start; margin: 2px 12px 6px; }
 .setup-steps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .setup-steps li { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; background: var(--surface-2); color: var(--muted); }
 .setup-steps li.current { background: var(--accent); color: var(--accent-text); }
@@ -573,3 +577,30 @@ dialog.parts-dialog { width: min(820px, calc(100vw - 32px)); }
 .pull-progress .bar { flex: 1; height: 8px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); overflow: hidden; }
 .pull-progress .bar span { display: block; height: 100%; background: var(--accent); transition: width 0.4s ease; }
 @media (prefers-reduced-motion: reduce) { .pull-progress .bar span { transition: none; } }
+
+/* M8 8.C3c: the Code tab's "Try it" panel (a live run on a simulated copy of the circuit). */
+.try-it { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 10px 12px; background: var(--surface-2); }
+.try-it > summary { cursor: pointer; list-style-position: inside; }
+.try-it > summary .eyebrow { display: inline; }
+.try-it[open] > summary { margin-bottom: 10px; }
+.try-it > * + * { margin-top: 10px; }
+.try-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.try-outputs { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.try-screen { margin: 0; flex: 1 1 256px; max-width: 384px; }
+.try-canvas { display: block; width: 100%; aspect-ratio: 2 / 1; image-rendering: pixelated; border-radius: var(--r-sm); border: 6px solid #111; background: #06080c; }
+.try-devices { list-style: none; margin: 0 !important; padding: 0 !important; display: flex; flex-direction: column; gap: 6px; }
+.try-devices li { display: flex; align-items: center; gap: 8px; }
+.try-led, .try-module { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--border-strong); border: 1px solid var(--border-strong); transition: opacity 0.05s, box-shadow 0.05s; }
+.try-module { border-radius: 3px; }
+.try-module.on { background: var(--accent); border-color: var(--accent); }
+.try-controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; }
+.try-control { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.try-control > .small:first-child { flex: none; min-width: 3.5em; font-weight: 600; }
+.try-slider { flex-wrap: wrap; }
+.try-slider input[type="range"] { flex: 1 1 100px; min-width: 0; accent-color: var(--accent); }
+.try-value { flex: none; min-width: 4.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.try-hold { touch-action: none; user-select: none; }
+.try-hold.down { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.try-output { max-height: 160px; white-space: pre-wrap; }
+.try-error { color: var(--bad); }
+pre.code.numbered .ln-error { background: var(--bad-bg); outline: 1px solid var(--bad); outline-offset: -1px; }

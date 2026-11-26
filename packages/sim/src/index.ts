@@ -11,3 +11,6 @@ export { checkBehaviour, type BehaviourCheck } from "./check";
 export { findings, type Finding } from "./findings";
 export { checkClaims, claimWords, MAX_CLAIMS, type CheckedClaim, type Claim, type ClaimWords } from "./claims";
 export { testRun, type Phase, type TestRun } from "./scenario";
+export { applyEvents, emptyPreview, framePixels, inputSlots, ledFullMa, MAX_PRINTS, type InputSlot, type PreviewState } from "./preview";
+export { liveBytes, stopLive, writeInput } from "./live.mjs";
+export { endOf } from "./trace";

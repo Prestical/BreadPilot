@@ -11,23 +11,11 @@ import { Worker } from "node:worker_threads";
 import type { Build } from "@breadpilot/circuit-core";
 import { electricalModel } from "./circuit";
 import { ENGINE } from "./index";
+import { endOf, PY_FILES, type Scenario, type SimError, type SimEvent, type SimInputs } from "./trace";
 
-/** What inputs read over virtual time: [[t_us, value], ...] per GPIO (0/1) and per ADC channel (volts). */
-export interface SimInputs {
-  pins?: Record<number, [number, number][]>;
-  adc?: Record<number, [number, number][]>;
-}
+export { parseTraceback, type Scenario, type SimError, type SimEvent, type SimInputs } from "./trace";
 
-/**
- * What the parts do over virtual time, in the circuit's own terms: [[t_us, value], ...] per switch
- * ("BTN1", or one contact "SW1#1"; 1 = closed), per knob (position 0-1 from end2 to end1), and per
- * sensor (an LDR's lux, an NTC's °C, a module's 1 = triggered / 0, or an analog module's 0-1).
- */
-export interface Scenario {
-  switches?: Record<string, [number, number][]>;
-  pots?: Record<string, [number, number][]>;
-  sensors?: Record<string, [number, number][]>;
-}
+
 
 export interface RunOptions {
   /** The program (main.py). */
@@ -45,26 +33,16 @@ export interface RunOptions {
   scenario?: Scenario;
   /** Seed for the random module (default 1): the same program gives the same run (18.7h). */
   seed?: number;
+  /**
+   * A live run (8.C3): the clock follows real time and the inputs come from this buffer, which the
+   * caller changes while the program runs (live.mjs writeInput/stopLive). The scenario is then unused.
+   */
+  live?: { sab: SharedArrayBuffer; slots: { group: "switches" | "pots" | "sensors"; key: string }[]; speed?: number };
+  /** Each batch of events as it arrives (a live run's batches; tests watch the timing). */
+  onEvents?: (events: SimEvent[]) => void;
 }
 
-/** One trace entry: virtual time in µs, what happened, and up to three values. */
-export interface SimEvent {
-  t: number;
-  kind: string;
-  a?: unknown;
-  b?: unknown;
-  c?: unknown;
-}
 
-export interface SimError {
-  type: string;
-  message: string;
-  /** The line in main.py where it happened (the innermost main.py line of the traceback). */
-  line?: number;
-  /** The innermost file and line, when it happened inside a driver. */
-  at?: { file: string; line: number };
-  traceback: string;
-}
 
 export interface SimResult {
   /** finished, time limit, reset, soft reset, bootloader, deep sleep, error, or wall limit (never gave time back). */
@@ -93,7 +71,6 @@ const here = (() => {
   const dir = dirname(fileURLToPath(import.meta.url));
   return existsSync(join(dir, "worker.mjs")) ? dir : join(dir, "sim");
 })();
-const PY_FILES = ["_bpsim.py", "_bptime.py", "machine.py", "_onewire.py"];
 let python: Record<string, string> | undefined;
 /**
  * The simulator's modules, and the modules frozen into the Pico 2 W firmware (py/frozen: the real
@@ -106,22 +83,7 @@ const pythonFiles = () =>
   ]));
 const wasmPath = () => join(dirname(createRequire(import.meta.url).resolve(ENGINE.package)), ENGINE.wasm);
 
-/**
- * The simulator's own files stand for C code in the firmware (machine, time) or for modules it only
- * imitates (the networking stand-ins), so an error is never reported as happening inside them; the
- * firmware's real Python modules (dht.py) and the project's drivers are reported.
- */
-const SIMULATOR_FILES = new Set([...PY_FILES, "network.py", "socket.py", "ssl.py", "ntptime.py", "requests.py", "urequests.py", "mip.py", "webrepl.py", "<stdin>"]);
 
-/** The error's main.py line and innermost file/line, from MicroPython's traceback text. */
-export function parseTraceback(type: string, message: string, traceback: string): SimError {
-  const frames = [...traceback.matchAll(/File "([^"]+)", line (\d+)/g)]
-    .map((m) => ({ file: m[1]!.replace(/^\/+/, ""), line: Number(m[2]) }))
-    .filter((f) => !SIMULATOR_FILES.has(f.file));
-  const main = frames.filter((f) => f.file === "main.py").at(-1);
-  const inner = frames.at(-1);
-  return { type, message, traceback, ...(main ? { line: main.line } : {}), ...(inner && inner.file !== "main.py" ? { at: inner } : {}) };
-}
 
 export function runProgram(opts: RunOptions): Promise<SimResult> {
   const started = performance.now();
@@ -139,6 +101,7 @@ export function runProgram(opts: RunOptions): Promise<SimResult> {
       model: opts.circuit ? electricalModel(opts.circuit) : undefined,
       scenario: opts.scenario ?? {},
       seed: opts.seed ?? 1,
+      ...(opts.live ? { live: { sab: opts.live.sab, slots: opts.live.slots.map(({ group, key }) => ({ group, key })), speed: opts.live.speed ?? 1 } } : {}),
     },
   });
   return new Promise((resolve) => {
@@ -175,13 +138,14 @@ export function runProgram(opts: RunOptions): Promise<SimResult> {
         return;
       }
       if (msg.type === "events") {
-        for (const [t, kind, a, b, c] of msg.events!) events.push({ t, kind, a, b, c });
+        const batch = msg.events!.map(([t, kind, a, b, c]) => ({ t, kind, a, b, c }));
+        events.push(...batch);
+        opts.onEvents?.(batch);
         return;
       }
       if (msg.type !== "done") return;
-      const end = [...events].reverse().find((e) => e.kind === "end" || e.kind === "error");
-      if (end?.kind === "error") finish("error", parseTraceback(String(end.a), String(end.b), String(end.c)));
-      else finish(String(end?.a ?? "finished"));
+      const end = endOf(events);
+      finish(end.ended, end.error);
     });
     worker.on("error", (err) => finish("error", { type: "SimulatorError", message: err.message, traceback: String(err.stack ?? err) }));
   });

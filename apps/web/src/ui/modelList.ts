@@ -58,12 +58,12 @@ export function memoryShort(m: LocalModel, numCtx: number): string {
 
 /** A warning for this computer, or null when there's nothing to warn about. */
 export function warningShort(m: LocalModel): string | null {
-  if (m.fit.kind === "too-big") return "⚠ too big for this computer";
-  if (m.fit.kind === "tight") return "⚠ tight on memory";
+  if (m.fit.kind === "too-big") return "too big for this computer";
+  if (m.fit.kind === "tight") return "tight on memory";
   return null;
 }
 
-/** One dropdown option: "Qwen3 4B Instruct · 2.5 GB · 4.9 GB memory · ⚠ … (downloaded)". */
+/** One dropdown option: "Qwen3 4B Instruct · 2.5 GB · 4.9 GB memory · too big … (downloaded)". */
 export function optionText(m: LocalModel, numCtx: number): string {
   const size = m.sizes ? formatBytes(m.sizes.downloadBytes) : m.installedBytes !== null ? formatBytes(m.installedBytes) : null;
   const parts = [m.name, size, memoryShort(m, numCtx), warningShort(m)].filter(Boolean).join(" · ");

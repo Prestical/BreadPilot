@@ -22,9 +22,9 @@ const oledSetup = () => {
 };
 
 describe("the automatic test run (from the circuit only)", () => {
-  it("settles, presses each button briefly, holds it, presses it twice, sweeps each knob, then is quiet", () => {
+  it("settles, presses each button briefly, holds it, presses it twice, sweeps each knob, presses once more, sweeps again, then is quiet", () => {
     const run = testRun(electricalModel(layoutProject([{ kind: "button" }, { kind: "pot" }]).build));
-    expect(run.phases.map((p) => p.label)).toEqual(["starting up", "BTN1 pressed briefly", "BTN1 held", "BTN1 pressed twice", "POT1 turned from low to high and back", "quiet"]);
+    expect(run.phases.map((p) => p.label)).toEqual(["starting up", "BTN1 pressed briefly", "BTN1 held", "BTN1 pressed twice", "POT1 turned from low to high and back", "BTN1 pressed once more", "POT1 turned from low to high and back (again)", "quiet"]);
     expect(run.scenario.switches.BTN1![0]).toEqual([2_000_000, 1]);
     expect(run.scenario.pots.POT1!.at(-1)![1]).toBe(0);
   });

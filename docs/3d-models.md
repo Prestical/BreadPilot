@@ -11,7 +11,7 @@ step 3 until the model is good enough.
 | What | Where |
 |---|---|
 | The shape functions (one per kind of look) | `apps/web/src/scene/shapes.ts` |
-| A part's look: shape name, sizes, colours | `parts/<id>/view.json` (a model made before its pack: `apps/web/src/scene/upcoming.ts`) |
+| A part's look: shape name, sizes, colours | `parts/<id>/view.json` |
 | The `view.json` format and its checks | `packages/circuit-core/src/packs.ts` (`ViewSpec`, `checkViewSpec`) |
 | The camera framing in Supported parts | `apps/web/src/scene/PartPreview.tsx` (`previewFrame`) |
 | Coordinates and breadboard sizes | `apps/web/src/scene/coords.ts` |
@@ -183,7 +183,6 @@ then open `apps/web/.model-sheet/index.html` in a browser with one of:
 |---|---|
 | `#kinds=ldr` | one part, laid out by the real engine (with its resistor or pull-up) |
 | `#kinds=dht22,oled,buzzer` | several parts next to each other, as a project would place them |
-| `#model=hall-sensor` | a model in `upcoming.ts` (no pack yet) |
 
 The sheet shows four fixed views (the app's preview angle, the channel side, the top, and the side
 along the rows) over a piece of breadboard with its holes, and a report: the body's size, how far
@@ -213,8 +212,7 @@ fix the plan, change the code, look again. Repeat until every box is ticked.
 
 ## 7. Finish the model
 
-- [ ] The look is in the pack's `view.json` (or in `upcoming.ts` if the pack isn't written yet;
-      it moves to `view.json` unchanged later), with a `note` that names the size's source or says
+- [ ] The look is in the pack's `view.json`, with a `note` that names the size's source or says
       "Not measured".
 - [ ] `layout.json` has the right `reach` (the model sheet's report and `bounds.test.ts` agree).
 - [ ] A test for what makes this model recognisable (e.g. "the IR sensor has two emitters past

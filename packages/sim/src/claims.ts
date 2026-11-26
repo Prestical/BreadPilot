@@ -21,7 +21,7 @@ import type { Build } from "@breadpilot/circuit-core";
 import { electricalModel, type ElectricalModel } from "./circuit";
 import type { Finding } from "./findings";
 import type { SimResult } from "./run";
-import { QUANTITIES, testRun, type TestRun } from "./scenario";
+import { QUANTITIES, testRun, USE_WORD, type TestRun } from "./scenario";
 
 export interface Claim {
   when: string;
@@ -53,8 +53,6 @@ interface Window {
 }
 type Then = { ref: string; kind: "led" | "actuator"; word: "on" | "off" | "blinks" | "brighter" | "dimmer" } | { ref: string; kind: "frame"; word: "changes" };
 
-/** Switch words by part type (one switch per part; slide switches have no word: two sides). */
-const SWITCH_WORD: Record<string, string> = { "tilt-switch": "tilted", "reed-switch": "near a magnet" };
 /** Chip quantities in words: [word for the quantity, word above rest, word below rest]. */
 const CHIP_WORDS: Record<string, [string, string, string]> = {
   temperature: ["temperature", "high", "low"],
@@ -86,9 +84,12 @@ const UNITS: Record<string, string> = { temperature: "C", humidity: "%", pressur
 function whenWindows(model: ElectricalModel, run: TestRun, build: Build, values: Record<string, string> = {}): Map<string, Window[]> {
   const words = new Map<string, Window[]>();
   const end = run.seconds * S;
-  const typeOf = (ref: string) => build.parts.find((p) => p.ref === ref)?.type ?? "";
-  const refs = new Set(model.switches.filter((s) => !s.group).map((s) => s.ref));
-  for (const ref of refs) words.set(`${ref} ${SWITCH_WORD[typeOf(ref)] ?? "pressed"}`, spans(run.scenario.switches[ref], (v) => v === 1, end));
+  // One word per switch (slide switches have none: two sides). It means the times the test uses it:
+  // the contact closed, or open for a switch closed at rest (a tilt switch tilted).
+  for (const s of model.switches.filter((x) => !x.group)) {
+    const used = s.restsClosed ? 0 : 1;
+    words.set(`${s.ref} ${USE_WORD[s.type] ?? "pressed"}`, spans(run.scenario.switches[s.ref], (v) => v === used, end));
+  }
   for (const d of model.drivers) {
     if (!run.scenario.sensors[d.ref]) continue;
     const word = `${d.ref} ${d.kind === "digital" ? "triggered" : "high"}`;
@@ -96,10 +97,11 @@ function whenWindows(model: ElectricalModel, run: TestRun, build: Build, values:
     if (d.kind === "analog") values[word] = `${Math.round(Math.max(...run.scenario.sensors[d.ref]!.map(([, v]) => v)) * 100)}% of its range`;
   }
   for (const p of model.pots) {
-    const phase = run.phases.find((x) => x.ref === p.ref);
-    if (!phase) continue;
-    words.set(`${p.ref} turned up`, [{ from: phase.from, to: phase.from + 3 * S, ramp: true }]);
-    words.set(`${p.ref} turned down`, [{ from: phase.from + 3 * S, to: phase.from + 6 * S, ramp: true }]);
+    // Every sweep of the knob (two when switches are used between them).
+    const sweeps = run.phases.filter((x) => x.ref === p.ref);
+    if (!sweeps.length) continue;
+    words.set(`${p.ref} turned up`, sweeps.map((x) => ({ from: x.from, to: x.from + 3 * S, ramp: true })));
+    words.set(`${p.ref} turned down`, sweeps.map((x) => ({ from: x.from + 3 * S, to: x.from + 6 * S, ramp: true })));
   }
   for (const r of model.sensorResistors) {
     const list = run.scenario.sensors[r.ref];

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ICON_NAMES } from "../src/ui/Icon";
 
 const SRC = join(__dirname, "../src");
-const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : /\.tsx$/.test(e.name) ? [join(dir, e.name)] : []));
+const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [join(dir, e.name)] : []));
 
 describe("line icons", () => {
   it("every icon a screen asks for exists", () => {
@@ -15,7 +15,7 @@ describe("line icons", () => {
     for (const name of used) expect(ICON_NAMES, name).toContain(name);
   });
 
-  it("no emoji are left in what the screens show (plain check marks are text, not emoji)", () => {
+  it("no emoji are left in what the screens show, .ts lists included (plain check marks are text, not emoji)", () => {
     for (const f of files(SRC)) {
       const shown = readFileSync(f, "utf8")
         .split("\n")

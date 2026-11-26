@@ -101,7 +101,8 @@ def advance(us):
             now_us = limit_us
             raise SimEnd("time limit")
         now_us = target
-        host.time(now_us)
+        if host.time(now_us):
+            raise SimEnd("stopped")
         return
     while True:
         due = _due()
@@ -121,7 +122,9 @@ def advance(us):
             _fire_timers()
         if now_us >= target:
             break
-    host.time(now_us)
+    # A live run (the preview) waits here for real time; the page may have asked it to stop.
+    if host.time(now_us):
+        raise SimEnd("stopped")
 
 
 def tick():

@@ -1,7 +1,6 @@
 // One part on its own, in 3D, for the "Supported parts" list (M11): the same shapes as the workbench,
 // laid out by the real layout engine, on a small piece of board. Drag to turn it. Renders only when
 // something changes (frameloop "demand"), so a few previews side by side cost little.
-// A `model` (scene/upcoming.ts) shows a part whose pack isn't written yet, in the holes it names.
 import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
@@ -9,7 +8,6 @@ import { layoutProject, packByKind, resolveBuild, type ViewSpec } from "@breadpi
 import { BOARD, holePos } from "./coords";
 import { PartView } from "./Parts";
 import { StudioLights } from "./Studio";
-import { upcomingPart, type UpcomingModel } from "./upcoming";
 import { useDark } from "../ui/theme";
 
 /** A part with a piece lying on the mat beside the breadboard (the soil probe, the keypad). */
@@ -52,14 +50,14 @@ export function previewFrame(view: ViewSpec | undefined): { size: number; lookY:
   }
 }
 
-export default function PartPreview({ kind, model, label }: { kind?: string; model?: UpcomingModel; label: string }) {
-  const parts = useMemo(() => (model ? [upcomingPart(model)] : resolveBuild(layoutProject([{ kind: kind! }]).build).resolved?.parts ?? []), [kind, model]);
+export default function PartPreview({ kind, label }: { kind: string; label: string }) {
+  const parts = useMemo(() => resolveBuild(layoutProject([{ kind }]).build).resolved?.parts ?? [], [kind]);
   const center = useMemo(() => {
     const pts = parts.flatMap((p) => Object.values(p.legs).map((h) => holePos(h)));
     const n = pts.length || 1;
     return pts.reduce<[number, number, number]>((a, p) => [a[0] + p[0] / n, a[1] + p[1] / n, a[2] + p[2] / n], [0, 0, 0]);
   }, [parts]);
-  const view = model?.view ?? (kind ? packByKind(kind)?.view : undefined);
+  const view = packByKind(kind)?.view;
   const { size, lookY, lookX = 0 } = previewFrame(view);
   const dark = useDark();
   // Parts whose front faces the centre channel (the buzzer module, the DHT11) are first shown from that side.
@@ -83,7 +81,7 @@ export default function PartPreview({ kind, model, label }: { kind?: string; mod
       )}
       <ContactShadows frames={1} position={[center[0], 0.02, center[2]]} scale={size * 1.1} resolution={512} blur={1.6} far={20} opacity={0.45} />
       {parts.map((p) => (
-        <PartView key={p.ref} part={p} state="done" view={model?.view} onHover={() => {}} />
+        <PartView key={p.ref} part={p} state="done" onHover={() => {}} />
       ))}
       <OrbitControls target={[center[0] + lookX, lookY, center[2]]} enablePan={false} enableZoom={false} />
     </Canvas>

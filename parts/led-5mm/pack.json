@@ -7,5 +7,6 @@
     "status": "reviewed",
     "by": "migrated unchanged from data/components/led-5mm.json (main at e7c3199)",
     "date": "2026-10-23"
-  }
+  },
+  "triedOnPico": true
 }

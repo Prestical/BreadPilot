@@ -4,7 +4,8 @@
 
 import { driversFor, layoutProject, type BlockRequest } from "@breadpilot/circuit-core";
 import { describe, expect, it } from "vitest";
-import { checkBehaviour, claimWords, type Claim } from "../src/index";
+import { electricalModel } from "../src/circuit";
+import { checkBehaviour, claimWords, inputSlots, testRun, type Claim } from "../src/index";
 
 const run = (kinds: BlockRequest[], code: string, claims: Claim[]) => {
   const circuit = layoutProject(kinds).build;
@@ -128,6 +129,47 @@ describe("programs that use random (18.7h: found on the OpenAI eval's dice)", ()
     const c = await run(LED_BTN, DICE, [{ when: "BTN1 pressed", then: "LED1 blinks" }]);
     expect(s006(c)).toHaveLength(1);
     expect(c.notes.some((n) => n.startsWith("The program uses random"))).toBe(true);
+  });
+});
+
+describe("a switch closed at rest: the ball tilt switch (closed while upright, part.json restsClosed)", () => {
+  const TILT: BlockRequest[] = [{ kind: "led", pin: "GP16" }, { kind: "tilt", pin: "GP17" }];
+  // With the pull-up, the pin reads 0 while upright (closed) and 1 when tilted (open).
+  const BEEP_WHEN_TILTED = "led = Pin(16, Pin.OUT)\nt = Pin(17, Pin.IN, Pin.PULL_UP)\nwhile True:\n    led.value(t.value())\n    time.sleep(0.02)\n";
+
+  it("the test run starts it upright and tilts it; the preview starts it upright", () => {
+    const model = electricalModel(layoutProject(TILT).build);
+    const run = testRun(model);
+    expect(run.scenario.switches.TILT1![0]).toEqual([0, 1]);
+    expect(run.phases.filter((p) => p.ref === "TILT1").map((p) => p.label)).toEqual(["TILT1 tilted briefly", "TILT1 kept tilted", "TILT1 tilted twice"]);
+    expect(inputSlots(model)).toEqual([{ group: "switches", key: "TILT1", ref: "TILT1", value: 1 }]);
+  });
+
+  it("'when TILT1 tilted, LED1 on' holds for code that lights the LED when tilted, and fails for the opposite", async () => {
+    const right = await run(TILT, BEEP_WHEN_TILTED, [{ when: "TILT1 tilted", then: "LED1 on" }]);
+    expect(right.claims.map((c) => c.held)).toEqual([true]);
+    expect(right.findings).toEqual([]);
+    const wrong = await run(TILT, BEEP_WHEN_TILTED.replace("led.value(t.value())", "led.value(not t.value())"), [{ when: "TILT1 tilted", then: "LED1 on" }]);
+    expect(s006(wrong)).toHaveLength(1);
+  });
+});
+
+describe("a state a switch toggles is tried both ways (25/11/2026: the night light example)", () => {
+  // A button toggles the light; the knob sets its brightness only while it is on. The test presses
+  // the button 4 times (off again), so without a second round the knob was turned with the light off:
+  // a false S006 for "brighter" and a false S004 "POT1 never read".
+  const NIGHT_LIGHT = "led = PWM(Pin(16))\nled.freq(1000)\nbutton = Pin(18, Pin.IN, Pin.PULL_UP)\nknob = ADC(26)\nled_on = False\nlast_button = 1\nled.duty_u16(0)\nwhile True:\n    button_state = button.value()\n    if button_state == 0 and last_button == 1:\n        led_on = not led_on\n        time.sleep(0.03)\n    last_button = button_state\n    if led_on:\n        led.duty_u16(knob.read_u16())\n    else:\n        led.duty_u16(0)\n    time.sleep(0.03)\n";
+  const KINDS: BlockRequest[] = [{ kind: "led", pin: "GP16" }, { kind: "button", pin: "GP18" }, { kind: "pot", pin: "GP26" }];
+
+  it("the test run presses the button once more, then turns the knob again", () => {
+    const run = testRun(electricalModel(layoutProject(KINDS).build));
+    expect(run.phases.map((p) => p.label)).toEqual(["starting up", "BTN1 pressed briefly", "BTN1 held", "BTN1 pressed twice", "POT1 turned from low to high and back", "BTN1 pressed once more", "POT1 turned from low to high and back (again)", "quiet"]);
+  });
+
+  it("the night light: its knob claims hold, and no finding", async () => {
+    const c = await run(KINDS, NIGHT_LIGHT, [{ when: "BTN1 pressed", then: "LED1 on" }, { when: "POT1 turned up", then: "LED1 brighter" }, { when: "POT1 turned down", then: "LED1 dimmer" }]);
+    expect(c.findings).toEqual([]);
+    expect(c.claims.map((x) => x.held)).toEqual([true, true, true]);
   });
 });
 
